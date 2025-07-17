@@ -1,4 +1,3 @@
-
 // === SECTION 1A: ThreadCubTagging Constructor & Initialization ===
 
 // ThreadCub with Enhanced Popup System - FIXED VERSION
@@ -2030,7 +2029,7 @@ function checkForContinuationData() {
             
             // Wait for page to be ready, then show beautiful popup
             setTimeout(() => {
-              showContinuationPopup(data.prompt, data.shareUrl);
+              showContinuationPopup(data.prompt, data.shareUrl, data);
             }, 2000);
           } else {
             console.log('🐻 ThreadCub: Continuation data too old, ignoring');
@@ -2060,7 +2059,7 @@ function checkForContinuationData() {
           localStorage.removeItem('threadcubContinuationData');
           
           setTimeout(() => {
-            showContinuationPopup(data.prompt, data.shareUrl);
+            showContinuationPopup(data.prompt, data.shareUrl, data);
           }, 2000);
         } else {
           console.log('🐻 ThreadCub: Continuation data too old, clearing');
@@ -2076,7 +2075,7 @@ function checkForContinuationData() {
 }
 
 // ===== ENHANCED: Better debugging for the continuation popup =====
-function showContinuationPopup(fullPrompt, shareUrl) {
+function showContinuationPopup(fullPrompt, shareUrl, continuationData) {
   console.log('🐻 ThreadCub: Creating enhanced continuation popup');
   console.log('🐻 ThreadCub: Prompt length:', fullPrompt?.length || 0);
   console.log('🐻 ThreadCub: Share URL:', shareUrl);
@@ -2199,7 +2198,13 @@ function extractConversationPreview(fullPrompt, continuationData = null) {
   
   // FIXED: Use actual continuation data for accurate message count
 const messageCount = messagesMatch ? messagesMatch[1] : (() => {
-  const data = continuationData || JSON.parse(localStorage.getItem('threadcubContinuationData') || '{}');
+  const data = continuationData || (() => {
+    try {
+      return JSON.parse(localStorage.getItem('threadcubContinuationData') || '{}');
+    } catch (error) {
+      return {};
+    }
+  })();
   
   // ADD THESE DEBUG LINES:
   console.log('🔍 DEBUG: messagesMatch:', messagesMatch);
@@ -2207,8 +2212,22 @@ const messageCount = messagesMatch ? messagesMatch[1] : (() => {
   console.log('🔍 DEBUG: localStorage data:', localStorage.getItem('threadcubContinuationData'));
   console.log('🔍 DEBUG: parsed data:', data);
   
-  const finalCount = data.messages?.length || data.totalMessages ||
-                    (fullPrompt.split('**You:**').length - 1) || 'Unknown';
+  // Try to get from continuation data first, then parse from prompt
+const finalCount = data.messages?.length || 
+                  data.totalMessages || 
+                  data.total_messages ||
+                  (() => {
+                    // Extract from the actual conversation if available
+                    if (window.threadcubButton && window.threadcubButton.lastConversationData) {
+                      return window.threadcubButton.lastConversationData.total_messages || 
+                             window.threadcubButton.lastConversationData.messages?.length;
+                    }
+                    // Fallback: count from prompt
+                    const userMessages = (fullPrompt.match(/\*\*You:\*\*/g) || []).length;
+                    const assistantMessages = (fullPrompt.match(/\*\*Assistant:\*\*/g) || []).length;
+                    return userMessages + assistantMessages || null;
+                  })() ||
+                  'Several'; // Final fallback
   
   console.log('🔍 DEBUG: final messageCount:', finalCount);
   

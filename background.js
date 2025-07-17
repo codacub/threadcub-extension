@@ -1,163 +1,100 @@
-// ThreadCub Background Script
+// === SECTION 1: Core Message Handler ===
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log('🐻 Background: Received message:', request.action);
 
-  if (request.action === 'download') {
-    console.log('🐻 Background: Starting download process');
-    console.log('🐻 Background: Data received:', request.data);
-    console.log('🐻 Background: Filename:', request.filename);
-
-    try {
-      // Validate the data
-      if (!request.data) {
-        console.error('🐻 Background: No data provided for download');
-        setTimeout(() => {
-          sendResponse({ success: false, error: 'No data provided' });
-        }, 0);
-        return true;
-      }
-
-      if (!request.filename) {
-        console.error('🐻 Background: No filename provided for download');
-        setTimeout(() => {
-          sendResponse({ success: false, error: 'No filename provided' });
-        }, 0);
-        return true;
-      }
-
-      // Create the JSON string
-      const jsonString = JSON.stringify(request.data, null, 2);
-      console.log('🐻 Background: JSON string length:', jsonString.length);
-
-      // Convert to base64 data URL
-      const base64Data = btoa(unescape(encodeURIComponent(jsonString)));
-      const dataUrl = `data:application/json;charset=utf-8;base64,${base64Data}`;
-      console.log('🐻 Background: Created data URL, length:', dataUrl.length);
-
-      // Start the download
-      chrome.downloads.download({
-        url: dataUrl,
-        filename: request.filename,
-        saveAs: false
-      }, (downloadId) => {
-        if (chrome.runtime.lastError) {
-          console.error('🐻 Background: Download failed:', chrome.runtime.lastError);
-          setTimeout(() => {
-            sendResponse({ success: false, error: chrome.runtime.lastError.message });
-          }, 0);
-        } else {
-          console.log('🐻 Background: Download started with ID:', downloadId);
-          setTimeout(() => {
-            sendResponse({ success: true, downloadId: downloadId });
-          }, 0);
-        }
-      });
-
-      return true; // Keeps the service worker alive
-
-    } catch (error) {
-      console.error('🐻 Background: Error during download:', error);
-      setTimeout(() => {
-        sendResponse({ success: false, error: error.message });
-      }, 0);
+  switch (request.action) {
+    case 'download':
+      handleDownload(request, sendResponse);
       return true;
-    }
-  }
-
-  // ===== NEW: Handle API calls to avoid CSP issues =====
-  else if (request.action === 'saveConversation') {
-    console.log('🐻 Background: Handling API call to ThreadCub');
     
-    handleSaveConversation(request.data)
-      .then(result => {
-        console.log('🐻 Background: API call successful');
-        sendResponse({ success: true, data: result });
-      })
-      .catch(error => {
-        console.error('🐻 Background: API call failed:', error);
-        sendResponse({ success: false, error: error.message });
-      });
+    case 'saveConversation':
+      handleSaveConversation(request.data)
+        .then(result => sendResponse({ success: true, data: result }))
+        .catch(error => sendResponse({ success: false, error: error.message }));
+      return true;
     
-    return true; // Keep message channel open for async response
-  }
-
-  // Handle Continue with Summary - open tab and inject prompt
-  else if (request.action === 'openAndInject') {
-    console.log('🔄 Background: Opening tab and injecting prompt:', request.url);
+    case 'openAndInject':
+      handleOpenAndInject(request.url, request.prompt)
+        .then(result => sendResponse(result))
+        .catch(error => sendResponse({ success: false, error: error.message }));
+      return true;
     
-    handleOpenAndInject(request.url, request.prompt)
-      .then(result => {
-        sendResponse(result);
-      })
-      .catch(error => {
-        sendResponse({ success: false, error: error.message });
-      });
+    case 'storeContinuationData':
+      handleStoreContinuationData(request, sender, sendResponse);
+      return false;
     
-    return true; // Keep message channel open for async response
-  }
-
-  // ===== NEW: Store continuation data for cross-tab communication =====
-  else if (request.action === 'storeContinuationData') {
-    console.log('🔄 Background: Storing continuation data for cross-tab communication');
+    case 'getContinuationData':
+      handleGetContinuationData(sender, sendResponse);
+      return true;
     
-    chrome.storage.local.set({
-      threadcubContinuation: {
-        prompt: request.prompt,
-        shareUrl: request.shareUrl,
-        platform: request.platform,
-        timestamp: Date.now(),
-        sourceTabId: sender.tab.id
-      }
-    });
+    case 'exportComplete':
+      console.log('🐻 Background: Export completed notification received');
+      break;
     
-    sendResponse({ success: true });
-  }
-
-  // ===== NEW: Retrieve continuation data for new tabs =====
-  else if (request.action === 'getContinuationData') {
-    console.log('🔄 Background: Getting continuation data for new tab');
+    case 'buttonStatusChanged':
+      console.log('🐻 Background: Button status changed:', request.visible);
+      break;
     
-    chrome.storage.local.get(['threadcubContinuation'], (result) => {
-      const data = result.threadcubContinuation;
-      
-      // Check if data exists, is recent (within 2 minutes), and from different tab
-      if (data && 
-          Date.now() - data.timestamp < 120000 && 
-          data.sourceTabId !== sender.tab.id) {
-        
-        console.log('🔄 Background: Found valid continuation data, sending to tab');
-        // Clear the data after retrieving it (one-time use)
-        chrome.storage.local.remove(['threadcubContinuation']);
-        sendResponse({ data });
-      } else {
-        console.log('🔄 Background: No valid continuation data found');
-        sendResponse({ data: null });
-      }
-    });
-    
-    return true; // Keep response channel open for async chrome.storage call
-  }
-  // ===== END NEW CONTINUATION DATA HANDLERS =====
-
-  // Handle other message types
-  else if (request.action === 'exportComplete') {
-    console.log('🐻 Background: Export completed notification received');
-  }
-
-  else if (request.action === 'buttonStatusChanged') {
-    console.log('🐻 Background: Button status changed:', request.visible);
-  }
-
-  else {
-    console.log('🐻 Background: Unknown action:', request.action);
-    setTimeout(() => {
+    default:
+      console.log('🐻 Background: Unknown action:', request.action);
       sendResponse({ success: false, error: 'Unknown action' });
-    }, 0);
   }
 });
 
-// Handle the actual API call to ThreadCub
+// === SECTION 2: Download Handler ===
+
+function handleDownload(request, sendResponse) {
+  console.log('🐻 Background: Starting download process');
+  console.log('🐻 Background: Data received:', request.data);
+  console.log('🐻 Background: Filename:', request.filename);
+
+  try {
+    // Validate the data
+    if (!request.data) {
+      console.error('🐻 Background: No data provided for download');
+      setTimeout(() => sendResponse({ success: false, error: 'No data provided' }), 0);
+      return;
+    }
+
+    if (!request.filename) {
+      console.error('🐻 Background: No filename provided for download');
+      setTimeout(() => sendResponse({ success: false, error: 'No filename provided' }), 0);
+      return;
+    }
+
+    // Create the JSON string
+    const jsonString = JSON.stringify(request.data, null, 2);
+    console.log('🐻 Background: JSON string length:', jsonString.length);
+
+    // Convert to base64 data URL
+    const base64Data = btoa(unescape(encodeURIComponent(jsonString)));
+    const dataUrl = `data:application/json;charset=utf-8;base64,${base64Data}`;
+    console.log('🐻 Background: Created data URL, length:', dataUrl.length);
+
+    // Start the download
+    chrome.downloads.download({
+      url: dataUrl,
+      filename: request.filename,
+      saveAs: false
+    }, (downloadId) => {
+      if (chrome.runtime.lastError) {
+        console.error('🐻 Background: Download failed:', chrome.runtime.lastError);
+        setTimeout(() => sendResponse({ success: false, error: chrome.runtime.lastError.message }), 0);
+      } else {
+        console.log('🐻 Background: Download started with ID:', downloadId);
+        setTimeout(() => sendResponse({ success: true, downloadId: downloadId }), 0);
+      }
+    });
+
+  } catch (error) {
+    console.error('🐻 Background: Error during download:', error);
+    setTimeout(() => sendResponse({ success: false, error: error.message }), 0);
+  }
+}
+
+// === SECTION 3: API Handler ===
+
 async function handleSaveConversation(data) {
   try {
     console.log('🐻 Background: Making API call to ThreadCub with data:', data);
@@ -191,22 +128,47 @@ async function handleSaveConversation(data) {
   }
 }
 
-chrome.runtime.onInstalled.addListener((details) => {
-  console.log('🐻 Background: Extension installed/updated:', details.reason);
+// === SECTION 4: Cross-Tab Continuation System ===
 
-  if (details.reason === 'install') {
-    console.log('🐻 Background: First install - opening welcome page');
-    chrome.tabs.create({
-      url: chrome.runtime.getURL('welcome.html')
-    });
-  }
-});
+function handleStoreContinuationData(request, sender, sendResponse) {
+  console.log('🔄 Background: Storing continuation data for cross-tab communication');
+  
+  chrome.storage.local.set({
+    threadcubContinuation: {
+      prompt: request.prompt,
+      shareUrl: request.shareUrl,
+      platform: request.platform,
+      timestamp: Date.now(),
+      sourceTabId: sender.tab.id
+    }
+  });
+  
+  sendResponse({ success: true });
+}
 
-chrome.runtime.onStartup.addListener(() => {
-  console.log('🐻 Background: Extension started');
-});
+function handleGetContinuationData(sender, sendResponse) {
+  console.log('🔄 Background: Getting continuation data for new tab');
+  
+  chrome.storage.local.get(['threadcubContinuation'], (result) => {
+    const data = result.threadcubContinuation;
+    
+    // Check if data exists, is recent (within 2 minutes), and from different tab
+    if (data && 
+        Date.now() - data.timestamp < 120000 && 
+        data.sourceTabId !== sender.tab.id) {
+      
+      console.log('🔄 Background: Found valid continuation data, sending to tab');
+      // Clear the data after retrieving it (one-time use)
+      chrome.storage.local.remove(['threadcubContinuation']);
+      sendResponse({ data });
+    } else {
+      console.log('🔄 Background: No valid continuation data found');
+      sendResponse({ data: null });
+    }
+  });
+}
 
-console.log('🐻 ThreadCub background script loaded and ready');
+// === SECTION 5: Tab Management & Prompt Injection ===
 
 // Platform configurations for prompt injection
 const PLATFORM_INJECTORS = {
@@ -232,7 +194,6 @@ const PLATFORM_INJECTORS = {
   }
 };
 
-// Handle opening new tab and injecting prompt
 async function handleOpenAndInject(url, prompt) {
   try {
     console.log(`🔄 Background: Opening new tab: ${url}`);
@@ -269,7 +230,6 @@ async function handleOpenAndInject(url, prompt) {
   }
 }
 
-// Wait for tab to be ready
 async function waitForTabReady(tabId, maxWaitTime = 8000) {
   const startTime = Date.now();
   
@@ -289,7 +249,6 @@ async function waitForTabReady(tabId, maxWaitTime = 8000) {
   throw new Error('Timeout waiting for tab');
 }
 
-// Function injected into target page
 function injectPromptFunction(prompt, selectors) {
   return new Promise((resolve) => {
     console.log('🔄 Injecting prompt into page');
@@ -339,3 +298,22 @@ function injectPromptFunction(prompt, selectors) {
     tryInject();
   });
 }
+
+// === SECTION 6: Extension Lifecycle ===
+
+chrome.runtime.onInstalled.addListener((details) => {
+  console.log('🐻 Background: Extension installed/updated:', details.reason);
+
+  if (details.reason === 'install') {
+    console.log('🐻 Background: First install - opening welcome page');
+    chrome.tabs.create({
+      url: chrome.runtime.getURL('welcome.html')
+    });
+  }
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  console.log('🐻 Background: Extension started');
+});
+
+console.log('🐻 ThreadCub background script loaded and ready');

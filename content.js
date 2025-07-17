@@ -3584,7 +3584,7 @@ destroy() {
 
 // === END SECTION 4D ===
 
-// === SECTION 4E-1: Core API Integration (FIXED CONTINUATION PROMPT USAGE) ===
+// === SECTION 4E-1: Core API Integration (FIXED FOR SUPABASE) ===
 
 // ===== MAIN METHOD: saveAndOpenConversation (FIXED) =====
 async saveAndOpenConversation(source = 'floating') {
@@ -3617,47 +3617,50 @@ async saveAndOpenConversation(source = 'floating') {
     
     if (!conversationData || conversationData.messages.length === 0) {
       console.error('🐻 ThreadCub: No conversation data found');
-      this.showErrorToast();
+      this.showErrorToast('No conversation found to save');
       this.isExporting = false;
       return;
     }
     
     console.log(`🐻 ThreadCub: Successfully extracted ${conversationData.messages.length} messages`);
     
-    // Send to ThreadCub API
-    console.log('🐻 ThreadCub: Sending to ThreadCub API');
+    // FIXED: Use background script to make API call (avoids CSP issues)
+    console.log('🐻 ThreadCub: Sending to background script to avoid CSP issues...');
     
-    const response = await fetch('https://threadcub.com/api/conversations/save', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    const response = await chrome.runtime.sendMessage({
+      action: 'saveConversation',
+      data: {
         conversationData: conversationData,
         source: conversationData.platform?.toLowerCase() || 'unknown',
         title: conversationData.title
-      })
+      }
     });
 
-    const data = await response.json();
-    console.log('✅ ThreadCub: Conversation saved:', data);
+    if (!response.success) {
+      console.error('🐻 ThreadCub: Background script API call failed:', response.error);
+      this.showErrorToast('Failed to save conversation');
+      this.isExporting = false;
+      return;
+    }
 
-    // CRITICAL FIX: Use minimal prompt generation (like older working version)
+    const data = response.data;
+    console.log('✅ ThreadCub: Conversation saved via background script:', data);
+
+    // Generate continuation prompt and handle platform-specific flow
     const summary = data.summary || this.generateQuickSummary(conversationData.messages);
     const shareUrl = `https://threadcub.com/api/share/${data.conversationId}`;
     
-    // Generate MINIMAL continuation prompt (no embedded conversation content)
+    // Generate minimal continuation prompt
     const minimalPrompt = this.generateContinuationPrompt(summary, shareUrl, conversationData.platform, conversationData);
-    
-    // Create popup display data separately (for ChatGPT instructions only)
-    const popupDisplayData = this.createPopupDisplayData(conversationData, shareUrl);
     
     // Detect target platform for smart flow
     const targetPlatform = this.getTargetPlatformFromCurrentUrl();
     
     if (targetPlatform === 'chatgpt') {
-      // CHATGPT FLOW: Use popup display data for instructions, full data for download
-      this.handleChatGPTFlow(popupDisplayData, shareUrl, conversationData);
+      // ChatGPT flow: Download + Instructions
+      this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
     } else {
-      // CLAUDE FLOW: Use minimal prompt only
+      // Claude flow: Store and open new tab
       this.handleClaudeFlow(minimalPrompt, shareUrl);
     }
 
@@ -3672,24 +3675,12 @@ async saveAndOpenConversation(source = 'floating') {
 
   } catch (error) {
     console.error('🐻 ThreadCub: Export error:', error);
-    this.showErrorToast();
+    this.showErrorToast('Export failed: ' + error.message);
     this.isExporting = false;
   }
 }
 
-// ===== NEW: Create popup display data (separate from continuation prompt) =====
-createPopupDisplayData(conversationData, shareUrl) {
-  // This is ONLY for popup display, never sent to Claude
-  return {
-    title: conversationData.title,
-    platform: conversationData.platform,
-    messageCount: conversationData.messages.length,
-    shareUrl: shareUrl,
-    summary: `Ready to continue previous conversation from ${conversationData.platform}`
-  };
-}
-
-// ===== HELPER METHODS (UNCHANGED) =====
+// === HELPER METHODS (UPDATED) ===
 
 getTargetPlatformFromCurrentUrl() {
   const hostname = window.location.hostname;

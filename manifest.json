@@ -44,10 +44,6 @@
     "https://*.threadcub.com/*"
   ],
   
-  "content_security_policy": {
-    "extension_pages": "script-src 'self' 'unsafe-eval' https://threadcub.com https://cdn.skypack.dev; connect-src 'self' https://threadcub.com https://*.threadcub.com https://*.supabase.co; object-src 'self'"
-  },
-  
   "background": {
     "service_worker": "background.js"
   },

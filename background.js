@@ -98,6 +98,19 @@ function handleDownload(request, sendResponse) {
 async function handleSaveConversation(data) {
   try {
     console.log('🐻 Background: Making API call to ThreadCub with data:', data);
+    console.log('🐻 Background: API URL:', 'https://threadcub.com/api/conversations/save');
+    
+    // TEMPORARY: Test if endpoint exists with GET first
+    console.log('🐻 Background: Testing endpoint accessibility...');
+    try {
+      const testResponse = await fetch('https://threadcub.com/api/conversations/save', {
+        method: 'GET'
+      });
+      console.log('🐻 Background: GET test response:', testResponse.status);
+      console.log('🐻 Background: GET allowed methods:', testResponse.headers.get('Allow'));
+    } catch (error) {
+      console.log('🐻 Background: GET test failed:', error);
+    }
     
     const response = await fetch('https://threadcub.com/api/conversations/save', {
       method: 'POST',
@@ -108,12 +121,20 @@ async function handleSaveConversation(data) {
       body: JSON.stringify(data)
     });
     
-    console.log('🐻 Background: API response status:', response.status);
-    console.log('🐻 Background: API response headers:', Object.fromEntries(response.headers.entries()));
+    console.log('🐻 Background: POST response status:', response.status);
+    console.log('🐻 Background: POST response ok:', response.ok);
     
     if (!response.ok) {
       const errorText = await response.text();
       console.error('🐻 Background: API error response:', errorText);
+      
+      // If 405, try to get more info about allowed methods
+      if (response.status === 405) {
+        const allowedMethods = response.headers.get('Allow');
+        console.error('🐻 Background: Allowed methods:', allowedMethods);
+        throw new Error(`Method not allowed. Allowed methods: ${allowedMethods || 'unknown'}`);
+      }
+      
       throw new Error(`API call failed: ${response.status} ${response.statusText} - ${errorText}`);
     }
     
@@ -133,13 +154,16 @@ async function handleSaveConversation(data) {
 function handleStoreContinuationData(request, sender, sendResponse) {
   console.log('🔄 Background: Storing continuation data for cross-tab communication');
   
+  // FIXED: Use the same key name that content.js expects
   chrome.storage.local.set({
-    threadcubContinuation: {
+    threadcubContinuationData: {
       prompt: request.prompt,
       shareUrl: request.shareUrl,
       platform: request.platform,
       timestamp: Date.now(),
-      sourceTabId: sender.tab.id
+      sourceTabId: sender.tab.id,
+      messages: request.messages || [],
+      totalMessages: request.totalMessages || request.messages?.length || 0
     }
   });
   
@@ -149,17 +173,18 @@ function handleStoreContinuationData(request, sender, sendResponse) {
 function handleGetContinuationData(sender, sendResponse) {
   console.log('🔄 Background: Getting continuation data for new tab');
   
-  chrome.storage.local.get(['threadcubContinuation'], (result) => {
-    const data = result.threadcubContinuation;
+  // FIXED: Use the same key name that content.js expects
+  chrome.storage.local.get(['threadcubContinuationData'], (result) => {
+    const data = result.threadcubContinuationData;
     
-    // Check if data exists, is recent (within 2 minutes), and from different tab
+    // Check if data exists, is recent (within 5 minutes), and from different tab
     if (data && 
-        Date.now() - data.timestamp < 120000 && 
+        Date.now() - data.timestamp < 300000 && 
         data.sourceTabId !== sender.tab.id) {
       
       console.log('🔄 Background: Found valid continuation data, sending to tab');
       // Clear the data after retrieving it (one-time use)
-      chrome.storage.local.remove(['threadcubContinuation']);
+      chrome.storage.local.remove(['threadcubContinuationData']);
       sendResponse({ data });
     } else {
       console.log('🔄 Background: No valid continuation data found');

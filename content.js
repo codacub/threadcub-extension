@@ -3672,14 +3672,26 @@ async saveAndOpenConversation(source = 'floating') {
       conversationData = this.extractGenericConversation();
     }
     
-    if (!conversationData || conversationData.messages.length === 0) {
-      console.error('🐻 ThreadCub: No conversation data found');
+    // CRITICAL FIX: Validate conversation data before proceeding
+    if (!conversationData) {
+      console.error('🐻 ThreadCub: No conversation data returned from extraction');
       this.showErrorToast('No conversation found to save');
       this.isExporting = false;
       return;
     }
     
+    if (!conversationData.messages || conversationData.messages.length === 0) {
+      console.error('🐻 ThreadCub: No messages found in conversation data');
+      this.showErrorToast('No messages found in conversation');
+      this.isExporting = false;
+      return;
+    }
+    
     console.log(`🐻 ThreadCub: Successfully extracted ${conversationData.messages.length} messages`);
+    console.log('🐻 ThreadCub: Conversation data structure:', conversationData);
+    
+    // FIXED: Store conversation data globally for later use
+    this.lastConversationData = conversationData;
     
     // FIXED: Format data to match your API route expectations
     const apiData = {
@@ -3719,8 +3731,8 @@ async saveAndOpenConversation(source = 'floating') {
       // ChatGPT flow: Download + Instructions
       this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
     } else {
-      // Claude flow: Store and open new tab
-      this.handleClaudeFlow(minimalPrompt, shareUrl);
+      // Claude flow: Store and open new tab - FIXED: Pass conversationData
+      this.handleClaudeFlow(minimalPrompt, shareUrl, conversationData);
     }
 
     this.setBearExpression('happy');
@@ -3830,18 +3842,28 @@ downloadContinuationJSON(fullPrompt, shareUrl, conversationData) {
 
 // === END SECTION 4E-2 ===
 
-// === SECTION 4E-3: Claude Flow Handler (FIXED - SIMPLIFIED VALIDATION) ===
+// === SECTION 4E-3: Claude Flow Handler (FIXED - MESSAGE COUNT DATA) ===
 
-// FIXED: Handle Claude-specific flow with simplified context validation
-handleClaudeFlow(continuationPrompt, shareUrl) {
-  console.log('🤖 ThreadCub: Starting simplified Claude flow...');
+// FIXED: Handle Claude-specific flow with message count data preservation
+handleClaudeFlow(continuationPrompt, shareUrl, conversationData) {
+  console.log('🤖 ThreadCub: Starting Claude flow with message count data...');
+  console.log('🤖 ThreadCub: Conversation data:', conversationData);
   
+  // CRITICAL FIX: Include all conversation data in continuation data
   const continuationData = {
     prompt: continuationPrompt,
     shareUrl: shareUrl,
     platform: 'Claude',
-    timestamp: Date.now()
+    timestamp: Date.now(),
+    // FIXED: Include message count data
+    messages: conversationData.messages || [],
+    totalMessages: conversationData.total_messages || conversationData.messages?.length || 0,
+    title: conversationData.title || 'Previous Conversation',
+    // Additional data for better preview
+    conversationData: conversationData
   };
+  
+  console.log('🤖 ThreadCub: Continuation data with message count:', continuationData.totalMessages);
   
   // SIMPLIFIED: Use basic validation without aggressive testing
   const canUseChrome = this.canUseChromStorage();
@@ -3850,7 +3872,7 @@ handleClaudeFlow(continuationPrompt, shareUrl) {
     console.log('🤖 ThreadCub: Using Chrome storage...');
     this.storeWithChrome(continuationData)
       .then(() => {
-        console.log('🐻 ThreadCub: Data stored successfully');
+        console.log('🐻 ThreadCub: Data stored successfully with message count:', continuationData.totalMessages);
         const newTabUrl = this.getNewTabUrl();
         window.open(newTabUrl, '_blank');
         this.showSuccessToast();
@@ -3887,7 +3909,7 @@ async storeWithChrome(continuationData) {
         if (chrome.runtime.lastError) {
           reject(new Error(chrome.runtime.lastError.message));
         } else {
-          console.log('🔧 Chrome storage: Success');
+          console.log('🔧 Chrome storage: Success with message count:', continuationData.totalMessages);
           resolve();
         }
       });
@@ -3904,7 +3926,7 @@ handleClaudeFlowFallback(continuationData) {
   try {
     // Store in localStorage as fallback
     localStorage.setItem('threadcubContinuationData', JSON.stringify(continuationData));
-    console.log('🔧 Fallback: Data stored in localStorage');
+    console.log('🔧 Fallback: Data stored in localStorage with message count:', continuationData.totalMessages);
     
     // Open new tab
     const newTabUrl = this.getNewTabUrl();
@@ -3975,7 +3997,7 @@ showManualContinuationInstructions(continuationData) {
         <ol style="margin: 0; padding-left: 20px; color: #92400e; font-size: 14px; line-height: 1.6;">
           <li><strong>Click "Open Claude"</strong> below</li>
           <li><strong>Manually paste the conversation context</strong> if needed</li>
-          <li><strong>Continue your conversation</strong></li>
+          <li><strong>Continue your conversation</strong> (${continuationData.totalMessages} messages)</li>
         </ol>
       </div>
       

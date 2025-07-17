@@ -65,6 +65,23 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
   }
 
+  // ===== NEW: Handle API calls to avoid CSP issues =====
+  else if (request.action === 'saveConversation') {
+    console.log('🐻 Background: Handling API call to ThreadCub');
+    
+    handleSaveConversation(request.data)
+      .then(result => {
+        console.log('🐻 Background: API call successful');
+        sendResponse({ success: true, data: result });
+      })
+      .catch(error => {
+        console.error('🐻 Background: API call failed:', error);
+        sendResponse({ success: false, error: error.message });
+      });
+    
+    return true; // Keep message channel open for async response
+  }
+
   // Handle Continue with Summary - open tab and inject prompt
   else if (request.action === 'openAndInject') {
     console.log('🔄 Background: Opening tab and injecting prompt:', request.url);
@@ -139,6 +156,40 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }, 0);
   }
 });
+
+// Handle the actual API call to ThreadCub
+async function handleSaveConversation(data) {
+  try {
+    console.log('🐻 Background: Making API call to ThreadCub with data:', data);
+    
+    const response = await fetch('https://threadcub.com/api/conversations/save', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(data)
+    });
+    
+    console.log('🐻 Background: API response status:', response.status);
+    console.log('🐻 Background: API response headers:', Object.fromEntries(response.headers.entries()));
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('🐻 Background: API error response:', errorText);
+      throw new Error(`API call failed: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+    
+    const result = await response.json();
+    console.log('🐻 Background: API call successful:', result);
+    
+    return result;
+    
+  } catch (error) {
+    console.error('🐻 Background: Error in handleSaveConversation:', error);
+    throw error;
+  }
+}
 
 chrome.runtime.onInstalled.addListener((details) => {
   console.log('🐻 Background: Extension installed/updated:', details.reason);

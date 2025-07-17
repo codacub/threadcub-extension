@@ -2186,57 +2186,114 @@ function showContinuationPopup(fullPrompt, shareUrl, continuationData) {
   console.log('🐻 ThreadCub: Continuation popup created and displayed');
 }
 
-// ===== Extract conversation preview from prompt =====
-// Extract conversation preview from prompt ===== 
+// ===== FIXED: Extract conversation preview from prompt with accurate message counting =====
 function extractConversationPreview(fullPrompt, continuationData = null) {
+  console.log('🔍 DEBUG: extractConversationPreview called with:');
+  console.log('🔍 DEBUG: fullPrompt length:', fullPrompt?.length || 0);
+  console.log('🔍 DEBUG: continuationData:', continuationData);
+  
   // Extract title and basic info with improved regex patterns
   const titleMatch = fullPrompt.match(/\*\*Conversation Title:\*\*\s*([^\n]+)/);
   const messagesMatch = fullPrompt.match(/\*\*Total Messages:\*\*\s*(\d+)/);
   const platformMatch = fullPrompt.match(/\*\*Platform:\*\*\s*([^\n]+)/);
   
   const title = titleMatch ? titleMatch[1].trim() : 'Previous Conversation';
-  
-  // FIXED: Use actual continuation data for accurate message count
-const messageCount = messagesMatch ? messagesMatch[1] : (() => {
-  const data = continuationData || (() => {
-    try {
-      return JSON.parse(localStorage.getItem('threadcubContinuationData') || '{}');
-    } catch (error) {
-      return {};
-    }
-  })();
-  
-  // ADD THESE DEBUG LINES:
-  console.log('🔍 DEBUG: messagesMatch:', messagesMatch);
-  console.log('🔍 DEBUG: continuationData:', continuationData);
-  console.log('🔍 DEBUG: localStorage data:', localStorage.getItem('threadcubContinuationData'));
-  console.log('🔍 DEBUG: parsed data:', data);
-  
-  // Try to get from continuation data first, then parse from prompt
-const finalCount = data.messages?.length || 
-                  data.totalMessages || 
-                  data.total_messages ||
-                  (() => {
-                    // Extract from the actual conversation if available
-                    if (window.threadcubButton && window.threadcubButton.lastConversationData) {
-                      return window.threadcubButton.lastConversationData.total_messages || 
-                             window.threadcubButton.lastConversationData.messages?.length;
-                    }
-                    // Fallback: count from prompt
-                    const userMessages = (fullPrompt.match(/\*\*You:\*\*/g) || []).length;
-                    const assistantMessages = (fullPrompt.match(/\*\*Assistant:\*\*/g) || []).length;
-                    return userMessages + assistantMessages || null;
-                  })() ||
-                  'Several'; // Final fallback
-  
-  console.log('🔍 DEBUG: final messageCount:', finalCount);
-  
-  return finalCount;
-})();
-
   const platform = platformMatch ? platformMatch[1].trim() : 'AI Platform';
   
-  // Create summary
+  console.log('🔍 DEBUG: Extracted from prompt:');
+  console.log('🔍 DEBUG: titleMatch:', titleMatch);
+  console.log('🔍 DEBUG: messagesMatch:', messagesMatch);
+  console.log('🔍 DEBUG: platformMatch:', platformMatch);
+  
+  // FIXED: Enhanced message count detection with multiple fallback strategies
+  const messageCount = (() => {
+    // Strategy 1: Direct from prompt regex
+    if (messagesMatch && messagesMatch[1]) {
+      const count = parseInt(messagesMatch[1]);
+      console.log('🔍 DEBUG: Message count from prompt regex:', count);
+      return count;
+    }
+    
+    // Strategy 2: From continuation data (multiple possible field names)
+    if (continuationData) {
+      const possibleCounts = [
+        continuationData.messages?.length,
+        continuationData.totalMessages,
+        continuationData.total_messages,
+        continuationData.messageCount,
+        continuationData.message_count
+      ];
+      
+      for (const count of possibleCounts) {
+        if (typeof count === 'number' && count > 0) {
+          console.log('🔍 DEBUG: Message count from continuation data:', count);
+          return count;
+        }
+      }
+    }
+    
+    // Strategy 3: From global button's last conversation data
+    if (window.threadcubButton && window.threadcubButton.lastConversationData) {
+      const lastData = window.threadcubButton.lastConversationData;
+      const possibleCounts = [
+        lastData.total_messages,
+        lastData.totalMessages,
+        lastData.messages?.length,
+        lastData.messageCount
+      ];
+      
+      for (const count of possibleCounts) {
+        if (typeof count === 'number' && count > 0) {
+          console.log('🔍 DEBUG: Message count from global button data:', count);
+          return count;
+        }
+      }
+    }
+    
+    // Strategy 4: Parse message count from conversation content in prompt
+    if (fullPrompt) {
+      // Count **You:** and **Assistant:** markers
+      const userMessages = (fullPrompt.match(/\*\*You:\*\*/g) || []).length;
+      const assistantMessages = (fullPrompt.match(/\*\*Assistant:\*\*/g) || []).length;
+      const totalFromMarkers = userMessages + assistantMessages;
+      
+      console.log('🔍 DEBUG: Message count from markers - User:', userMessages, 'Assistant:', assistantMessages, 'Total:', totalFromMarkers);
+      
+      if (totalFromMarkers > 0) {
+        return totalFromMarkers;
+      }
+      
+      // Alternative: Look for "Message X:" patterns
+      const messageNumberMatches = fullPrompt.match(/Message \d+:/g);
+      if (messageNumberMatches && messageNumberMatches.length > 0) {
+        console.log('🔍 DEBUG: Message count from Message X: patterns:', messageNumberMatches.length);
+        return messageNumberMatches.length;
+      }
+    }
+    
+    // Strategy 5: Try to get from localStorage as absolute fallback
+    try {
+      const storedData = localStorage.getItem('threadcubContinuationData');
+      if (storedData) {
+        const parsed = JSON.parse(storedData);
+        const count = parsed.messages?.length || parsed.totalMessages || parsed.total_messages;
+        if (typeof count === 'number' && count > 0) {
+          console.log('🔍 DEBUG: Message count from localStorage:', count);
+          return count;
+        }
+      }
+    } catch (error) {
+      console.log('🔍 DEBUG: Error accessing localStorage:', error);
+    }
+    
+    // Final fallback: Return null to indicate we couldn't determine the count
+    console.log('🔍 DEBUG: Could not determine message count, will show generic message');
+    return null;
+  })();
+  
+  console.log('🔍 DEBUG: Final message count:', messageCount);
+  
+  // Create summary with proper message count display
   const summary = `
     <div style="display: flex; align-items: center; gap: 12px; justify-content: center;">
       <div style="background: #e0e7ff; padding: 8px; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
@@ -2245,13 +2302,13 @@ const finalCount = data.messages?.length ||
       <div>
         <div style="font-weight: 600; color: #1f2937;">${title}</div>
         <div style="font-size: 12px; color: #6b7280;">
-          ${platform} • ${messageCount} messages
+          ${platform} • ${messageCount !== null ? `${messageCount} messages` : 'Multiple messages'}
         </div>
       </div>
     </div>
   `;
   
-  // Simple recent messages
+  // Simple recent messages preview
   let recentMessages = `
     <div style="
       background: #f3f4f6;
@@ -3584,7 +3641,7 @@ destroy() {
 
 // === END SECTION 4D ===
 
-// === SECTION 4E-1: Core API Integration (FIXED FOR SUPABASE) ===
+// === SECTION 4E-1: Core API Integration (FIXED TO MATCH YOUR API ROUTE) ===
 
 // ===== MAIN METHOD: saveAndOpenConversation (FIXED) =====
 async saveAndOpenConversation(source = 'floating') {
@@ -3624,16 +3681,18 @@ async saveAndOpenConversation(source = 'floating') {
     
     console.log(`🐻 ThreadCub: Successfully extracted ${conversationData.messages.length} messages`);
     
-    // FIXED: Use background script to make API call (avoids CSP issues)
-    console.log('🐻 ThreadCub: Sending to background script to avoid CSP issues...');
+    // FIXED: Format data to match your API route expectations
+    const apiData = {
+      conversationData: conversationData,  // ← Your API expects this wrapper
+      source: conversationData.platform?.toLowerCase() || 'unknown',
+      title: conversationData.title || 'Untitled Conversation'
+    };
+    
+    console.log('🐻 ThreadCub: Sending to background script with correct API format...');
     
     const response = await chrome.runtime.sendMessage({
       action: 'saveConversation',
-      data: {
-        conversationData: conversationData,
-        source: conversationData.platform?.toLowerCase() || 'unknown',
-        title: conversationData.title
-      }
+      data: apiData
     });
 
     if (!response.success) {
@@ -3648,7 +3707,7 @@ async saveAndOpenConversation(source = 'floating') {
 
     // Generate continuation prompt and handle platform-specific flow
     const summary = data.summary || this.generateQuickSummary(conversationData.messages);
-    const shareUrl = `https://threadcub.com/api/share/${data.conversationId}`;
+    const shareUrl = data.shareableUrl || `https://threadcub.com/api/share/${data.conversationId}`;
     
     // Generate minimal continuation prompt
     const minimalPrompt = this.generateContinuationPrompt(summary, shareUrl, conversationData.platform, conversationData);

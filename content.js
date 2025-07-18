@@ -1999,9 +1999,9 @@ deleteTag(tagId) {
 
 // === END SECTION 1H ===
 
-// === SECTION 2A: Continuation Popup System ===
+// === SECTION 2A: Streamlined Continuation System (NO MODAL) ===
 
-// ===== FIXED: Continuation check function using Chrome storage =====
+// ===== STREAMLINED: Check for continuation data and auto-execute =====
 function checkForContinuationData() {
   console.log('🐻 ThreadCub: Checking for continuation data using Chrome storage');
   
@@ -2027,13 +2027,12 @@ function checkForContinuationData() {
               console.log('🐻 ThreadCub: Cleared used continuation data');
             });
             
-            // Wait for page to be ready, then show beautiful popup
+            // STREAMLINED: Execute continuation immediately (no modal)
             setTimeout(() => {
-              showContinuationPopup(data.prompt, data.shareUrl, data);
-            }, 2000);
+              executeStreamlinedContinuation(data.prompt, data.shareUrl, data);
+            }, 800); // Quick delay for page load
           } else {
             console.log('🐻 ThreadCub: Continuation data too old, ignoring');
-            // Clear old data
             chrome.storage.local.remove(['threadcubContinuationData']);
           }
         } else {
@@ -2058,9 +2057,10 @@ function checkForContinuationData() {
           // Clear the data
           localStorage.removeItem('threadcubContinuationData');
           
+          // STREAMLINED: Execute continuation immediately
           setTimeout(() => {
-            showContinuationPopup(data.prompt, data.shareUrl, data);
-          }, 2000);
+            executeStreamlinedContinuation(data.prompt, data.shareUrl, data);
+          }, 800);
         } else {
           console.log('🐻 ThreadCub: Continuation data too old, clearing');
           localStorage.removeItem('threadcubContinuationData');
@@ -2074,398 +2074,310 @@ function checkForContinuationData() {
   }
 }
 
-// ===== ENHANCED: Better debugging for the continuation popup =====
-function showContinuationPopup(fullPrompt, shareUrl, continuationData) {
-  console.log('🐻 ThreadCub: Creating enhanced continuation popup');
-  console.log('🐻 ThreadCub: Prompt length:', fullPrompt?.length || 0);
-  console.log('🐻 ThreadCub: Share URL:', shareUrl);
+// ===== STREAMLINED: Execute continuation without modal =====
+function executeStreamlinedContinuation(fullPrompt, shareUrl, continuationData) {
+  console.log('🚀 ThreadCub: Executing streamlined continuation');
+  console.log('🚀 Platform:', continuationData.platform);
+  console.log('🚀 ChatGPT Flow:', continuationData.chatGPTFlow);
   
-  // Remove any existing popups first
-  const existingPopups = document.querySelectorAll('#threadcub-continuation-overlay');
-  existingPopups.forEach(popup => popup.remove());
+  const platform = detectCurrentPlatform();
   
-  // Create overlay backdrop
-  const overlay = document.createElement('div');
-  overlay.id = 'threadcub-continuation-overlay';
-  overlay.style.cssText = `
+  // STEP 1: Auto-populate the input field
+  console.log('🔧 Auto-populating input field...');
+  const populateSuccess = fillInputFieldWithPrompt(fullPrompt);
+  
+  console.log('🔧 Population result:', populateSuccess);
+  
+  // FIXED: Always show notification and continue (don't rely on populateSuccess return)
+  // Show subtle success notification
+  showStreamlinedNotification(continuationData);
+  
+  // Auto-start the conversation after brief delay
+  setTimeout(() => {
+    console.log('🔧 Auto-starting conversation...');
+    attemptAutoStart(platform);
+  }, 1500); // Give user moment to see the populated input
+}
+
+// ===== STREAMLINED: Subtle success notification =====
+function showStreamlinedNotification(continuationData) {
+  const isChatGPTFlow = continuationData.chatGPTFlow === true;
+  const messageCount = continuationData.totalMessages || 'multiple';
+  
+  // Create small, non-intrusive notification
+  const notification = document.createElement('div');
+  notification.style.cssText = `
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(8px);
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, ${isChatGPTFlow ? '#10a37f' : '#667eea'} 0%, ${isChatGPTFlow ? '#0d8f6f' : '#764ba2'} 100%);
+    color: white;
+    padding: 16px 20px;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
     z-index: 10000000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    transition: all 0.3s ease;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  `;
-  
-  // Create popup container
-  const popup = document.createElement('div');
-  popup.style.cssText = `
-    background: white;
-    border-radius: 16px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    max-width: 650px;
-    width: 90%;
-    max-height: 80vh;
-    overflow: hidden;
-    transform: scale(0.9) translateY(20px);
+    font-size: 14px;
+    font-weight: 600;
+    opacity: 0;
+    transform: translateX(100%);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
+    max-width: 320px;
   `;
   
-  // Extract conversation preview and summary from prompt
-  const conversationPreview = extractConversationPreview(fullPrompt, continuationData);
+  const title = continuationData.title || 'Previous Conversation';
+  const platformName = isChatGPTFlow ? 'ChatGPT' : (continuationData.platform || 'AI Platform');
   
-  // Create rich popup content - DOWNLOAD BUTTON REMOVED
-  popup.innerHTML = `
-    <div style="padding: 24px; text-align: center;">
-      <div style="
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        width: 64px;
-        height: 64px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 0 auto 16px;
-        font-size: 28px;
-      ">🐻</div>
-      
-      <h2 style="margin: 0 0 16px; color: #1e293b;">Continue Previous Conversation</h2>
-      
-      <div style="margin-bottom: 24px;">
-        ${conversationPreview.summary}
-      </div>
-      
-      <div style="margin-bottom: 20px;">
-        ${conversationPreview.recentMessages}
-      </div>
-      
-      <div style="display: flex; gap: 12px; justify-content: center;">
-        <button id="threadcub-continue-conversation" style="
-          padding: 12px 20px;
-          background: #10b981;
-          border: none;
-          border-radius: 8px;
-          color: white;
-          cursor: pointer;
-          font-weight: 600;
-        ">Continue</button>
-        
-        <button id="threadcub-close-popup" style="
-          padding: 12px 20px;
-          background: #64748b;
-          border: none;
-          border-radius: 8px;
-          color: white;
-          cursor: pointer;
-          font-weight: 600;
-        ">Close</button>
+  notification.innerHTML = `
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <div style="font-size: 18px;">${isChatGPTFlow ? '💬' : '🐻'}</div>
+      <div>
+        <div style="font-weight: 700; margin-bottom: 2px;">ThreadCub Continuation</div>
+        <div style="font-size: 12px; opacity: 0.9;">${platformName} • ${messageCount} messages</div>
+        ${isChatGPTFlow ? 
+          '<div style="font-size: 11px; opacity: 0.8; margin-top: 4px;">📁 File downloaded, upload when ready</div>' : 
+          '<div style="font-size: 11px; opacity: 0.8; margin-top: 4px;">✨ Conversation context loaded</div>'
+        }
       </div>
     </div>
   `;
   
-  overlay.appendChild(popup);
-  document.body.appendChild(overlay);
+  document.body.appendChild(notification);
   
   // Animate in
   setTimeout(() => {
-    overlay.style.opacity = '1';
-    popup.style.transform = 'scale(1) translateY(0)';
-  }, 50);
+    notification.style.opacity = '1';
+    notification.style.transform = 'translateX(0)';
+  }, 100);
   
-  // Add event listeners
-  setupPopupEventListeners(overlay, fullPrompt, shareUrl);
-  
-  console.log('🐻 ThreadCub: Continuation popup created and displayed');
-}
-
-// ===== FIXED: Extract conversation preview from prompt with accurate message counting =====
-function extractConversationPreview(fullPrompt, continuationData = null) {
-  console.log('🔍 DEBUG: extractConversationPreview called with:');
-  console.log('🔍 DEBUG: fullPrompt length:', fullPrompt?.length || 0);
-  console.log('🔍 DEBUG: continuationData:', continuationData);
-  
-  // Extract title and basic info with improved regex patterns
-  const titleMatch = fullPrompt.match(/\*\*Conversation Title:\*\*\s*([^\n]+)/);
-  const messagesMatch = fullPrompt.match(/\*\*Total Messages:\*\*\s*(\d+)/);
-  const platformMatch = fullPrompt.match(/\*\*Platform:\*\*\s*([^\n]+)/);
-  
-  const title = titleMatch ? titleMatch[1].trim() : 'Previous Conversation';
-  const platform = platformMatch ? platformMatch[1].trim() : 'AI Platform';
-  
-  console.log('🔍 DEBUG: Extracted from prompt:');
-  console.log('🔍 DEBUG: titleMatch:', titleMatch);
-  console.log('🔍 DEBUG: messagesMatch:', messagesMatch);
-  console.log('🔍 DEBUG: platformMatch:', platformMatch);
-  
-  // FIXED: Enhanced message count detection with multiple fallback strategies
-  const messageCount = (() => {
-    // Strategy 1: Direct from prompt regex
-    if (messagesMatch && messagesMatch[1]) {
-      const count = parseInt(messagesMatch[1]);
-      console.log('🔍 DEBUG: Message count from prompt regex:', count);
-      return count;
-    }
-    
-    // Strategy 2: From continuation data (multiple possible field names)
-    if (continuationData) {
-      const possibleCounts = [
-        continuationData.messages?.length,
-        continuationData.totalMessages,
-        continuationData.total_messages,
-        continuationData.messageCount,
-        continuationData.message_count
-      ];
-      
-      for (const count of possibleCounts) {
-        if (typeof count === 'number' && count > 0) {
-          console.log('🔍 DEBUG: Message count from continuation data:', count);
-          return count;
-        }
-      }
-    }
-    
-    // Strategy 3: From global button's last conversation data
-    if (window.threadcubButton && window.threadcubButton.lastConversationData) {
-      const lastData = window.threadcubButton.lastConversationData;
-      const possibleCounts = [
-        lastData.total_messages,
-        lastData.totalMessages,
-        lastData.messages?.length,
-        lastData.messageCount
-      ];
-      
-      for (const count of possibleCounts) {
-        if (typeof count === 'number' && count > 0) {
-          console.log('🔍 DEBUG: Message count from global button data:', count);
-          return count;
-        }
-      }
-    }
-    
-    // Strategy 4: Parse message count from conversation content in prompt
-    if (fullPrompt) {
-      // Count **You:** and **Assistant:** markers
-      const userMessages = (fullPrompt.match(/\*\*You:\*\*/g) || []).length;
-      const assistantMessages = (fullPrompt.match(/\*\*Assistant:\*\*/g) || []).length;
-      const totalFromMarkers = userMessages + assistantMessages;
-      
-      console.log('🔍 DEBUG: Message count from markers - User:', userMessages, 'Assistant:', assistantMessages, 'Total:', totalFromMarkers);
-      
-      if (totalFromMarkers > 0) {
-        return totalFromMarkers;
-      }
-      
-      // Alternative: Look for "Message X:" patterns
-      const messageNumberMatches = fullPrompt.match(/Message \d+:/g);
-      if (messageNumberMatches && messageNumberMatches.length > 0) {
-        console.log('🔍 DEBUG: Message count from Message X: patterns:', messageNumberMatches.length);
-        return messageNumberMatches.length;
-      }
-    }
-    
-    // Strategy 5: Try to get from localStorage as absolute fallback
-    try {
-      const storedData = localStorage.getItem('threadcubContinuationData');
-      if (storedData) {
-        const parsed = JSON.parse(storedData);
-        const count = parsed.messages?.length || parsed.totalMessages || parsed.total_messages;
-        if (typeof count === 'number' && count > 0) {
-          console.log('🔍 DEBUG: Message count from localStorage:', count);
-          return count;
-        }
-      }
-    } catch (error) {
-      console.log('🔍 DEBUG: Error accessing localStorage:', error);
-    }
-    
-    // Final fallback: Return null to indicate we couldn't determine the count
-    console.log('🔍 DEBUG: Could not determine message count, will show generic message');
-    return null;
-  })();
-  
-  console.log('🔍 DEBUG: Final message count:', messageCount);
-  
-  // Create summary with proper message count display
-  const summary = `
-    <div style="display: flex; align-items: center; gap: 12px; justify-content: center;">
-      <div style="background: #e0e7ff; padding: 8px; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
-        🗂️
-      </div>
-      <div>
-        <div style="font-weight: 600; color: #1f2937;">${title}</div>
-        <div style="font-size: 12px; color: #6b7280;">
-          ${platform} • ${messageCount !== null ? `${messageCount} messages` : 'Multiple messages'}
-        </div>
-      </div>
-    </div>
-  `;
-  
-  // Simple recent messages preview
-  let recentMessages = `
-    <div style="
-      background: #f3f4f6;
-      padding: 16px;
-      border-radius: 6px;
-      text-align: center;
-      color: #6b7280;
-      font-size: 13px;
-    ">
-      💭 Your conversation context is ready to continue
-    </div>
-  `;
-  
-  return { summary, recentMessages };
-}
-
-// === END SECTION 2A ===
-
-// === SECTION 2B-1: Popup Event Setup ===
-
-// ===== Setup popup event listeners with platform-specific behavior =====
-function setupPopupEventListeners(overlay, fullPrompt, shareUrl) {
-  const closeBtn = overlay.querySelector('#threadcub-close-popup');
-  const continueBtn = overlay.querySelector('#threadcub-continue-conversation');
-  
-  // Detect target platform from current URL
-  const currentPlatform = detectCurrentPlatform();
-  const isChatGPT = currentPlatform === 'chatgpt';
-  
-  // Close popup function
-  const closePopup = () => {
-    overlay.style.opacity = '0';
-    overlay.querySelector('div').style.transform = 'scale(0.9) translateY(20px)';
+  // Auto-hide after delay
+  setTimeout(() => {
+    notification.style.opacity = '0';
+    notification.style.transform = 'translateX(100%)';
     setTimeout(() => {
-      if (overlay.parentNode) {
-        overlay.parentNode.removeChild(overlay);
+      if (notification.parentNode) {
+        notification.parentNode.removeChild(notification);
       }
     }, 300);
-  };
+  }, 4000);
   
-  // Close button event
-  if (closeBtn) {
-    closeBtn.addEventListener('click', closePopup);
-  }
-  
-  // Overlay click to close
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) closePopup();
-  });
-  
-  // Escape key support
-  const handleEscape = (e) => {
-    if (e.key === 'Escape') {
-      closePopup();
-      document.removeEventListener('keydown', handleEscape);
-    }
-  };
-  document.addEventListener('keydown', handleEscape);
-  
-  // Setup continue button handler
-  setupContinueButtonHandler(continueBtn, fullPrompt, shareUrl, closePopup, isChatGPT);
+  console.log('✅ Streamlined notification shown');
 }
 
-// === END SECTION 2B-1 ===
-
-// === SECTION 2B-2: Download Button Handler (REMOVED) ===
-
-// Download button has been removed from the modal for now
-// Users can use the floating button download instead
-
-// === END SECTION 2B-2 ===
-
-// === SECTION 2B-3: Continue Button Handler ===
-
-function setupContinueButtonHandler(continueBtn, fullPrompt, shareUrl, closePopup, isChatGPT) {
-  if (!continueBtn) return;
+// ===== Fill input field with prompt =====
+function fillInputFieldWithPrompt(prompt) {
+  const platform = detectCurrentPlatform();
+  console.log('🔧 Filling input field with continuation prompt for:', platform);
   
-  continueBtn.addEventListener('click', () => {
-    console.log('🐻 ThreadCub: Continue button clicked for platform:', isChatGPT ? 'ChatGPT' : 'Claude');
+  // Platform-specific selectors
+  const selectors = {
+    'claude.ai': [
+      'textarea[data-testid="chat-input"]',
+      'div[contenteditable="true"]',
+      'textarea'
+    ],
+    'chatgpt': [
+      'textarea[data-testid="prompt-textarea"]',
+      '#prompt-textarea',
+      'textarea[placeholder*="Message"]',
+      'textarea'
+    ],
+    'gemini': [
+      'rich-textarea div[contenteditable="true"]',
+      'textarea'
+    ]
+  };
+  
+  const platformSelectors = selectors[platform] || selectors['chatgpt'];
+  
+  // Find input field
+  let inputField = null;
+  for (const selector of platformSelectors) {
+    const elements = document.querySelectorAll(selector);
+    for (const element of elements) {
+      if (element.offsetHeight > 0 && !element.disabled) {
+        inputField = element;
+        break;
+      }
+    }
+    if (inputField) break;
+  }
+  
+  if (inputField) {
+    console.log('🔧 Found input field:', inputField.tagName, inputField.className);
     
-    if (isChatGPT) {
-      // ChatGPT flow: Download + Instructions
-      handleChatGPTContinuation(fullPrompt, shareUrl, closePopup);
-    } else {
-      // Claude flow: URL injection + auto-start
-      handleClaudeContinuation(shareUrl, closePopup);
+    inputField.focus();
+    
+    // Fill based on input type
+    if (inputField.tagName === 'TEXTAREA') {
+      inputField.value = prompt;
+      inputField.dispatchEvent(new Event('input', { bubbles: true }));
+      inputField.dispatchEvent(new Event('change', { bubbles: true }));
+    } else if (inputField.contentEditable === 'true') {
+      inputField.textContent = prompt;
+      inputField.dispatchEvent(new Event('input', { bubbles: true }));
+      inputField.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    
+    console.log('✅ Input field auto-populated successfully');
+    return true;
+  } else {
+    console.error('❌ Could not find input field for platform:', platform);
+    return false;
+  }
+}
+
+// ===== Auto-start conversation =====
+function attemptAutoStart(platform) {
+  console.log('🔧 Attempting auto-start for platform:', platform);
+  
+  if (platform === 'claude.ai') {
+    attemptClaudeAutoStart();
+  } else if (platform === 'chatgpt') {
+    attemptChatGPTAutoStart();
+  } else if (platform === 'gemini') {
+    attemptGeminiAutoStart();
+  }
+}
+
+function attemptClaudeAutoStart() {
+  try {
+    const sendSelectors = [
+      'button[data-testid="send-button"]',
+      'button[aria-label*="Send"]',
+      'button[type="submit"]',
+      'button:has(svg[data-testid="send-icon"])'
+    ];
+    
+    for (const selector of sendSelectors) {
+      const sendButton = document.querySelector(selector);
+      if (sendButton && !sendButton.disabled) {
+        console.log('🔧 Found Claude send button, clicking...');
+        sendButton.click();
+        return;
+      }
+    }
+    
+    console.log('🔧 No Claude send button found or all disabled');
+    
+  } catch (error) {
+    console.log('🔧 Claude auto-start failed:', error);
+  }
+}
+
+function attemptChatGPTAutoStart() {
+  try {
+    const sendSelectors = [
+      'button[data-testid="send-button"]',
+      'button[aria-label*="Send"]',
+      'button[type="submit"]',
+      'button:has(svg[data-testid="send-icon"])'
+    ];
+    
+    for (const selector of sendSelectors) {
+      const sendButton = document.querySelector(selector);
+      if (sendButton && !sendButton.disabled) {
+        console.log('🔧 Found ChatGPT send button, clicking...');
+        sendButton.click();
+        return;
+      }
+    }
+    
+    console.log('🔧 No ChatGPT send button found or all disabled');
+    
+  } catch (error) {
+    console.log('🔧 ChatGPT auto-start failed:', error);
+  }
+}
+
+function attemptGeminiAutoStart() {
+  try {
+    const sendSelectors = [
+      'button[aria-label*="Send"]',
+      'button[type="submit"]'
+    ];
+    
+    for (const selector of sendSelectors) {
+      const sendButton = document.querySelector(selector);
+      if (sendButton && !sendButton.disabled) {
+        console.log('🔧 Found Gemini send button, clicking...');
+        sendButton.click();
+        return;
+      }
+    }
+    
+    console.log('🔧 No Gemini send button found or all disabled');
+    
+  } catch (error) {
+    console.log('🔧 Gemini auto-start failed:', error);
+  }
+}
+
+// ===== Manual instructions fallback =====
+function showManualInstructions(prompt, continuationData) {
+  console.log('🔧 Showing manual instructions as fallback');
+  
+  const isChatGPTFlow = continuationData.chatGPTFlow === true;
+  
+  const instructionPopup = document.createElement('div');
+  instructionPopup.style.cssText = `
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    background: white; border-radius: 16px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    max-width: 520px; width: 90%; z-index: 10000001;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    opacity: 0; transition: all 0.3s ease;
+  `;
+  
+  const platformColor = isChatGPTFlow ? '#10a37f' : '#667eea';
+  const platformIcon = isChatGPTFlow ? '💬' : '🐻';
+  
+  instructionPopup.innerHTML = `
+    <div style="padding: 32px; text-align: center;">
+      <div style="background: ${platformColor}; width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 28px;">${platformIcon}</div>
+      <h2 style="margin: 0 0 8px; color: #1e293b; font-size: 24px;">Manual Setup Required</h2>
+      <p style="margin: 0 0 20px; color: #64748b; font-size: 14px;">Auto-setup didn't work, but we can do this manually!</p>
+      
+      <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin: 20px 0; text-align: left;">
+        <h3 style="margin: 0 0 8px; color: #374151; font-size: 14px;">Copy and paste this message:</h3>
+        <div style="background: white; border: 1px solid #d1d5db; border-radius: 6px; padding: 12px; font-family: monospace; font-size: 12px; white-space: pre-wrap; max-height: 120px; overflow-y: auto;">${prompt}</div>
+      </div>
+      
+      <button id="threadcub-manual-close" style="padding: 12px 24px; background: ${platformColor}; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600;">Got It</button>
+    </div>
+  `;
+  
+  document.body.appendChild(instructionPopup);
+  setTimeout(() => instructionPopup.style.opacity = '1', 50);
+  
+  // FIXED: Proper event listener instead of inline onclick
+  const closeButton = instructionPopup.querySelector('#threadcub-manual-close');
+  if (closeButton) {
+    closeButton.addEventListener('click', () => {
+      console.log('🔧 Manual popup close button clicked');
+      instructionPopup.style.opacity = '0';
+      setTimeout(() => {
+        if (instructionPopup.parentNode) {
+          instructionPopup.parentNode.removeChild(instructionPopup);
+        }
+      }, 300);
+    });
+  }
+  
+  // Also allow clicking outside to close
+  instructionPopup.addEventListener('click', (e) => {
+    if (e.target === instructionPopup) {
+      console.log('🔧 Manual popup overlay clicked');
+      instructionPopup.style.opacity = '0';
+      setTimeout(() => {
+        if (instructionPopup.parentNode) {
+          instructionPopup.parentNode.removeChild(instructionPopup);
+        }
+      }, 300);
     }
   });
 }
 
-// ===== Handle ChatGPT continuation flow =====
-function handleChatGPTContinuation(fullPrompt, shareUrl, closePopup) {
-  console.log('🤖 ThreadCub: Starting ChatGPT continuation flow');
-  
-  // Auto-download the conversation JSON
-  downloadPromptAsJSON(fullPrompt, shareUrl);
-  
-  // Show ChatGPT-specific instructions (if this function exists)
-  if (typeof showChatGPTInstructions === 'function') {
-    showChatGPTInstructions();
-  }
-  
-  // Close the popup
-  closePopup();
-}
-
-// ===== Handle Claude continuation flow =====
-function handleClaudeContinuation(shareUrl, closePopup) {
-  console.log('🤖 ThreadCub: Starting Claude continuation flow');
-  
-  // Create simple URL-based prompt for input field
-  const simplePrompt = `I'd like to continue our previous conversation. The complete context is available at: ${shareUrl}
-
-Please access the conversation history and let me know when you're ready to continue from where we left off.`;
-  
-  // Fill input field with simple prompt
-  fillInputFieldWithPrompt(simplePrompt);
-  
-  // Close the popup
-  closePopup();
-  
-  // Show success message
-  showContinuationSuccess();
-  
-  // Attempt to auto-start the chat
-  setTimeout(() => {
-    attemptAutoStart();
-  }, 1000);
-}
-
-// === END SECTION 2B-3 ===
-
-// === SECTION 2B-4: Support Functions ===
-
-// ===== Show download success message =====
-function showDownloadSuccessMessage() {
-  // Use the floating button's toast system if available
-  if (window.threadcubButton && typeof window.threadcubButton.showSuccessToast === 'function') {
-    window.threadcubButton.showSuccessToast();
-  } else {
-    // Fallback toast
-    console.log('🐻 ThreadCub: Download completed successfully');
-  }
-}
-
-// ===== Show continuation success message =====
-function showContinuationSuccess() {
-  // Use the floating button's toast system if available
-  if (window.threadcubButton && typeof window.threadcubButton.showSuccessToast === 'function') {
-    window.threadcubButton.showSuccessToast();
-  } else {
-    // Fallback toast
-    console.log('🐻 ThreadCub: Continuation setup completed');
-  }
-}
-
-// ===== Platform detection helper function =====
+// ===== Platform detection =====
 function detectCurrentPlatform() {
   const hostname = window.location.hostname;
   if (hostname.includes('claude.ai')) return 'claude.ai';
@@ -2474,6 +2386,14 @@ function detectCurrentPlatform() {
   return 'unknown';
 }
 
+// === END SECTION 2A ===
+
+// === SECTION 2B: Popup Event Setup ===
+// removed since we don't need popup event listeners anymore
+// === END SECTION 2B ===
+
+// === SECTION 2B-4: Support Functions ===
+// removed since we're eliminating the modal system entirely, we don't need any of the popup-related support functions. The new streamlined system handles success messages differently with the subtle notification approach.
 // === END SECTION 2B-4 ===
 
 // === SECTION 3A: Platform Auto-start Functions ===
@@ -3641,7 +3561,7 @@ destroy() {
 
 // === END SECTION 4D ===
 
-// === SECTION 4E-1: Core API Integration (FIXED TO MATCH YOUR API ROUTE) ===
+// === SECTION 4E-1: Core API Integration (FIXED Extension Context) ===
 
 // ===== MAIN METHOD: saveAndOpenConversation (FIXED) =====
 async saveAndOpenConversation(source = 'floating') {
@@ -3688,28 +3608,58 @@ async saveAndOpenConversation(source = 'floating') {
     }
     
     console.log(`🐻 ThreadCub: Successfully extracted ${conversationData.messages.length} messages`);
-    console.log('🐻 ThreadCub: Conversation data structure:', conversationData);
     
     // FIXED: Store conversation data globally for later use
     this.lastConversationData = conversationData;
     
     // FIXED: Format data to match your API route expectations
     const apiData = {
-      conversationData: conversationData,  // ← Your API expects this wrapper
+      conversationData: conversationData,
       source: conversationData.platform?.toLowerCase() || 'unknown',
       title: conversationData.title || 'Untitled Conversation'
     };
     
-    console.log('🐻 ThreadCub: Sending to background script with correct API format...');
+    console.log('🐻 ThreadCub: Attempting to save via background script...');
     
-    const response = await chrome.runtime.sendMessage({
-      action: 'saveConversation',
-      data: apiData
-    });
+    // FIXED: Better extension context handling
+    let response;
+    try {
+      // Check if extension context is valid before attempting
+      if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.sendMessage) {
+        throw new Error('Extension context not available');
+      }
+      
+      // Test if extension context is actually working
+      if (chrome.runtime.lastError) {
+        throw new Error('Extension context invalidated: ' + chrome.runtime.lastError.message);
+      }
+      
+      response = await chrome.runtime.sendMessage({
+        action: 'saveConversation',
+        data: apiData
+      });
+      
+      // Additional check for context invalidation after the call
+      if (chrome.runtime.lastError) {
+        throw new Error('Extension context invalidated during call: ' + chrome.runtime.lastError.message);
+      }
+      
+    } catch (contextError) {
+      console.log('🐻 ThreadCub: Extension context error:', contextError.message);
+      console.log('🐻 ThreadCub: Falling back to direct continuation without API save...');
+      
+      // FALLBACK: Skip API save and go straight to continuation
+      this.handleDirectContinuation(conversationData);
+      this.isExporting = false;
+      return;
+    }
 
-    if (!response.success) {
-      console.error('🐻 ThreadCub: Background script API call failed:', response.error);
-      this.showErrorToast('Failed to save conversation');
+    if (!response || !response.success) {
+      console.error('🐻 ThreadCub: Background script API call failed:', response?.error);
+      console.log('🐻 ThreadCub: Falling back to direct continuation without API save...');
+      
+      // FALLBACK: Skip API save and go straight to continuation
+      this.handleDirectContinuation(conversationData);
       this.isExporting = false;
       return;
     }
@@ -3724,15 +3674,21 @@ async saveAndOpenConversation(source = 'floating') {
     // Generate minimal continuation prompt
     const minimalPrompt = this.generateContinuationPrompt(summary, shareUrl, conversationData.platform, conversationData);
     
-    // Detect target platform for smart flow
+    // FIXED: Detect target platform for smart routing
     const targetPlatform = this.getTargetPlatformFromCurrentUrl();
     
     if (targetPlatform === 'chatgpt') {
-      // ChatGPT flow: Download + Instructions
+      // ChatGPT flow: Auto-download + cross-tab continuation
+      console.log('🐻 ThreadCub: Routing to ChatGPT flow (with file download)');
       this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
-    } else {
-      // Claude flow: Store and open new tab - FIXED: Pass conversationData
+    } else if (targetPlatform === 'claude') {
+      // Claude flow: API-only + cross-tab continuation (no download)
+      console.log('🐻 ThreadCub: Routing to Claude flow (no file download)');
       this.handleClaudeFlow(minimalPrompt, shareUrl, conversationData);
+    } else {
+      // Default to ChatGPT flow
+      console.log('🐻 ThreadCub: Unknown platform, defaulting to ChatGPT flow');
+      this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
     }
 
     this.setBearExpression('happy');
@@ -3751,7 +3707,35 @@ async saveAndOpenConversation(source = 'floating') {
   }
 }
 
-// === HELPER METHODS (UPDATED) ===
+// NEW: Handle direct continuation without API save (fallback)
+handleDirectContinuation(conversationData) {
+  console.log('🐻 ThreadCub: Handling direct continuation without API save...');
+  
+  // Create a fallback share URL
+  const fallbackShareUrl = `https://threadcub.com/fallback/${Date.now()}`;
+  
+  // Generate a simple continuation prompt
+  const summary = this.generateQuickSummary(conversationData.messages);
+  const minimalPrompt = this.generateContinuationPrompt(summary, fallbackShareUrl, conversationData.platform, conversationData);
+  
+  // Route to appropriate platform flow
+  const targetPlatform = this.getTargetPlatformFromCurrentUrl();
+  
+  if (targetPlatform === 'chatgpt') {
+    console.log('🐻 ThreadCub: Direct ChatGPT continuation (no API save)');
+    this.handleChatGPTFlow(minimalPrompt, fallbackShareUrl, conversationData);
+  } else if (targetPlatform === 'claude') {
+    console.log('🐻 ThreadCub: Direct Claude continuation (no API save)');
+    this.handleClaudeFlow(minimalPrompt, fallbackShareUrl, conversationData);
+  } else {
+    console.log('🐻 ThreadCub: Direct continuation - defaulting to ChatGPT flow');
+    this.handleChatGPTFlow(minimalPrompt, fallbackShareUrl, conversationData);
+  }
+  
+  this.showSuccessToast('Continuing conversation (offline mode)');
+}
+
+// === HELPER METHODS (UNCHANGED) ===
 
 getTargetPlatformFromCurrentUrl() {
   const hostname = window.location.hostname;
@@ -3783,111 +3767,234 @@ generateQuickSummary(messages) {
 
 // === END SECTION 4E-1 ===
 
-// === SECTION 4E-2: ChatGPT Flow Handler ===
+// === SECTION 4E-2: ChatGPT Flow Handler (ENHANCED UX WITH AUTO-DOWNLOAD) ===
 
-// FIXED: Handle ChatGPT-specific flow with full conversation data
+// ENHANCED: Same smooth UX as Claude but with auto-download + file upload approach
 handleChatGPTFlow(continuationPrompt, shareUrl, conversationData) {
-  console.log('🤖 ThreadCub: Starting ChatGPT flow - download first');
+  console.log('🤖 ThreadCub: Starting ENHANCED ChatGPT flow with auto-download...');
+  console.log('🤖 ThreadCub: Conversation data:', conversationData);
+  console.log('🤖 ThreadCub: Message count:', conversationData.messages?.length || 0);
   
-  // 1. FIRST: Auto-download the JSON file with FULL conversation data
-  this.downloadContinuationJSON(continuationPrompt, shareUrl, conversationData);
+  // STEP 1: Auto-download the conversation file in background
+  this.autoDownloadChatGPTFile(conversationData, shareUrl);
   
-  // 2. THEN: Show instructions and offer to open ChatGPT
-  setTimeout(() => {
-    this.showChatGPTInstructions();
-  }, 1000); // Small delay to ensure download starts
+  // STEP 2: Create continuation data for cross-tab modal (same as Claude)
+  const continuationData = {
+    prompt: this.generateChatGPTContinuationPrompt(), // Generic upload prompt
+    shareUrl: shareUrl,
+    platform: 'ChatGPT',
+    timestamp: Date.now(),
+    // Include message count data for modal display
+    messages: conversationData.messages || [],
+    totalMessages: conversationData.total_messages || conversationData.messages?.length || 0,
+    title: conversationData.title || 'Previous Conversation',
+    conversationData: conversationData,
+    // Special flag for ChatGPT flow
+    chatGPTFlow: true,
+    downloadCompleted: true
+  };
   
-  // Don't auto-open tab - let user choose when ready
+  console.log('🤖 ThreadCub: ChatGPT continuation data prepared');
+  
+  // STEP 3: Use same storage approach as Claude for modal
+  const canUseChrome = this.canUseChromStorage();
+  
+  if (canUseChrome) {
+    console.log('🤖 ThreadCub: Using Chrome storage for ChatGPT modal...');
+    this.storeWithChrome(continuationData)
+      .then(() => {
+        console.log('🐻 ThreadCub: ChatGPT data stored successfully');
+        // Open ChatGPT tab (modal will show there)
+        const chatGPTUrl = 'https://chatgpt.com/';
+        window.open(chatGPTUrl, '_blank');
+        this.showSuccessToast('File downloaded! Check your new ChatGPT tab.');
+      })
+      .catch(error => {
+        console.log('🤖 ThreadCub: Chrome storage failed, using fallback:', error);
+        this.handleChatGPTFlowFallback(continuationData);
+      });
+  } else {
+    console.log('🤖 ThreadCub: Using ChatGPT fallback method directly');
+    this.handleChatGPTFlowFallback(continuationData);
+  }
 }
 
-// FIXED: Download conversation for continuation with FULL data
-downloadContinuationJSON(fullPrompt, shareUrl, conversationData) {
+// ENHANCED: Auto-download conversation file for ChatGPT
+autoDownloadChatGPTFile(conversationData, shareUrl) {
   try {
-    // FIXED: Use the same structure as regular download but optimized for continuation
+    console.log('🤖 ThreadCub: Auto-downloading conversation file for ChatGPT...');
+    
+    // Create comprehensive conversation file
     const conversationJSON = {
       title: conversationData.title || 'ThreadCub Conversation Continuation',
       url: conversationData.url || window.location.href,
       platform: conversationData.platform,
       exportDate: new Date().toISOString(),
       totalMessages: conversationData.messages.length,
-      source: 'ThreadCub Browser Extension - Continuation',
+      source: 'ThreadCub Browser Extension - ChatGPT Continuation',
       shareUrl: shareUrl,
-      instructions: 'Upload this file to ChatGPT and ask: "Continue our conversation from where we left off"',
+      instructions: 'This file contains our previous conversation. Please review it and continue from where we left off.',
       
-      // CRITICAL FIX: Include all the conversation messages
+      // Include all the conversation messages
       messages: conversationData.messages,
       
-      // Also include the formatted prompt for reference
-      formattedPrompt: fullPrompt
+      // Metadata for context
+      summary: this.generateQuickSummary(conversationData.messages)
     };
     
     const filename = `threadcub-continuation-${new Date().toISOString().split('T')[0]}.json`;
     
+    // Trigger download
     const blob = new Blob([JSON.stringify(conversationJSON, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = filename;
+    a.style.display = 'none';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     
-    console.log('🐻 ThreadCub: Full continuation JSON downloaded with', conversationData.messages.length, 'messages');
+    console.log('🤖 ThreadCub: ✅ ChatGPT file auto-downloaded:', filename);
     
   } catch (error) {
-    console.error('🐻 ThreadCub: Error downloading continuation JSON:', error);
+    console.error('🤖 ThreadCub: Error auto-downloading ChatGPT file:', error);
   }
+}
+
+// ENHANCED: Generate specific continuation prompt for ChatGPT input field
+generateChatGPTContinuationPrompt() {
+  return `I'd like to continue our previous conversation. While you can't currently access external URLs, I have our complete conversation history as a file attachment that I'll share now.
+
+Please read through the attached conversation file and provide your assessment of:
+- What we were working on
+- The current status/progress
+- Any next steps or tasks mentioned
+
+Once you've reviewed it, let me know you're ready to continue from where we left off.`;
+}
+
+// Fallback method (same as before but with auto-download)
+handleChatGPTFlowFallback(continuationData) {
+  console.log('🤖 ThreadCub: Using localStorage fallback for ChatGPT...');
+  
+  try {
+    // Store in localStorage as fallback
+    localStorage.setItem('threadcubContinuationData', JSON.stringify(continuationData));
+    console.log('🔧 ChatGPT Fallback: Data stored in localStorage');
+    
+    // Open ChatGPT tab
+    const chatGPTUrl = 'https://chatgpt.com/';
+    window.open(chatGPTUrl, '_blank');
+    this.showSuccessToast('File downloaded! Check your new ChatGPT tab.');
+    
+  } catch (error) {
+    console.error('🔧 ChatGPT Fallback: localStorage failed:', error);
+    this.showManualChatGPTInstructions(continuationData);
+  }
+}
+
+// Manual instructions for ultimate fallback
+showManualChatGPTInstructions(continuationData) {
+  console.log('🤖 ThreadCub: Showing manual ChatGPT instructions');
+  
+  const instructionPopup = document.createElement('div');
+  instructionPopup.className = 'threadcub-manual-instructions';
+  instructionPopup.style.cssText = `
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    background: white; border-radius: 16px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    max-width: 520px; width: 90%; z-index: 10000001;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    opacity: 0; transition: all 0.3s ease;
+  `;
+  
+  instructionPopup.innerHTML = `
+    <div style="padding: 32px; text-align: center;">
+      <div style="background: linear-gradient(135deg, #10a37f 0%, #0d8f6f 100%); width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 28px;">💬</div>
+      <h2 style="margin: 0 0 8px; color: #1e293b; font-size: 24px;">File Downloaded!</h2>
+      <p style="margin: 0 0 20px; color: #64748b; font-size: 14px;">Your conversation file is ready to upload to ChatGPT</p>
+      
+      <div style="background: #f0fdf4; border: 2px solid #22c55e; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: left;">
+        <h3 style="margin: 0 0 12px; color: #16a34a; font-size: 16px;">📁 Next Steps:</h3>
+        <ol style="margin: 0; padding-left: 20px; color: #166534; font-size: 14px; line-height: 1.6;">
+          <li><strong>Click "Open ChatGPT"</strong> below</li>
+          <li><strong>Upload the downloaded JSON file</strong> (drag & drop or click + icon)</li>
+          <li><strong>Ask ChatGPT to continue</strong> from where you left off</li>
+        </ol>
+      </div>
+      
+      <div style="display: flex; gap: 12px; justify-content: center;">
+        <button id="manual-open-chatgpt" style="padding: 16px 32px; background: #10a37f; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600;">Open ChatGPT</button>
+        <button id="close-manual-instructions" style="padding: 16px 32px; background: #e5e7eb; border: none; border-radius: 8px; color: #6b7280; cursor: pointer; font-weight: 600;">Close</button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(instructionPopup);
+  setTimeout(() => instructionPopup.style.opacity = '1', 50);
+  
+  instructionPopup.querySelector('#manual-open-chatgpt').addEventListener('click', () => {
+    window.open('https://chatgpt.com/', '_blank');
+    instructionPopup.remove();
+  });
+  
+  instructionPopup.querySelector('#close-manual-instructions').addEventListener('click', () => {
+    instructionPopup.remove();
+  });
 }
 
 // === END SECTION 4E-2 ===
 
-// === SECTION 4E-3: Claude Flow Handler (FIXED - MESSAGE COUNT DATA) ===
+// === SECTION 4E-3: Claude Flow Handler (NO DOWNLOADS) ===
 
-// FIXED: Handle Claude-specific flow with message count data preservation
+// CLAUDE-ONLY: Handle Claude with API-based continuation (no file downloads)
 handleClaudeFlow(continuationPrompt, shareUrl, conversationData) {
-  console.log('🤖 ThreadCub: Starting Claude flow with message count data...');
+  console.log('🤖 ThreadCub: Starting Claude flow (API-only, no downloads)...');
   console.log('🤖 ThreadCub: Conversation data:', conversationData);
   
-  // CRITICAL FIX: Include all conversation data in continuation data
+  // CLAUDE: Create continuation data for cross-tab modal (no downloads)
   const continuationData = {
-    prompt: continuationPrompt,
+    prompt: continuationPrompt, // URL-based prompt for Claude
     shareUrl: shareUrl,
     platform: 'Claude',
     timestamp: Date.now(),
-    // FIXED: Include message count data
+    // Include message count data
     messages: conversationData.messages || [],
     totalMessages: conversationData.total_messages || conversationData.messages?.length || 0,
     title: conversationData.title || 'Previous Conversation',
-    // Additional data for better preview
-    conversationData: conversationData
+    conversationData: conversationData,
+    // Claude-specific flag (no download needed)
+    claudeFlow: true,
+    downloadCompleted: false // Claude doesn't need downloads
   };
   
-  console.log('🤖 ThreadCub: Continuation data with message count:', continuationData.totalMessages);
+  console.log('🤖 ThreadCub: Claude continuation data with message count:', continuationData.totalMessages);
   
-  // SIMPLIFIED: Use basic validation without aggressive testing
+  // Use same storage approach for cross-tab continuation
   const canUseChrome = this.canUseChromStorage();
   
   if (canUseChrome) {
-    console.log('🤖 ThreadCub: Using Chrome storage...');
+    console.log('🤖 ThreadCub: Using Chrome storage for Claude...');
     this.storeWithChrome(continuationData)
       .then(() => {
-        console.log('🐻 ThreadCub: Data stored successfully with message count:', continuationData.totalMessages);
-        const newTabUrl = this.getNewTabUrl();
-        window.open(newTabUrl, '_blank');
-        this.showSuccessToast();
+        console.log('🐻 ThreadCub: Claude data stored successfully');
+        // Open Claude tab (streamlined continuation will handle the rest)
+        const claudeUrl = 'https://claude.ai/';
+        window.open(claudeUrl, '_blank');
+        this.showSuccessToast('Opening Claude with conversation context...');
       })
       .catch(error => {
         console.log('🤖 ThreadCub: Chrome storage failed, using fallback:', error);
         this.handleClaudeFlowFallback(continuationData);
       });
   } else {
-    console.log('🤖 ThreadCub: Using fallback method directly');
+    console.log('🤖 ThreadCub: Using Claude fallback method directly');
     this.handleClaudeFlowFallback(continuationData);
   }
 }
 
-// SIMPLIFIED: Basic Chrome storage availability check
+// MISSING FUNCTION: Check if Chrome storage is available
 canUseChromStorage() {
   try {
     return typeof chrome !== 'undefined' && 
@@ -3901,7 +4008,7 @@ canUseChromStorage() {
   }
 }
 
-// SIMPLIFIED: Store with Chrome storage (single attempt)
+// MISSING FUNCTION: Store with Chrome storage
 async storeWithChrome(continuationData) {
   return new Promise((resolve, reject) => {
     try {
@@ -3919,377 +4026,121 @@ async storeWithChrome(continuationData) {
   });
 }
 
-// SIMPLIFIED: Fallback method when Chrome storage fails
+// CLAUDE: Fallback method when Chrome storage fails
 handleClaudeFlowFallback(continuationData) {
-  console.log('🤖 ThreadCub: Using localStorage fallback...');
+  console.log('🤖 ThreadCub: Using localStorage fallback for Claude...');
   
   try {
     // Store in localStorage as fallback
     localStorage.setItem('threadcubContinuationData', JSON.stringify(continuationData));
-    console.log('🔧 Fallback: Data stored in localStorage with message count:', continuationData.totalMessages);
+    console.log('🔧 Claude Fallback: Data stored in localStorage');
     
-    // Open new tab
-    const newTabUrl = this.getNewTabUrl();
-    window.open(newTabUrl, '_blank');
-    this.showSuccessToast();
+    // Open Claude tab
+    const claudeUrl = 'https://claude.ai/';
+    window.open(claudeUrl, '_blank');
+    this.showSuccessToast('Opening Claude with conversation context...');
     
   } catch (error) {
-    console.error('🔧 Fallback: localStorage also failed:', error);
-    
-    // Ultimate fallback - show manual instructions
-    this.showManualContinuationInstructions(continuationData);
+    console.error('🔧 Claude Fallback: localStorage failed:', error);
+    this.showManualClaudeInstructions(continuationData);
   }
 }
 
-// SIMPLIFIED: Manual continuation instructions when all storage fails
-showManualContinuationInstructions(continuationData) {
-  console.log('🤖 ThreadCub: Showing simplified manual instructions');
-  
-  // Remove any existing instruction popups
-  const existingInstructions = document.querySelectorAll('.threadcub-manual-instructions');
-  existingInstructions.forEach(popup => popup.remove());
+// CLAUDE: Manual instructions for ultimate fallback
+showManualClaudeInstructions(continuationData) {
+  console.log('🤖 ThreadCub: Showing manual Claude instructions');
   
   const instructionPopup = document.createElement('div');
   instructionPopup.className = 'threadcub-manual-instructions';
   instructionPopup.style.cssText = `
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: white;
-    border-radius: 16px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    max-width: 520px;
-    width: 90%;
-    z-index: 10000001;
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    background: white; border-radius: 16px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    max-width: 520px; width: 90%; z-index: 10000001;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    opacity: 0;
-    transition: all 0.3s ease;
+    opacity: 0; transition: all 0.3s ease;
   `;
   
   instructionPopup.innerHTML = `
     <div style="padding: 32px; text-align: center;">
-      <div style="
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        width: 64px;
-        height: 64px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 0 auto 20px;
-        font-size: 28px;
-      ">⚠️</div>
+      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 28px;">🐻</div>
+      <h2 style="margin: 0 0 8px; color: #1e293b; font-size: 24px;">Continue Manually</h2>
+      <p style="margin: 0 0 20px; color: #64748b; font-size: 14px;">The conversation context URL is ready to share!</p>
       
-      <h2 style="margin: 0 0 8px; color: #1e293b; font-size: 24px;">Storage Issue</h2>
-      <p style="margin: 0 0 20px; color: #64748b; font-size: 14px;">Let's try the manual approach!</p>
-      
-      <div style="
-        background: #fef3c7;
-        border: 2px solid #f59e0b;
-        border-radius: 12px;
-        padding: 20px;
-        margin: 20px 0;
-        text-align: left;
-      ">
-        <h3 style="margin: 0 0 12px; color: #92400e; font-size: 16px;">📋 Simple Steps:</h3>
-        
-        <ol style="margin: 0; padding-left: 20px; color: #92400e; font-size: 14px; line-height: 1.6;">
+      <div style="background: #f0f9ff; border: 2px solid #0ea5e9; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: left;">
+        <h3 style="margin: 0 0 12px; color: #0369a1; font-size: 16px;">🔗 Simple Steps:</h3>
+        <ol style="margin: 0; padding-left: 20px; color: #0c4a6e; font-size: 14px; line-height: 1.6;">
           <li><strong>Click "Open Claude"</strong> below</li>
-          <li><strong>Manually paste the conversation context</strong> if needed</li>
+          <li><strong>Share the conversation URL</strong> with Claude</li>
           <li><strong>Continue your conversation</strong> (${continuationData.totalMessages} messages)</li>
         </ol>
       </div>
       
-      <div style="display: flex; gap: 12px; justify-content: center; margin-top: 24px;">
-        <button id="manual-open-claude" style="
-          padding: 16px 32px;
-          background: #4f46e5;
-          border: none;
-          border-radius: 8px;
-          color: white;
-          cursor: pointer;
-          font-weight: 600;
-          font-size: 16px;
-          transition: all 0.2s ease;
-          box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
-        ">
-          Open Claude
-        </button>
-        
-        <button id="close-manual-instructions" style="
-          padding: 16px 32px;
-          background: #e5e7eb;
-          border: none;
-          border-radius: 8px;
-          color: #6b7280;
-          cursor: pointer;
-          font-weight: 600;
-          font-size: 16px;
-          transition: all 0.2s ease;
-        ">
-          Got It
-        </button>
+      <div style="display: flex; gap: 12px; justify-content: center;">
+        <button id="manual-open-claude" style="padding: 16px 32px; background: #667eea; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600;">Open Claude</button>
+        <button id="close-manual-instructions" style="padding: 16px 32px; background: #e5e7eb; border: none; border-radius: 8px; color: #6b7280; cursor: pointer; font-weight: 600;">Close</button>
       </div>
     </div>
   `;
   
   document.body.appendChild(instructionPopup);
+  setTimeout(() => instructionPopup.style.opacity = '1', 50);
   
-  // Animate in
-  setTimeout(() => {
-    instructionPopup.style.opacity = '1';
-  }, 50);
-  
-  // Add event listeners
-  const openClaudeBtn = instructionPopup.querySelector('#manual-open-claude');
-  const closeBtn = instructionPopup.querySelector('#close-manual-instructions');
-  
-  openClaudeBtn.addEventListener('click', () => {
+  instructionPopup.querySelector('#manual-open-claude').addEventListener('click', () => {
     window.open('https://claude.ai/', '_blank');
-    instructionPopup.style.opacity = '0';
-    setTimeout(() => {
-      if (instructionPopup.parentNode) {
-        instructionPopup.parentNode.removeChild(instructionPopup);
-      }
-    }, 300);
+    instructionPopup.remove();
   });
   
-  closeBtn.addEventListener('click', () => {
-    instructionPopup.style.opacity = '0';
-    setTimeout(() => {
-      if (instructionPopup.parentNode) {
-        instructionPopup.parentNode.removeChild(instructionPopup);
-      }
-    }, 300);
+  instructionPopup.querySelector('#close-manual-instructions').addEventListener('click', () => {
+    instructionPopup.remove();
   });
-}
-
-getNewTabUrl() {
-  const hostname = window.location.hostname;
-  
-  if (hostname.includes('chatgpt.com') || hostname.includes('chat.openai.com')) {
-    return 'https://chatgpt.com/';
-  } else if (hostname.includes('claude.ai')) {
-    return 'https://claude.ai/';
-  } else if (hostname.includes('gemini.google.com')) {
-    return 'https://gemini.google.com/';
-  } else {
-    return 'https://chatgpt.com/';
-  }
 }
 
 // === END SECTION 4E-3 ===
 
-// === SECTION 4E-4: ChatGPT Instructions Popup ===
+// === SECTION 4E-4: Manual Download Function (IMPROVED NAMING) ===
 
-// FIXED: Enhanced ChatGPT instructions with working Show Downloads button and Lucide icons
-showChatGPTInstructions() {
-  const instructionPopup = document.createElement('div');
-  instructionPopup.style.cssText = `
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: white;
-    border-radius: 16px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    max-width: 520px;
-    width: 90%;
-    z-index: 10000001;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    opacity: 0;
-    transition: all 0.3s ease;
-  `;
-  
-  instructionPopup.innerHTML = `
-    <div style="padding: 32px; text-align: center;">
-      <div style="
-        background: linear-gradient(135deg, #10a37f 0%, #0d8f6f 100%);
-        width: 64px;
-        height: 64px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 0 auto 20px;
-        font-size: 28px;
-      ">💬</div>
-      
-      <h2 style="margin: 0 0 8px; color: #1e293b; font-size: 24px;">Ready for ChatGPT!</h2>
-      <p style="margin: 0 0 20px; color: #64748b; font-size: 14px;">Your conversation file is downloading...</p>
-      
-      <!-- Progress indicator -->
-      <div style="
-        background: #f0fdf4;
-        border: 2px solid #22c55e;
-        border-radius: 12px;
-        padding: 20px;
-        margin: 20px 0;
-        text-align: left;
-        position: relative;
-      ">
-        <div style="
-          position: absolute;
-          top: -12px;
-          left: 20px;
-          background: #22c55e;
-          color: white;
-          padding: 4px 12px;
-          border-radius: 12px;
-          font-size: 12px;
-          font-weight: 600;
-        ">STEP 1 ✓</div>
-        
-        <h3 style="margin: 0 0 12px; color: #16a34a; font-size: 16px;">📁 File Downloaded!</h3>
-        <p style="margin: 0 0 16px; color: #166534; font-size: 14px; line-height: 1.5;">
-          <strong>threadcub-continuation-${new Date().toISOString().split('T')[0]}.json</strong>
-        </p>
-        
-        <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 16px;">
-          <button id="show-downloads" style="
-            padding: 8px 16px;
-            background: #16a34a;
-            border: none;
-            border-radius: 6px;
-            color: white;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: 600;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-          ">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 15V3"/>
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <path d="m7 10 5 5 5-5"/>
-            </svg>
-            Show Downloads
-          </button>
-          <span style="color: #166534; font-size: 12px;">← Click to find your file</span>
-        </div>
-      </div>
-      
-      <!-- Next steps -->
-      <div style="
-        background: #fefce8;
-        border: 2px dashed #eab308;
-        border-radius: 12px;
-        padding: 20px;
-        margin: 20px 0;
-        text-align: left;
-        position: relative;
-      ">
-        <div style="
-          position: absolute;
-          top: -12px;
-          left: 20px;
-          background: #eab308;
-          color: white;
-          padding: 4px 12px;
-          border-radius: 12px;
-          font-size: 12px;
-          font-weight: 600;
-        ">STEP 2</div>
-        
-        <h3 style="margin: 0 0 12px; color: #a16207; font-size: 16px;">🎯 Next: Upload to ChatGPT</h3>
-        
-        <ol style="margin: 0; padding-left: 20px; color: #a16207; font-size: 14px; line-height: 1.6;">
-          <li><strong>Click "Open ChatGPT"</strong> below</li>
-          <li><strong>Click the + icon</strong> in the input field</li>
-          <li><strong>Select "Add photos and files"</strong></li>
-          <li><strong>Upload your downloaded file</strong></li>
-          <li><strong>Type:</strong> "Continue our conversation from where we left off"</li>
-        </ol>
-      </div>
-      
-      <div style="display: flex; gap: 12px; justify-content: center; margin-top: 24px;">
-        <button id="open-chatgpt" style="
-          padding: 16px 32px;
-          background: #10a37f;
-          border: none;
-          border-radius: 8px;
-          color: white;
-          cursor: pointer;
-          font-weight: 600;
-          font-size: 16px;
-          transition: all 0.2s ease;
-          box-shadow: 0 4px 12px rgba(16, 163, 127, 0.3);
-          position: relative;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        ">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/>
-            <path d="m21 3-9 9"/>
-            <path d="M15 3h6v6"/>
-          </svg>
-          Open ChatGPT
-          <div style="
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            background: #ef4444;
-            color: white;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            font-weight: bold;
-            animation: pulse 2s infinite;
-          ">2</div>
-        </button>
-        
-        <button id="close-instructions" style="
-          padding: 16px 32px;
-          background: #e5e7eb;
-          border: none;
-          border-radius: 8px;
-          color: #6b7280;
-          cursor: pointer;
-          font-weight: 600;
-          font-size: 16px;
-          transition: all 0.2s ease;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        ">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M18 6 6 18"/>
-            <path d="m6 6 12 12"/>
-          </svg>
-          I'll Do This Later
-        </button>
-      </div>
-      
-      <!-- Help text -->
-      <p style="margin: 20px 0 0; color: #9ca3af; font-size: 12px;">
-        💡 Tip: Keep this window open as a reference while uploading
-      </p>
-    </div>
+// ===== Generate manual download with improved naming =====
+downloadContinuationJSON(conversationData, shareUrl) {
+  try {
+    console.log('🐻 ThreadCub: Creating manual download JSON...');
     
-    <style>
-      @keyframes pulse {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.1); }
-      }
-    </style>
-  `;
-  
-  document.body.appendChild(instructionPopup);
-  
-  // Animate in
-  setTimeout(() => {
-    instructionPopup.style.opacity = '1';
-  }, 50);
-  
-  this.setupInstructionEventListeners(instructionPopup);
+    // Create comprehensive conversation file
+    const conversationJSON = {
+      title: conversationData.title || 'ThreadCub Conversation',
+      url: conversationData.url || window.location.href,
+      platform: conversationData.platform,
+      exportDate: new Date().toISOString(),
+      totalMessages: conversationData.messages.length,
+      source: 'ThreadCub Browser Extension - Manual Export',
+      shareUrl: shareUrl,
+      
+      // Include all the conversation messages
+      messages: conversationData.messages,
+      
+      // Metadata for context
+      summary: this.generateQuickSummary(conversationData.messages)
+    };
+    
+    // IMPROVED: Use same clean naming convention as ChatGPT auto-download
+    const filename = `threadcub-continuation-${new Date().toISOString().split('T')[0]}.json`;
+    
+    // Trigger download
+    const blob = new Blob([JSON.stringify(conversationJSON, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    console.log('🐻 ThreadCub: ✅ Manual download completed:', filename);
+    
+  } catch (error) {
+    console.error('🐻 ThreadCub: Error creating manual download:', error);
+  }
 }
 
 // === END SECTION 4E-4 ===
@@ -4615,24 +4466,36 @@ downloadContinuationJSON(fullPrompt, shareUrl, conversationData) {
 
 // === END SECTION 4E-6 ===
 
-// === SECTION 4E-7: Continuation Prompt Generation (FIXED - MINIMAL PROMPTS) ===
+// === SECTION 4E-7: Continuation Prompt Generation (FIXED - PLATFORM-SPECIFIC PROMPTS) ===
 
-// ===== FIXED: Generate MINIMAL continuation prompt (like older working version) =====
+// ===== FIXED: Generate platform-specific continuation prompts =====
 generateContinuationPrompt(summary, shareUrl, platform, conversationData) {
-  // CRITICAL FIX: Return simple URL-only prompt (exactly like older working version)
-  // This prevents embedding conversation content that causes 81KB files
+  console.log('🐻 ThreadCub: Generating continuation prompt for platform:', platform);
   
-  const minimalPrompt = `I'd like to continue our previous conversation. The complete context is available at: ${shareUrl}
+  // FIXED: Return platform-specific prompts instead of generic URL-based ones
+  if (platform && platform.toLowerCase().includes('chatgpt')) {
+    // ChatGPT-specific prompt (acknowledges URL limitations)
+    const chatGPTPrompt = `I'd like to continue our previous conversation. While you can't currently access external URLs, I have our complete conversation history as a file attachment that I'll share now.
+
+Please read through the attached conversation file and provide your assessment of:
+- What we were working on
+- The current status/progress  
+- Any next steps or tasks mentioned
+
+Once you've reviewed it, let me know you're ready to continue from where we left off.`;
+    
+    console.log('🐻 ThreadCub: Generated ChatGPT-specific continuation prompt:', chatGPTPrompt.length, 'characters');
+    return chatGPTPrompt;
+  } else {
+    // Claude-specific prompt (can access URLs)
+    const claudePrompt = `I'd like to continue our previous conversation. The complete context is available at: ${shareUrl}
 
 Please access the conversation history and let me know when you're ready to continue from where we left off.`;
-  
-  console.log('🐻 ThreadCub: Generated minimal continuation prompt:', minimalPrompt.length, 'characters');
-  return minimalPrompt;
+    
+    console.log('🐻 ThreadCub: Generated Claude-specific continuation prompt:', claudePrompt.length, 'characters');
+    return claudePrompt;
+  }
 }
-
-// ===== REMOVED: createReadableConversationFormat =====
-// This was the culprit - embedding conversation content in prompts
-// Now we only use minimal URL-based prompts
 
 // === END SECTION 4E-7 ===
 

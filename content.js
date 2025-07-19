@@ -110,42 +110,13 @@ addTaggingStyles() {
 
 // === END SECTION 1B ===
 
-// === SECTION 1C: Context Menu Creation ===
+// === SECTION 1C: Context Menu Creation (Smart Progressive Disclosure) ===
 
 createContextMenu() {
   this.contextMenu = document.createElement('div');
   this.contextMenu.className = 'threadcub-context-menu';
   
-  // Lucide icons
-  this.iconConfig = {
-    'priority': { 
-      regular: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>
-      </svg>`,
-      color: '#B08AEA' 
-    },
-    'dont-forget': { 
-      regular: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/>
-        <path d="M9 18h6"/>
-        <path d="M10 22h4"/>
-      </svg>`,
-      color: '#FAA284' 
-    },
-    'backlog': { 
-      regular: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M3 12h.01"/>
-        <path d="M3 18h.01"/>
-        <path d="M3 6h.01"/>
-        <path d="M8 12h13"/>
-        <path d="M8 18h13"/>
-        <path d="M8 6h13"/>
-      </svg>`,
-      color: '#05EDFF' 
-    }
-  };
-  
-  // NEW: Two-button layout with icons
+  // SMART: Dynamic button layout based on user experience
   this.contextMenu.innerHTML = `
     <div style="
       display: flex;
@@ -153,7 +124,7 @@ createContextMenu() {
       gap: 8px;
       font-family: 'Karla', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     ">
-      <!-- SWIPE THIS Button -->
+      <!-- SMART SWIPE Button (changes based on experience) -->
       <div id="threadcub-swipe-selector" style="
         background: #4C596E;
         border: 1px solid #000000;
@@ -168,8 +139,8 @@ createContextMenu() {
         height: 32px;
         box-sizing: border-box;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        position: relative;
         cursor: pointer;
+        transition: all 0.2s ease;
       ">
         <div id="swipe-text" style="
           flex: 1;
@@ -180,37 +151,16 @@ createContextMenu() {
           gap: 8px;
           height: 32px;
         ">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg id="swipe-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12.034 12.681a.498.498 0 0 1 .647-.647l9 3.5a.5.5 0 0 1-.033.943l-3.444 1.068a1 1 0 0 0-.66.66l-1.067 3.443a.5.5 0 0 1-.943.033z"/>
             <path d="M21 11V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h6"/>
           </svg>
-          SWIPE THIS!
-        </div>
-        
-        <div style="
-          width: 1px;
-          height: 32px;
-          background: rgba(0, 0, 0, 0.4);
-          flex-shrink: 0;
-        "></div>
-        
-        <div id="chevron-button" style="
-          width: 32px;
-          height: 32px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          flex-shrink: 0;
-        ">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="m6 9 6 6 6-6"/>
-          </svg>
+          <span id="swipe-button-text">SWIPE THIS!</span>
         </div>
       </div>
       
-      <!-- ADD MORE Button -->
-      <div id="threadcub-add-more" style="
+      <!-- SELECT MORE Button (renamed from SWIPE MORE) -->
+      <div id="threadcub-select-more" style="
         background: #000000;
         border: 1px solid #000000;
         border-radius: 4px;
@@ -241,67 +191,42 @@ createContextMenu() {
           <path d="M21 9v2"/>
           <path d="M3 14v1"/>
         </svg>
-        ADD MORE
+        SWIPE MORE
       </div>
-    </div>
-    
-    <div id="threadcub-tag-dropdown" style="
-      position: absolute;
-      top: 36px;
-      left: 0;
-      right: 0;
-      background: #4C596E;
-      border: 1px solid #000000;
-      border-radius: 4px;
-      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-      z-index: 10001;
-      display: none;
-      overflow: hidden;
-      min-width: 180px;
-    ">
-      ${this.tagCategories.map((cat, index) => {
-        const orderedCategories = [
-          this.tagCategories.find(c => c.id === 'priority'),
-          this.tagCategories.find(c => c.id === 'dont-forget'), 
-          this.tagCategories.find(c => c.id === 'backlog')
-        ].filter(Boolean);
-        
-        const category = orderedCategories[index];
-        if (!category) return '';
-        
-        return `
-        <div class="threadcub-tag-option" data-value="${category.id}" data-label="${category.label}" style="
-          padding: 8px 12px;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          font-family: 'Karla', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-          font-size: 13px;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.02em;
-          color: #FFFFFF;
-          ${index < orderedCategories.length - 1 ? 'border-bottom: 1px solid rgba(0, 0, 0, 0.3);' : ''}
-        ">
-          <span style="flex: 1; padding-left: 4px;">${category.label}</span>
-          <div style="
-            width: 20px;
-            height: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: ${this.iconConfig[category.id]?.color || '#64748b'};
-          ">
-            ${this.iconConfig[category.id].regular}
-          </div>
-        </div>
-      `}).join('')}
+      
+      <!-- SMART: Open Panel Button (shows after first tag) -->
+      <div id="threadcub-open-panel" style="
+        background: #8B5CF6;
+        border: 1px solid #8B5CF6;
+        border-radius: 4px;
+        display: none;
+        align-items: center;
+        gap: 8px;
+        padding: 0 12px;
+        font-size: 13px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+        color: #FFFFFF;
+        height: 32px;
+        box-sizing: border-box;
+        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+        cursor: pointer;
+        transition: all 0.2s ease;
+      ">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect width="18" height="18" x="3" y="3" rx="2"/>
+          <path d="M9 8h6"/>
+          <path d="M9 12h6"/>
+          <path d="M9 16h6"/>
+        </svg>
+        OPEN PANEL
+      </div>
     </div>
   `;
   
   document.body.appendChild(this.contextMenu);
-  this.setupContextMenuListeners();
+  this.setupSmartContextMenuListeners();
   this.updateSelectionColor();
 }
 
@@ -318,111 +243,415 @@ updateSelectionColor(color = '#FFD700') {
   document.head.appendChild(style);
 }
 
-setupContextMenuListeners() {
-  const dropdown = this.contextMenu.querySelector('#threadcub-tag-dropdown');
+setupSmartContextMenuListeners() {
   const swipeText = this.contextMenu.querySelector('#swipe-text');
-  const chevronButton = this.contextMenu.querySelector('#chevron-button');
-  const addMoreButton = this.contextMenu.querySelector('#threadcub-add-more');
+  const swipeButton = this.contextMenu.querySelector('#threadcub-swipe-selector');
+  const selectMoreButton = this.contextMenu.querySelector('#threadcub-select-more');
+  const openPanelButton = this.contextMenu.querySelector('#threadcub-open-panel');
   
-  // Swipe This button click - FIXED: Prevent selection clearing
-if (swipeText) {
-  swipeText.addEventListener('mousedown', (e) => {
-    e.preventDefault(); // CRITICAL: Prevents selection from being cleared
-  });
-  
-  swipeText.addEventListener('click', (e) => {
-    e.stopPropagation();
-    e.preventDefault(); // Extra prevention
-    this.createTagFromSelectionWithoutCategory();
-  });
-}
-  
-  // FIXED: Chevron click that preserves browser selection
-  if (chevronButton) {
-    chevronButton.addEventListener('mousedown', (e) => {
-      e.preventDefault(); // Prevents selection from being cleared
+  // SMART SWIPE button click - behavior changes based on experience
+  if (swipeText) {
+    swipeText.addEventListener('mousedown', (e) => {
+      e.preventDefault(); // CRITICAL: Prevents selection from being cleared
     });
     
-    chevronButton.addEventListener('click', (e) => {
+    swipeText.addEventListener('click', (e) => {
       e.stopPropagation();
-      e.preventDefault(); // Extra prevention
-      
-      if (dropdown) {
-        const isVisible = dropdown.style.display === 'block';
-        dropdown.style.display = isVisible ? 'none' : 'block';
-        console.log('Dropdown now:', dropdown.style.display);
-      }
+      e.preventDefault();
+      this.handleSmartSwipeClick();
     });
   }
   
-  // NEW: Add More button click
-  if (addMoreButton) {
-    // CRITICAL: Prevent mousedown from clearing selection
-    addMoreButton.addEventListener('mousedown', (e) => {
+  // Also make the entire swipe button clickable
+  if (swipeButton) {
+    swipeButton.addEventListener('mousedown', (e) => {
+      if (e.target.closest('#swipe-text')) return; // Let the inner handler deal with it
+      e.preventDefault();
+    });
+    
+    swipeButton.addEventListener('click', (e) => {
+      if (e.target.closest('#swipe-text')) return; // Let the inner handler deal with it
+      e.stopPropagation();
+      e.preventDefault();
+      this.handleSmartSwipeClick();
+    });
+    
+    // Hover effects for the entire button
+    swipeButton.addEventListener('mouseenter', () => {
+      swipeButton.style.background = '#5A6B7D';
+      swipeButton.style.transform = 'scale(1.02)';
+    });
+    swipeButton.addEventListener('mouseleave', () => {
+      swipeButton.style.background = '#4C596E';
+      swipeButton.style.transform = 'scale(1)';
+    });
+  }
+  
+  // SELECT MORE button (unchanged)
+  if (selectMoreButton) {
+    selectMoreButton.addEventListener('mousedown', (e) => {
       e.preventDefault(); // Prevents selection clearing
-      console.log('🏷️ ThreadCub: Add More mousedown - prevented default');
+      console.log('🏷️ ThreadCub: SELECT MORE mousedown - prevented default');
     });
     
-    addMoreButton.addEventListener('click', (e) => {
+    selectMoreButton.addEventListener('click', (e) => {
       e.stopPropagation();
-      e.preventDefault(); // Extra prevention
-      this.handleAddMoreClick();
+      e.preventDefault();
+      this.handleSelectMoreClick();
     });
     
-    // Add More button hover effect
-    addMoreButton.addEventListener('mouseenter', () => {
-      addMoreButton.style.background = '#333333';
+    // Hover effects
+    selectMoreButton.addEventListener('mouseenter', () => {
+      selectMoreButton.style.background = '#333333';
+      selectMoreButton.style.transform = 'scale(1.02)';
     });
-    addMoreButton.addEventListener('mouseleave', () => {
-      addMoreButton.style.background = '#000000';
+    selectMoreButton.addEventListener('mouseleave', () => {
+      selectMoreButton.style.background = '#000000';
+      selectMoreButton.style.transform = 'scale(1)';
     });
   }
   
-  // Dropdown selection
-if (dropdown) {
-  dropdown.addEventListener('mousedown', (e) => {
-    e.preventDefault(); // CRITICAL: Prevent selection clearing on dropdown click
-  });
-  
-  dropdown.addEventListener('click', (e) => {
-    e.stopPropagation();
-    e.preventDefault(); // Extra prevention
+  // NEW: Open Panel button
+  if (openPanelButton) {
+    openPanelButton.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+    });
     
-    const option = e.target.closest('.threadcub-tag-option');
-    if (option) {
-      this.selectedCategoryId = option.getAttribute('data-value');
-      dropdown.style.display = 'none';
-      
-      // CRITICAL: Create tag immediately without delay to preserve selection
-      this.createTagFromSelection();
-    }
-  });
-  
-  // Hover effects for dropdown options
-  const options = dropdown.querySelectorAll('.threadcub-tag-option');
-  options.forEach(option => {
-    option.addEventListener('mouseenter', () => {
-      option.style.backgroundColor = '#FFD700';
-      option.style.color = '#4C596E';
+    openPanelButton.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      this.showSidePanel();
+      this.hideContextMenu();
     });
-    option.addEventListener('mouseleave', () => {
-      option.style.backgroundColor = 'transparent';
-      option.style.color = '#FFFFFF';
+    
+    // Hover effects
+    openPanelButton.addEventListener('mouseenter', () => {
+      openPanelButton.style.background = '#7C3AED';
+      openPanelButton.style.transform = 'scale(1.02)';
     });
-  });
-}
+    openPanelButton.addEventListener('mouseleave', () => {
+      openPanelButton.style.background = '#8B5CF6';
+      openPanelButton.style.transform = 'scale(1)';
+    });
+  }
   
   // Close on outside click
   document.addEventListener('click', (e) => {
     if (!this.contextMenu.contains(e.target)) {
-      if (dropdown) dropdown.style.display = 'none';
+      this.hideContextMenu();
     }
   });
 }
 
-// NEW: Handle "Add More" button click with aggressive selection preservation
-handleAddMoreClick() {
-  console.log('🏷️ ThreadCub: Add More clicked - preserving selection aggressively');
+// NEW: Smart swipe click handler that adapts based on user experience
+handleSmartSwipeClick() {
+  console.log('🏷️ ThreadCub: Smart swipe clicked - creating tag and offering note option');
+  
+  if (!this.selectedText || !this.selectedRange) {
+    console.log('🏷️ ThreadCub: No selection available');
+    return;
+  }
+  
+  // Create tag immediately
+  const tag = {
+    id: Date.now(),
+    text: this.selectedText,
+    category: null,
+    categoryLabel: 'Tagged',
+    note: '', // Empty note field for user to fill
+    timestamp: new Date().toISOString(),
+    rangeInfo: this.captureRangeInfo(this.selectedRange)
+  };
+  
+  this.tags.push(tag);
+  
+  // Remove temporary highlight before creating permanent one
+  this.removeTemporaryHighlight();
+  
+  // Apply smart highlight
+  this.applySmartHighlight(this.selectedRange, tag.id);
+  
+  // SMART DECISION: First tag opens panel, subsequent tags show choice
+  if (this.tags.length === 1) {
+    console.log('🏷️ ThreadCub: First tag - auto-opening side panel');
+    this.showSidePanel();
+    this.hideContextMenu();
+  } else {
+    console.log('🏷️ ThreadCub: Subsequent tag - transforming to ADD NOTE with choice');
+    this.transformToAddNoteMode(tag.id);
+  }
+  
+  // Reset selection mode
+  this.isSelectingMore = false;
+  
+  console.log('🏷️ ThreadCub: Smart tag created:', tag);
+}
+
+// NEW: Transform context menu to ADD NOTE mode with dismiss option
+transformToAddNoteMode(tagId) {
+  const swipeButton = this.contextMenu.querySelector('#threadcub-swipe-selector');
+  const selectMoreButton = this.contextMenu.querySelector('#threadcub-select-more');
+  
+  if (!swipeButton || !selectMoreButton) return;
+  
+  // Store the tag ID for the ADD NOTE action
+  this.pendingNoteTagId = tagId;
+  
+  // Transform the swipe button to ADD NOTE
+  swipeButton.style.background = '#8B5CF6';
+  swipeButton.style.borderColor = '#8B5CF6';
+  swipeButton.innerHTML = `
+    <div id="swipe-text" style="
+      flex: 1;
+      padding: 0 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 32px;
+    ">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 20h9"/>
+        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+      </svg>
+      <span>ADD NOTE</span>
+    </div>
+  `;
+  
+  // Transform SELECT MORE button to DISMISS
+  selectMoreButton.style.background = '#64748b';
+  selectMoreButton.style.borderColor = '#64748b';
+  selectMoreButton.innerHTML = `
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M18 6 6 18"/>
+      <path d="m6 6 12 12"/>
+    </svg>
+    DISMISS
+  `;
+  
+  // Update click handlers for the transformed buttons
+  this.setupTransformedButtonListeners();
+  
+  console.log('🏷️ ThreadCub: Context menu transformed to ADD NOTE mode');
+}
+
+// NEW: Setup listeners for transformed buttons
+setupTransformedButtonListeners() {
+  // Remove old listeners by cloning elements
+  const swipeButton = this.contextMenu.querySelector('#threadcub-swipe-selector');
+  const selectMoreButton = this.contextMenu.querySelector('#threadcub-select-more');
+  
+  if (swipeButton) {
+    const newSwipeButton = swipeButton.cloneNode(true);
+    swipeButton.parentNode.replaceChild(newSwipeButton, swipeButton);
+    
+    // ADD NOTE click handler
+    newSwipeButton.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      console.log('🏷️ ThreadCub: ADD NOTE clicked - opening panel for tag:', this.pendingNoteTagId);
+      
+      // Store the tag ID for auto-opening note input
+      const tagIdForNote = this.pendingNoteTagId;
+      
+      this.showSidePanel();
+      
+      // SMART: Auto-activate note input for the pending tag with proper timing
+      if (tagIdForNote) {
+        // Wait for panel to open and tags list to render
+        setTimeout(() => {
+          console.log('🏷️ ThreadCub: Auto-opening note input for tag:', tagIdForNote);
+          this.showNoteInput(tagIdForNote);
+        }, 500); // Increased delay to ensure rendering is complete
+      }
+      
+      this.hideContextMenu();
+      // Clear pending state
+      this.pendingNoteTagId = null;
+    });
+    
+    // Hover effects
+    newSwipeButton.addEventListener('mouseenter', () => {
+      newSwipeButton.style.background = '#7C3AED';
+      newSwipeButton.style.transform = 'scale(1.02)';
+    });
+    newSwipeButton.addEventListener('mouseleave', () => {
+      newSwipeButton.style.background = '#8B5CF6';
+      newSwipeButton.style.transform = 'scale(1)';
+    });
+  }
+  
+  if (selectMoreButton) {
+    const newSelectMoreButton = selectMoreButton.cloneNode(true);
+    selectMoreButton.parentNode.replaceChild(newSelectMoreButton, selectMoreButton);
+    
+    // DISMISS click handler
+    newSelectMoreButton.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      console.log('🏷️ ThreadCub: DISMISS clicked - hiding menu');
+      this.hideContextMenu();
+      // Clear pending state
+      this.pendingNoteTagId = null;
+    });
+    
+    // Hover effects
+    newSelectMoreButton.addEventListener('mouseenter', () => {
+      newSelectMoreButton.style.background = '#475569';
+      newSelectMoreButton.style.transform = 'scale(1.02)';
+    });
+    newSelectMoreButton.addEventListener('mouseleave', () => {
+      newSelectMoreButton.style.background = '#64748b';
+      newSelectMoreButton.style.transform = 'scale(1)';
+    });
+  }
+}
+
+// NEW: Update context menu appearance based on user experience
+updateContextMenuForExperience() {
+  // CRITICAL: Always recreate the menu HTML to ensure clean state
+  this.contextMenu.innerHTML = `
+    <div style="
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'Karla', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    ">
+      <!-- SWIPE Button (always starts as SWIPE THIS!) -->
+      <div id="threadcub-swipe-selector" style="
+        background: #4C596E;
+        border: 1px solid #000000;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        font-size: 13px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+        color: #FFFFFF;
+        height: 32px;
+        box-sizing: border-box;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        cursor: pointer;
+        transition: all 0.2s ease;
+      ">
+        <div id="swipe-text" style="
+          flex: 1;
+          padding: 0 12px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          height: 32px;
+        ">
+          <svg id="swipe-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12.034 12.681a.498.498 0 0 1 .647-.647l9 3.5a.5.5 0 0 1-.033.943l-3.444 1.068a1 1 0 0 0-.66.66l-1.067 3.443a.5.5 0 0 1-.943.033z"/>
+            <path d="M21 11V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h6"/>
+          </svg>
+          <span id="swipe-button-text">SWIPE THIS!</span>
+        </div>
+      </div>
+      
+      <!-- SWIPE MORE Button (always starts as SWIPE MORE) -->
+      <div id="threadcub-select-more" style="
+        background: #000000;
+        border: 1px solid #000000;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 12px;
+        font-size: 13px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+        color: #FFFFFF;
+        height: 32px;
+        box-sizing: border-box;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        cursor: pointer;
+        transition: all 0.2s ease;
+      ">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12.034 12.681a.498.498 0 0 1 .647-.647l9 3.5a.5.5 0 0 1-.033.943l-3.444 1.068a1 1 0 0 0-.66.66l-1.067 3.443a.5.5 0 0 1-.943.033z"/>
+          <path d="M5 3a2 2 0 0 0-2 2"/>
+          <path d="M19 3a2 2 0 0 1 2 2"/>
+          <path d="M5 21a2 2 0 0 1-2-2"/>
+          <path d="M9 3h1"/>
+          <path d="M9 21h2"/>
+          <path d="M14 3h1"/>
+          <path d="M3 9v1"/>
+          <path d="M21 9v2"/>
+          <path d="M3 14v1"/>
+        </svg>
+        SWIPE MORE
+      </div>
+    </div>
+  `;
+  
+  // Re-setup listeners for the fresh HTML
+  this.setupSmartContextMenuListeners();
+}
+
+// NEW: Show quick tagged feedback for subsequent tags
+showQuickTaggedFeedback() {
+  const feedback = document.createElement('div');
+  feedback.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-family: 'Karla', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    z-index: 10000000;
+    opacity: 0;
+    transform: translateX(100%);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  `;
+  
+  feedback.innerHTML = `
+    <span>📝</span>
+    <span>Tagged! Click to add note</span>
+  `;
+  
+  // Click to open side panel
+  feedback.addEventListener('click', () => {
+    this.showSidePanel();
+    feedback.remove();
+  });
+  
+  document.body.appendChild(feedback);
+  
+  // Animate in
+  setTimeout(() => {
+    feedback.style.opacity = '1';
+    feedback.style.transform = 'translateX(0)';
+  }, 100);
+  
+  // Auto-hide
+  setTimeout(() => {
+    feedback.style.opacity = '0';
+    feedback.style.transform = 'translateX(100%)';
+    setTimeout(() => {
+      if (feedback.parentNode) {
+        feedback.parentNode.removeChild(feedback);
+      }
+    }, 300);
+  }, 3000);
+}
+
+// Keep existing handleSelectMoreClick method (unchanged)
+handleSelectMoreClick() {
+  console.log('🏷️ ThreadCub: SELECT MORE clicked - preserving selection and enabling multi-select mode');
   
   // CRITICAL: Capture selection data BEFORE any DOM changes
   const currentSelection = window.getSelection();
@@ -441,8 +670,8 @@ handleAddMoreClick() {
   this.selectedText = preservedText;
   this.selectedRange = preservedRange;
   
-  // Set flag to indicate we're in "add more" mode
-  this.isAddingMore = true;
+  // Set flag to indicate we're in "select more" mode
+  this.isSelectingMore = true;
   
   // Hide the context menu immediately
   this.contextMenu.style.display = 'none';
@@ -463,35 +692,7 @@ handleAddMoreClick() {
     }
   }, 10);
   
-  console.log('🏷️ ThreadCub: Multi-step selection mode enabled with preserved selection');
-}
-
-// Create tag without category
-createTagFromSelectionWithoutCategory() {
-  if (!this.selectedText || !this.selectedRange) return;
-  
-  const tag = {
-    id: Date.now(),
-    text: this.selectedText,
-    category: null,
-    categoryLabel: 'Untagged',
-    timestamp: new Date().toISOString(),
-    rangeInfo: this.captureRangeInfo(this.selectedRange)
-  };
-  
-  this.tags.push(tag);
-  this.applySmartHighlight(this.selectedRange, tag.id);
-  
-  if (this.tags.length === 1) {
-    this.showSidePanel();
-  } else {
-    this.updateTagsList();
-  }
-  
-  this.hideContextMenu();
-  
-  // Reset add more mode
-  this.isAddingMore = false;
+  console.log('🏷️ ThreadCub: Multi-select mode enabled');
 }
 
 // === END SECTION 1C ===
@@ -604,15 +805,15 @@ createSidePanel() {
       ">Swiping like a pro!</h2>
     </div>
     
-    <!-- Filter Section -->
+    <!-- Priority Filter Section -->
     <div style="padding: 20px 24px; border-bottom: 1px solid rgba(226, 232, 240, 0.6);">      
       <div style="position: relative;">
-        <select id="threadcub-tag-filter" style="
+        <select id="threadcub-priority-filter" style="
           width: 100%;
           padding: 12px 16px;
           padding-right: 40px;
-          background: rgba(255, 255, 255, 0.8);
-          border: 1px solid rgba(226, 232, 240, 0.8);
+          background: white;
+          border: 1px solid #d1d5db;
           border-radius: 8px;
           font-size: 14px;
           font-weight: 500;
@@ -620,12 +821,12 @@ createSidePanel() {
           cursor: pointer;
           appearance: none;
           transition: all 0.2s ease;
-          backdrop-filter: blur(10px);
-        ">
-          <option value="all">View: all ... etc</option>
-          <option value="dont-forget">Don't Forget</option>
-          <option value="backlog">Backlog Items</option>
-          <option value="priority">Top Priority</option>
+          outline: none;
+        " class="focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+          <option value="all">All priorities</option>
+          <option value="high">High priority</option>
+          <option value="medium">Medium priority</option>
+          <option value="low">Low priority</option>
         </select>
         
         <!-- Custom dropdown arrow with Lucide ChevronDown -->
@@ -694,7 +895,7 @@ createSidePanel() {
       display: flex;
       gap: 12px;
     ">
-      <button id="threadcub-download-json" style="
+      <button id="threadcub-close-panel" style="
         flex: 1;
         padding: 12px 16px;
         background: rgba(255, 255, 255, 0.9);
@@ -705,41 +906,25 @@ createSidePanel() {
         color: #374151;
         cursor: pointer;
         transition: all 0.2s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
         backdrop-filter: blur(10px);
       ">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 15V3"/>
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-          <path d="m7 10 5 5 5-5"/>
-        </svg>
-        DOWNLOAD
+        CLOSE
       </button>
       
-      <button id="threadcub-save-to-cloud" style="
+      <button id="threadcub-download-json" style="
         flex: 1;
         padding: 12px 16px;
-        background: #8B5CF6;
-        border: none;
+        background: #99DAFA;
+        border: 1px solid #99DAFA;
         border-radius: 8px;
         font-size: 14px;
         font-weight: 600;
-        color: white;
+        color: #4C596E;
         cursor: pointer;
         transition: all 0.2s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+        backdrop-filter: blur(10px);
       ">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>
-        </svg>
-        SAVE
+        DOWNLOAD
       </button>
     </div>
   `;
@@ -807,20 +992,28 @@ setupPanelEventListeners() {
     }
   });
   
-  // Filter dropdown
-  const filterSelect = this.sidePanel.querySelector('#threadcub-tag-filter');
+  // Priority filter dropdown
+  const filterSelect = this.sidePanel.querySelector('#threadcub-priority-filter');
   filterSelect.addEventListener('change', (e) => {
-    this.filterTags(e.target.value);
+    this.filterTagsByPriority(e.target.value);
   });
   
   // Filter hover effects
   filterSelect.addEventListener('mouseenter', () => {
-    filterSelect.style.borderColor = '#4F46E5';
-    filterSelect.style.boxShadow = '0 0 0 3px rgba(79, 70, 229, 0.1)';
+    filterSelect.style.borderColor = '#3b82f6';
   });
   
   filterSelect.addEventListener('mouseleave', () => {
-    filterSelect.style.borderColor = 'rgba(226, 232, 240, 0.8)';
+    filterSelect.style.borderColor = '#d1d5db';
+  });
+  
+  filterSelect.addEventListener('focus', () => {
+    filterSelect.style.borderColor = '#3b82f6';
+    filterSelect.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+  });
+  
+  filterSelect.addEventListener('blur', () => {
+    filterSelect.style.borderColor = '#d1d5db';
     filterSelect.style.boxShadow = 'none';
   });
   
@@ -832,42 +1025,37 @@ setupPanelEventListeners() {
   
   // Download button hover effects
   downloadBtn.addEventListener('mouseenter', () => {
-    downloadBtn.style.background = 'rgba(59, 130, 246, 0.1)';
-    downloadBtn.style.borderColor = 'rgba(59, 130, 246, 0.3)';
-    downloadBtn.style.color = '#3b82f6';
+    downloadBtn.style.background = '#7DD3F8';
+    downloadBtn.style.borderColor = '#7DD3F8';
     downloadBtn.style.transform = 'translateY(-1px)';
   });
   
   downloadBtn.addEventListener('mouseleave', () => {
-    downloadBtn.style.background = 'rgba(255, 255, 255, 0.9)';
-    downloadBtn.style.borderColor = 'rgba(226, 232, 240, 0.8)';
-    downloadBtn.style.color = '#374151';
+    downloadBtn.style.background = '#99DAFA';
+    downloadBtn.style.borderColor = '#99DAFA';
     downloadBtn.style.transform = 'translateY(0)';
   });
   
-  // Save button
-  const saveBtn = this.sidePanel.querySelector('#threadcub-save-to-cloud');
-  saveBtn.addEventListener('click', () => {
-    this.saveTagsToThreadCub();
+  // Close panel button
+  const closeBtn = this.sidePanel.querySelector('#threadcub-close-panel');
+  closeBtn.addEventListener('click', () => {
+    this.hideSidePanel();
   });
   
-  // Save button hover effects
-  saveBtn.addEventListener('mouseenter', () => {
-    saveBtn.style.transform = 'translateY(-1px)';
-    saveBtn.style.boxShadow = '0 6px 16px rgba(139, 92, 246, 0.4)';
+  // Close button hover effects
+  closeBtn.addEventListener('mouseenter', () => {
+    closeBtn.style.background = 'rgba(239, 68, 68, 0.1)';
+    closeBtn.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+    closeBtn.style.color = '#ef4444';
+    closeBtn.style.transform = 'translateY(-1px)';
   });
   
-  saveBtn.addEventListener('mouseleave', () => {
-    saveBtn.style.transform = 'translateY(0)';
-    saveBtn.style.boxShadow = '0 4px 12px rgba(139, 92, 246, 0.3)';
+  closeBtn.addEventListener('mouseleave', () => {
+    closeBtn.style.background = 'rgba(255, 255, 255, 0.9)';
+    closeBtn.style.borderColor = 'rgba(226, 232, 240, 0.8)';
+    closeBtn.style.color = '#374151';
+    closeBtn.style.transform = 'translateY(0)';
   });
-}
-
-// Filter tags functionality (placeholder for now)
-filterTags(filterValue) {
-  console.log('🏷️ ThreadCub: Filtering tags by:', filterValue);
-  // TODO: Implement actual filtering logic
-  this.updateTagsList(filterValue);
 }
 
 // Download tags as JSON
@@ -897,13 +1085,6 @@ downloadTagsAsJSON() {
   URL.revokeObjectURL(url);
   
   console.log('🏷️ ThreadCub: Tags downloaded as JSON');
-}
-
-// Save tags to ThreadCub (placeholder)
-saveTagsToThreadCub() {
-  console.log('🏷️ ThreadCub: Saving tags to ThreadCub.com...');
-  // TODO: Implement actual save to ThreadCub API
-  alert('Save to ThreadCub.com functionality coming soon!');
 }
 
 // === END SECTION 1D ===
@@ -1114,6 +1295,13 @@ handleGlobalClick(e) {
 showContextMenu(x, y) {
   if (!this.contextMenu) return;
   
+  // CRITICAL: Reset transformation state for every new selection
+  this.isTransformed = false;
+  this.pendingNoteTagId = null;
+  
+  // SMART: Update menu appearance based on user experience
+  this.updateContextMenuForExperience();
+  
   // Store initial scroll position
   this.menuScrollX = window.scrollX;
   this.menuScrollY = window.scrollY;
@@ -1131,7 +1319,7 @@ showContextMenu(x, y) {
   }
   
   // Context menu dimensions (approximate)
-  const menuWidth = 220;
+  const menuWidth = 220; // Keep consistent width
   const menuHeight = 120;
   
   // Calculate optimal position relative to viewport
@@ -1192,7 +1380,7 @@ showContextMenu(x, y) {
   this.scrollHandler = this.handleMenuScroll.bind(this);
   window.addEventListener('scroll', this.scrollHandler, true);
   
-  console.log('🏷️ ThreadCub: Context menu positioned to follow scroll');
+  console.log('🏷️ ThreadCub: Smart context menu positioned to follow scroll');
 }
 
 // NEW: Handle scrolling while menu is open
@@ -1223,6 +1411,10 @@ hideContextMenu() {
     this.contextMenu.classList.remove('visible');
     this.isContextMenuVisible = false;
     
+    // CRITICAL: Reset transformation state when hiding
+    this.isTransformed = false;
+    this.pendingNoteTagId = null;
+    
     // Remove scroll listener
     if (this.scrollHandler) {
       window.removeEventListener('scroll', this.scrollHandler, true);
@@ -1237,7 +1429,7 @@ hideContextMenu() {
   }
 }
 
-// Side panel methods remain the same
+// Side panel methods with auto-note support
 showSidePanel() {
   if (this.sidePanel && this.panelOverlay) {
     // Show overlay first
@@ -1249,6 +1441,15 @@ showSidePanel() {
       this.sidePanel.style.right = '0px';
       this.isPanelOpen = true;
       this.updateTagsList();
+      
+      // SMART: If there's a pending note tag, auto-open it after tags list renders
+      if (this.pendingNoteTagId) {
+        console.log('🏷️ ThreadCub: Panel opened, auto-opening note for tag:', this.pendingNoteTagId);
+        setTimeout(() => {
+          this.showNoteInput(this.pendingNoteTagId);
+          this.pendingNoteTagId = null; // Clear after use
+        }, 200);
+      }
     }, 50);
     
     console.log('🏷️ ThreadCub: Side panel opened with overlay');
@@ -1806,7 +2007,7 @@ adjustDropdownPosition(dropdown) {
 
 // === END SECTION 1G-5 ===
 
-// === SECTION 1H: Tag Management ===
+// === SECTION 1H: Simplified Tag Cards with Priority ===
 
 updateTagsList() {
   const tagsList = this.sidePanel.querySelector('#threadcub-tags-container');
@@ -1849,153 +2050,811 @@ updateTagsList() {
     `;
   } else {
     tagsList.innerHTML = this.tags.map(tag => {
-      // Use the SAME colors as the context menu icons
-      const colorMap = {
-        'priority': '#925FE2',      // Purple (matches icon)
-        'dont-forget': '#F87B51',   // Orange (matches icon)
-        'backlog': '#00C2D1'        // Teal (matches icon)
+      const hasNote = tag.note && tag.note.trim().length > 0;
+      const priority = tag.priority || 'medium'; // default to medium
+      const priorityColors = {
+        high: '#86EFAC',   // light green
+        medium: '#FDE68A', // light yellow/orange
+        low: '#FECACA'     // light pink/red
       };
-      
-      const category = this.tagCategories.find(c => c.id === tag.category);
-      const tagColor = colorMap[tag.category] || '#6b7280';
-      const tagLabel = category ? category.label : 'Unknown';
       
       return `
         <div class="threadcub-tag-card" data-tag-id="${tag.id}" style="
-          background: rgba(255, 255, 255, 0.8);
-          border: 1px solid rgba(226, 232, 240, 0.6);
-          border-radius: 12px;
-          padding: 20px;
-          margin-bottom: 16px;
+          background: white;
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+          padding: 16px;
+          margin-bottom: 12px;
           position: relative;
-          transition: all 0.2s ease;
-          backdrop-filter: blur(10px);
-          cursor: pointer;
         ">
-          <!-- Delete Button -->
-          <button class="threadcub-delete-tag" data-tag-id="${tag.id}" style="
-            position: absolute;
-            top: 12px;
-            right: 12px;
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.2);
-            color: #ef4444;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            opacity: 0;
-            transition: all 0.2s ease;
-            font-weight: bold;
-          ">×</button>
+          <!-- REMOVED: Purple Square Indicator -->
           
-          <!-- Tag Category Badge - NOW MATCHES CONTEXT MENU COLORS -->
+          <!-- Priority Selector and Action Icons Row -->
           <div style="
-            display: inline-block;
-            background: ${tagColor};
-            color: white;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 12px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-          ">${tagLabel}</div>
+          ">
+            <!-- Priority Dropdown -->
+            <div class="priority-selector" data-tag-id="${tag.id}" style="
+              position: relative;
+              cursor: pointer;
+            ">
+              <div class="priority-button" style="
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 4px 8px;
+                border-radius: 4px;
+                background: #f9fafb;
+                border: 1px solid #e5e7eb;
+              ">
+                <div style="
+                  width: 12px;
+                  height: 12px;
+                  background: ${priorityColors[priority]};
+                  border-radius: 2px;
+                "></div>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m6 9 6 6 6-6"/>
+                </svg>
+              </div>
+              
+              <!-- Priority Dropdown Menu (hidden by default) -->
+              <div class="priority-menu" style="
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                background: white;
+                border: 1px solid #e5e7eb;
+                border-radius: 6px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                z-index: 1000;
+                min-width: 120px;
+                margin-top: 4px;
+              ">
+                <div class="priority-option" data-priority="high" style="
+                  display: flex;
+                  align-items: center;
+                  gap: 8px;
+                  padding: 8px 12px;
+                  cursor: pointer;
+                  border-bottom: 1px solid #f3f4f6;
+                ">
+                  <div style="
+                    width: 12px;
+                    height: 12px;
+                    background: #86EFAC;
+                    border-radius: 2px;
+                  "></div>
+                  <span style="font-size: 14px; color: #374151;">High</span>
+                </div>
+                
+                <div class="priority-option" data-priority="medium" style="
+                  display: flex;
+                  align-items: center;
+                  gap: 8px;
+                  padding: 8px 12px;
+                  cursor: pointer;
+                  border-bottom: 1px solid #f3f4f6;
+                ">
+                  <div style="
+                    width: 12px;
+                    height: 12px;
+                    background: #FDE68A;
+                    border-radius: 2px;
+                  "></div>
+                  <span style="font-size: 14px; color: #374151;">Medium</span>
+                </div>
+                
+                <div class="priority-option" data-priority="low" style="
+                  display: flex;
+                  align-items: center;
+                  gap: 8px;
+                  padding: 8px 12px;
+                  cursor: pointer;
+                ">
+                  <div style="
+                    width: 12px;
+                    height: 12px;
+                    background: #FECACA;
+                    border-radius: 2px;
+                  "></div>
+                  <span style="font-size: 14px; color: #374151;">Low</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Action Icons with hover states -->
+            <div style="display: flex; gap: 8px; align-items: center;">
+              ${hasNote ? `
+                <!-- Edit Note Icon - Updated to square-pen -->
+                <button class="edit-note-btn" data-tag-id="${tag.id}" style="
+                  background: transparent;
+                  border: none;
+                  cursor: pointer;
+                  color: #6b7280;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  width: 32px;
+                  height: 32px;
+                  border-radius: 4px;
+                  transition: all 0.2s ease;
+                ">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/>
+                  </svg>
+                </button>
+              ` : ''}
+              
+              <!-- Continue in Chat Icon - Updated to corner-down-left -->
+              <button class="undo-btn" data-tag-id="${tag.id}" style="
+                background: transparent;
+                border: none;
+                cursor: pointer;
+                color: #6b7280;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 32px;
+                height: 32px;
+                border-radius: 4px;
+                transition: all 0.2s ease;
+              ">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 4v7a4 4 0 0 1-4 4H4"/>
+                  <path d="m9 10-5 5 5 5"/>
+                </svg>
+              </button>
+              
+              <!-- Delete Icon -->
+              <button class="delete-tag-btn" data-tag-id="${tag.id}" style="
+                background: transparent;
+                border: none;
+                cursor: pointer;
+                color: #ef4444;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 32px;
+                height: 32px;
+                border-radius: 4px;
+                transition: all 0.2s ease;
+              ">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 6h18"/>
+                  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                  <line x1="10" x2="10" y1="11" y2="17"/>
+                  <line x1="14" x2="14" y1="11" y2="17"/>
+                </svg>
+              </button>
+            </div>
+          </div>
           
-          <!-- Tag Content -->
+          <!-- Tag Text -->
           <div style="
             font-size: 14px;
-            line-height: 1.5;
+            line-height: 1.4;
             color: #374151;
-            margin-bottom: 12px;
-            font-weight: 500;
+            margin-bottom: ${hasNote ? '12px' : '16px'};
           ">${tag.text}</div>
           
-          <!-- Tag Metadata -->
-          <div style="
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            font-size: 12px;
-            color: #64748b;
-          ">
-            <span>Current Status: 90% complete</span>
-            <span>${new Date(tag.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+          <!-- Note Section -->
+          ${hasNote ? `
+            <!-- Show existing note with design styling -->
+            <div class="note-display" data-tag-id="${tag.id}" style="
+              background: #f8fafc;
+              border: 1px solid #e2e8f0;
+              border-radius: 6px;
+              padding: 12px;
+              margin-bottom: 0;
+              font-size: 13px;
+              line-height: 1.4;
+              color: #475569;
+            ">${tag.note}</div>
+          ` : `
+            <!-- Add Note Button with updated styling to match design -->
+            <button class="add-note-btn" data-tag-id="${tag.id}" style="
+              background: transparent;
+              border: 1px solid #10b981;
+              color: #10b981;
+              padding: 8px 16px;
+              border-radius: 6px;
+              font-size: 12px;
+              font-weight: 600;
+              cursor: pointer;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+              transition: all 0.2s ease;
+              display: flex;
+              align-items: center;
+              gap: 6px;
+            ">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 5v14"/>
+                <path d="M5 12h14"/>
+              </svg>
+              ADD NOTE
+            </button>
+          `}
+          
+          <!-- Note Input Area (hidden by default) -->
+          <div class="note-input-area" data-tag-id="${tag.id}" style="display: none;">
+            <textarea class="note-textarea" placeholder="Add your note..." style="
+              width: 100%;
+              min-height: 80px;
+              padding: 12px;
+              border: 2px solid #8B5CF6;
+              border-radius: 6px;
+              font-size: 13px;
+              line-height: 1.4;
+              color: #374151;
+              resize: vertical;
+              font-family: inherit;
+              margin-bottom: 12px;
+              box-sizing: border-box;
+            ">${tag.note || ''}</textarea>
+            
+            <div style="display: flex; gap: 8px;">
+              <button class="save-note-btn" data-tag-id="${tag.id}" style="
+                background: #8B5CF6;
+                border: none;
+                color: white;
+                padding: 6px 12px;
+                border-radius: 4px;
+                font-size: 12px;
+                font-weight: 600;
+                cursor: pointer;
+                text-transform: uppercase;
+                transition: all 0.2s ease;
+              ">SAVE</button>
+              
+              <button class="cancel-note-btn" data-tag-id="${tag.id}" style="
+                background: transparent;
+                border: none;
+                color: #6b7280;
+                padding: 6px 12px;
+                border-radius: 4px;
+                font-size: 12px;
+                font-weight: 600;
+                cursor: pointer;
+                text-transform: uppercase;
+                transition: all 0.2s ease;
+              ">CANCEL</button>
+            </div>
           </div>
         </div>
       `;
     }).join('');
     
-    this.setupTagItemListeners();
+    this.setupSimplifiedListeners();
   }
 }
 
-setupTagItemListeners() {
-  const deleteButtons = this.sidePanel.querySelectorAll('.threadcub-delete-tag');
+setupSimplifiedListeners() {
+  // Priority dropdown listeners
+  const prioritySelectors = this.sidePanel.querySelectorAll('.priority-selector');
+  prioritySelectors.forEach(selector => {
+    const button = selector.querySelector('.priority-button');
+    const menu = selector.querySelector('.priority-menu');
+    const tagId = parseInt(selector.getAttribute('data-tag-id'));
+    
+    // Toggle dropdown
+    button.addEventListener('click', (e) => {
+      e.stopPropagation();
+      
+      // Close other dropdowns
+      this.sidePanel.querySelectorAll('.priority-menu').forEach(m => {
+        if (m !== menu) m.style.display = 'none';
+      });
+      
+      // Toggle this dropdown
+      menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    });
+    
+    // Priority option clicks
+    menu.querySelectorAll('.priority-option').forEach(option => {
+      option.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const priority = option.getAttribute('data-priority');
+        this.setPriority(tagId, priority);
+        menu.style.display = 'none';
+      });
+      
+      // Hover effect
+      option.addEventListener('mouseenter', () => {
+        option.style.background = '#f3f4f6';
+      });
+      option.addEventListener('mouseleave', () => {
+        option.style.background = 'transparent';
+      });
+    });
+  });
+  
+  // Close dropdowns when clicking outside
+  document.addEventListener('click', () => {
+    this.sidePanel.querySelectorAll('.priority-menu').forEach(menu => {
+      menu.style.display = 'none';
+    });
+  });
+  
+  // Add Note buttons
+  const addNoteButtons = this.sidePanel.querySelectorAll('.add-note-btn');
+  addNoteButtons.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const tagId = parseInt(btn.getAttribute('data-tag-id'));
+      this.showNoteInput(tagId);
+    });
+    
+    // Hover effects to match design
+    btn.addEventListener('mouseenter', () => {
+      btn.style.background = '#10b981';
+      btn.style.color = 'white';
+    });
+    btn.addEventListener('mouseleave', () => {
+      btn.style.background = 'transparent';
+      btn.style.color = '#10b981';
+    });
+  });
+  
+  // Edit Note buttons with hover effects
+  const editNoteButtons = this.sidePanel.querySelectorAll('.edit-note-btn');
+  editNoteButtons.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const tagId = parseInt(btn.getAttribute('data-tag-id'));
+      this.showNoteInput(tagId);
+    });
+    
+    // Hover effects to match design
+    btn.addEventListener('mouseenter', () => {
+      btn.style.background = '#f3f4f6';
+    });
+    btn.addEventListener('mouseleave', () => {
+      btn.style.background = 'transparent';
+    });
+  });
+  
+  // Delete buttons with hover effects
+  const deleteButtons = this.sidePanel.querySelectorAll('.delete-tag-btn');
   deleteButtons.forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const tagId = parseInt(btn.getAttribute('data-tag-id'));
       this.deleteTag(tagId);
     });
+    
+    // Hover effects to match design
+    btn.addEventListener('mouseenter', () => {
+      btn.style.background = '#fef2f2';
+    });
+    btn.addEventListener('mouseleave', () => {
+      btn.style.background = 'transparent';
+    });
   });
   
-  const tagCards = this.sidePanel.querySelectorAll('.threadcub-tag-card');
-  tagCards.forEach(card => {
-    const deleteBtn = card.querySelector('.threadcub-delete-tag');
-    
-    card.addEventListener('mouseenter', () => {
-      card.style.background = 'rgba(255, 255, 255, 0.95)';
-      card.style.borderColor = 'rgba(226, 232, 240, 0.8)';
-      card.style.transform = 'translateY(-2px)';
-      card.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.1)';
-      if (deleteBtn) deleteBtn.style.opacity = '1';
+  // Undo buttons (now "Continue in Chat") with hover effects
+  const undoButtons = this.sidePanel.querySelectorAll('.undo-btn');
+  undoButtons.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const tagId = parseInt(btn.getAttribute('data-tag-id'));
+      console.log('🏷️ ThreadCub: Continue in chat clicked for tag:', tagId);
+      this.continueTagInChat(tagId);
     });
     
-    card.addEventListener('mouseleave', () => {
-      card.style.background = 'rgba(255, 255, 255, 0.8)';
-      card.style.borderColor = 'rgba(226, 232, 240, 0.6)';
-      card.style.transform = 'translateY(0)';
-      card.style.boxShadow = 'none';
-      if (deleteBtn) deleteBtn.style.opacity = '0';
+    // Hover effects to match design
+    btn.addEventListener('mouseenter', () => {
+      btn.style.background = '#f3f4f6';
     });
-    
-    // Delete button hover effect
-    if (deleteBtn) {
-      deleteBtn.addEventListener('mouseenter', () => {
-        deleteBtn.style.background = 'rgba(239, 68, 68, 0.2)';
-        deleteBtn.style.borderColor = 'rgba(239, 68, 68, 0.4)';
-        deleteBtn.style.transform = 'scale(1.1)';
-      });
-      
-      deleteBtn.addEventListener('mouseleave', () => {
-        deleteBtn.style.background = 'rgba(239, 68, 68, 0.1)';
-        deleteBtn.style.borderColor = 'rgba(239, 68, 68, 0.2)';
-        deleteBtn.style.transform = 'scale(1)';
-      });
-    }
+    btn.addEventListener('mouseleave', () => {
+      btn.style.background = 'transparent';
+    });
+  });
+  
+  // Save Note buttons
+  const saveNoteButtons = this.sidePanel.querySelectorAll('.save-note-btn');
+  saveNoteButtons.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const tagId = parseInt(btn.getAttribute('data-tag-id'));
+      this.saveNote(tagId);
+    });
+  });
+  
+  // Cancel Note buttons
+  const cancelNoteButtons = this.sidePanel.querySelectorAll('.cancel-note-btn');
+  cancelNoteButtons.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const tagId = parseInt(btn.getAttribute('data-tag-id'));
+      this.hideNoteInput(tagId);
+    });
   });
 }
 
+// NEW: Set priority for a tag
+setPriority(tagId, priority) {
+  const tag = this.tags.find(t => t.id === tagId);
+  if (tag) {
+    tag.priority = priority;
+    console.log('🏷️ ThreadCub: Priority set for tag:', tagId, priority);
+    this.updateTagsList(); // Refresh to show new priority color
+  }
+}
+
+// Show note input area
+showNoteInput(tagId) {
+  const noteInputArea = this.sidePanel.querySelector(`.note-input-area[data-tag-id="${tagId}"]`);
+  const noteDisplay = this.sidePanel.querySelector(`.note-display[data-tag-id="${tagId}"]`);
+  const addNoteBtn = this.sidePanel.querySelector(`.add-note-btn[data-tag-id="${tagId}"]`);
+  
+  if (noteInputArea) {
+    // Hide note display and add button
+    if (noteDisplay) noteDisplay.style.display = 'none';
+    if (addNoteBtn) addNoteBtn.style.display = 'none';
+    
+    // Show input area
+    noteInputArea.style.display = 'block';
+    
+    // Focus textarea
+    const textarea = noteInputArea.querySelector('.note-textarea');
+    if (textarea) {
+      textarea.focus();
+      textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+    }
+  }
+}
+
+// Hide note input area
+hideNoteInput(tagId) {
+  const noteInputArea = this.sidePanel.querySelector(`.note-input-area[data-tag-id="${tagId}"]`);
+  const noteDisplay = this.sidePanel.querySelector(`.note-display[data-tag-id="${tagId}"]`);
+  const addNoteBtn = this.sidePanel.querySelector(`.add-note-btn[data-tag-id="${tagId}"]`);
+  
+  if (noteInputArea) {
+    // Hide input area
+    noteInputArea.style.display = 'none';
+    
+    // Show appropriate display
+    if (noteDisplay) {
+      noteDisplay.style.display = 'block';
+    } else if (addNoteBtn) {
+      addNoteBtn.style.display = 'block';
+    }
+  }
+}
+
+// Save note
+saveNote(tagId) {
+  const noteInputArea = this.sidePanel.querySelector(`.note-input-area[data-tag-id="${tagId}"]`);
+  const textarea = noteInputArea?.querySelector('.note-textarea');
+  
+  if (textarea) {
+    const noteText = textarea.value.trim();
+    
+    const tag = this.tags.find(t => t.id === tagId);
+    if (tag) {
+      tag.note = noteText;
+      console.log('🏷️ ThreadCub: Note saved for tag:', tagId, noteText);
+      this.updateTagsList();
+    }
+  }
+}
+
+// Remove note
+removeNote(tagId) {
+  const tag = this.tags.find(t => t.id === tagId);
+  if (tag) {
+    tag.note = '';
+    console.log('🏷️ ThreadCub: Note removed for tag:', tagId);
+    this.updateTagsList();
+  }
+}
+
+// NEW: Filter tags by priority
+filterTagsByPriority(filterValue) {
+  console.log('🏷️ ThreadCub: Filtering tags by priority:', filterValue);
+  
+  const tagCards = this.sidePanel.querySelectorAll('.threadcub-tag-card');
+  
+  tagCards.forEach(card => {
+    const tagId = parseInt(card.getAttribute('data-tag-id'));
+    const tag = this.tags.find(t => t.id === tagId);
+    
+    if (!tag) {
+      card.style.display = 'none';
+      return;
+    }
+    
+    const tagPriority = tag.priority || 'medium'; // default to medium if no priority set
+    
+    if (filterValue === 'all') {
+      card.style.display = 'block';
+    } else if (filterValue === tagPriority) {
+      card.style.display = 'block';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+  
+  // Update empty state if needed
+  const visibleCards = Array.from(tagCards).filter(card => card.style.display !== 'none');
+  const emptyState = this.sidePanel.querySelector('#threadcub-empty-state');
+  
+  if (visibleCards.length === 0 && this.tags.length > 0) {
+    // Show "no matches" message
+    const tagsContainer = this.sidePanel.querySelector('#threadcub-tags-container');
+    if (tagsContainer && !tagsContainer.querySelector('#no-matches-state')) {
+      const noMatchesDiv = document.createElement('div');
+      noMatchesDiv.id = 'no-matches-state';
+      noMatchesDiv.style.cssText = `
+        text-align: center;
+        padding: 40px 20px;
+        color: #64748b;
+      `;
+      noMatchesDiv.innerHTML = `
+        <div style="
+          width: 60px;
+          height: 60px;
+          margin: 0 auto 16px;
+          background: #f1f5f9;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 24px;
+        ">🔍</div>
+        <h3 style="
+          font-size: 16px;
+          font-weight: 600;
+          margin: 0 0 8px;
+          color: #374151;
+        ">No tags match this filter</h3>
+        <p style="
+          font-size: 14px;
+          line-height: 1.5;
+          margin: 0;
+        ">Try selecting a different priority level</p>
+      `;
+      tagsContainer.appendChild(noMatchesDiv);
+    }
+  } else {
+    // Remove "no matches" message if it exists
+    const noMatchesState = this.sidePanel.querySelector('#no-matches-state');
+    if (noMatchesState) {
+      noMatchesState.remove();
+    }
+  }
+}
+
+// NEW: Continue tag in chat input field
+continueTagInChat(tagId) {
+  const tag = this.tags.find(t => t.id === tagId);
+  if (!tag) {
+    console.log('🏷️ ThreadCub: Tag not found for continue in chat:', tagId);
+    return;
+  }
+  
+  // Just use the tagged text content - no priority or notes
+  const promptText = tag.text;
+  
+  console.log('🏷️ ThreadCub: Adding tagged text to chat input:', promptText);
+  
+  // Find and populate the chat input field
+  const success = this.populateChatInput(promptText);
+  
+  if (success) {
+    // Optional: Close the side panel after a delay
+    setTimeout(() => {
+      this.hideSidePanel();
+    }, 1500);
+  }
+}
+
+// NEW: Populate chat input field (platform-specific)
+populateChatInput(text) {
+  console.log('🏷️ ThreadCub: Attempting to populate chat input with text:', text.substring(0, 50) + '...');
+  
+  // Detect current platform
+  const hostname = window.location.hostname;
+  let selectors = [];
+  
+  if (hostname.includes('claude.ai')) {
+    selectors = [
+      'textarea[data-testid="chat-input"]',
+      'div[contenteditable="true"]',
+      'textarea[placeholder*="Talk to Claude"]',
+      'textarea'
+    ];
+  } else if (hostname.includes('chatgpt.com') || hostname.includes('chat.openai.com')) {
+    selectors = [
+      'textarea[data-testid="prompt-textarea"]', 
+      '#prompt-textarea',
+      'textarea[placeholder*="Message"]',
+      'textarea'
+    ];
+  } else if (hostname.includes('gemini.google.com')) {
+    selectors = [
+      'rich-textarea div[contenteditable="true"]',
+      'textarea[placeholder*="Enter a prompt"]',
+      'textarea'
+    ];
+  } else {
+    // Generic selectors for other platforms
+    selectors = [
+      'textarea[placeholder*="message"]',
+      'textarea[placeholder*="prompt"]',
+      'div[contenteditable="true"]',
+      'textarea'
+    ];
+  }
+  
+  // Try each selector until we find a working input field
+  for (const selector of selectors) {
+    try {
+      const elements = document.querySelectorAll(selector);
+      for (const element of elements) {
+        // Check if element is visible and not disabled
+        if (element.offsetHeight > 0 && !element.disabled && !element.readOnly) {
+          console.log('🏷️ ThreadCub: Found input field:', selector);
+          
+          // Focus the element first
+          element.focus();
+          
+          // Set the text based on element type
+          if (element.tagName === 'TEXTAREA') {
+            element.value = text;
+            // Trigger input events to notify the platform
+            element.dispatchEvent(new Event('input', { bubbles: true }));
+            element.dispatchEvent(new Event('change', { bubbles: true }));
+          } else if (element.contentEditable === 'true') {
+            element.textContent = text;
+            // For contenteditable divs
+            element.dispatchEvent(new Event('input', { bubbles: true }));
+            element.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+          
+          // Move cursor to end
+          if (element.setSelectionRange) {
+            element.setSelectionRange(element.value.length, element.value.length);
+          }
+          
+          console.log('🏷️ ThreadCub: ✅ Successfully populated chat input');
+          return true;
+        }
+      }
+    } catch (error) {
+      console.log('🏷️ ThreadCub: Error with selector:', selector, error);
+      continue;
+    }
+  }
+  
+  console.log('🏷️ ThreadCub: ❌ Could not find suitable input field');
+  return false;
+}
+
+// NEW: Show success toast for continue in chat
+showContinueSuccessToast() {
+  const toast = document.createElement('div');
+  toast.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    padding: 16px 20px;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(16, 185, 129, 0.3);
+    z-index: 10000000;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    opacity: 0;
+    transform: translateX(100%);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    max-width: 300px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  `;
+  
+  toast.innerHTML = `
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+      <path d="m9 12 2 2 4-4"/>
+    </svg>
+    <span>Added to chat input!</span>
+  `;
+  
+  document.body.appendChild(toast);
+  
+  // Animate in
+  setTimeout(() => {
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateX(0)';
+  }, 100);
+  
+  // Animate out and remove
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(100%)';
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.parentNode.removeChild(toast);
+      }
+    }, 300);
+  }, 3000);
+}
+
+// NEW: Show error toast for continue in chat
+showContinueErrorToast() {
+  const toast = document.createElement('div');
+  toast.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    padding: 16px 20px;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(239, 68, 68, 0.3);
+    z-index: 10000000;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    opacity: 0;
+    transform: translateX(100%);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    max-width: 300px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  `;
+  
+  toast.innerHTML = `
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <path d="M15 9l-6 6"/>
+      <path d="m9 9 6 6"/>
+    </svg>
+    <span>Could not find chat input</span>
+  `;
+  
+  document.body.appendChild(toast);
+  
+  // Animate in
+  setTimeout(() => {
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateX(0)';
+  }, 100);
+  
+  // Animate out and remove
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(100%)';
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.parentNode.removeChild(toast);
+      }
+    }, 300);
+  }, 4000);
+}
+
 deleteTag(tagId) {
-  // Remove from tags array
   this.tags = this.tags.filter(tag => tag.id !== tagId);
-  
-  // NEW: Use the non-invasive cleanup method
-  this.cleanupHighlight(tagId);
-  
-  // Update the tags list
+  this.cleanupSmartHighlight(tagId);
   this.updateTagsList();
   console.log('🏷️ ThreadCub: Tag deleted:', tagId);
 }
 
-}; // ✅ This closes the ThreadCubTagging class
+} // END of ThreadCubTagging class
 
 // === END SECTION 1H ===
 
@@ -5979,14 +6838,21 @@ function initializeContinuationCheck() {
   
   // Small delay to ensure everything is set up
   setTimeout(() => {
-    if (typeof checkForContinuationData === 'function') {
-      console.log('🐻 ThreadCub: checkForContinuationData function found, calling it...');
-      checkForContinuationData();
-    } else {
-      console.error('🐻 ThreadCub: checkForContinuationData function NOT found!');
-      console.log('🐻 ThreadCub: Available functions:', Object.getOwnPropertyNames(window).filter(name => name.includes('check') || name.includes('continuation')));
+    try {
+      if (typeof window.checkForContinuationData === 'function') {
+        console.log('🐻 ThreadCub: checkForContinuationData function found (window), calling it...');
+        window.checkForContinuationData();
+      } else if (typeof checkForContinuationData === 'function') {
+        console.log('🐻 ThreadCub: checkForContinuationData function found (global), calling it...');
+        checkForContinuationData();
+      } else {
+        console.error('🐻 ThreadCub: checkForContinuationData function NOT found!');
+        console.log('🐻 ThreadCub: Available functions:', Object.getOwnPropertyNames(window).filter(name => name.includes('check') || name.includes('continuation')));
+      }
+    } catch (error) {
+      console.error('🐻 ThreadCub: Error calling checkForContinuationData:', error);
     }
-  }, 500);
+  }, 1000); // Increased delay to ensure parsing is complete
 }
 
 // Simple test function that definitely gets defined

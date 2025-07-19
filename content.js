@@ -110,123 +110,70 @@ addTaggingStyles() {
 
 // === END SECTION 1B ===
 
-// === SECTION 1C: Context Menu Creation (Smart Progressive Disclosure) ===
+// === SECTION 1C: Simplified Icon Context Menu ===
 
 createContextMenu() {
   this.contextMenu = document.createElement('div');
   this.contextMenu.className = 'threadcub-context-menu';
   
-  // SMART: Dynamic button layout based on user experience
+  // Connected button layout with border-right divider
   this.contextMenu.innerHTML = `
     <div style="
       display: flex;
       align-items: center;
-      gap: 8px;
+      background: #FFFFFF;
+      border: 1px solid #7C3AED;
+      border-radius: 4px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      overflow: hidden;
+      position: relative;
       font-family: 'Karla', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     ">
-      <!-- SMART SWIPE Button (changes based on experience) -->
-      <div id="threadcub-swipe-selector" style="
-        background: #4C596E;
-        border: 1px solid #000000;
-        border-radius: 4px;
+      <!-- Save for Later Button with right border divider -->
+      <div class="threadcub-icon-button" id="threadcub-save-button" data-tooltip="SAVE FOR LATER" style="
+        width: 40px;
+        height: 40px;
         display: flex;
         align-items: center;
-        font-size: 13px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.02em;
-        color: #FFFFFF;
-        height: 32px;
-        box-sizing: border-box;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        justify-content: center;
         cursor: pointer;
         transition: all 0.2s ease;
+        position: relative;
+        background: transparent;
+        border: none;
+        border-right: 1px solid #7C3AED;
       ">
-        <div id="swipe-text" style="
-          flex: 1;
-          padding: 0 12px;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          height: 32px;
-        ">
-          <svg id="swipe-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12.034 12.681a.498.498 0 0 1 .647-.647l9 3.5a.5.5 0 0 1-.033.943l-3.444 1.068a1 1 0 0 0-.66.66l-1.067 3.443a.5.5 0 0 1-.943.033z"/>
-            <path d="M21 11V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h6"/>
-          </svg>
-          <span id="swipe-button-text">SWIPE THIS!</span>
-        </div>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>
+        </svg>
       </div>
       
-      <!-- SELECT MORE Button (renamed from SWIPE MORE) -->
-      <div id="threadcub-select-more" style="
-        background: #000000;
-        border: 1px solid #000000;
-        border-radius: 4px;
+      <!-- Find Out More Button -->
+      <div class="threadcub-icon-button" id="threadcub-findout-button" data-tooltip="FIND OUT MORE" style="
+        width: 40px;
+        height: 40px;
         display: flex;
         align-items: center;
-        gap: 8px;
-        padding: 0 12px;
-        font-size: 13px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.02em;
-        color: #FFFFFF;
-        height: 32px;
-        box-sizing: border-box;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        justify-content: center;
         cursor: pointer;
         transition: all 0.2s ease;
+        position: relative;
+        background: transparent;
+        border: none;
+        color: #7C3AED;
       ">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12.034 12.681a.498.498 0 0 1 .647-.647l9 3.5a.5.5 0 0 1-.033.943l-3.444 1.068a1 1 0 0 0-.66.66l-1.067 3.443a.5.5 0 0 1-.943.033z"/>
-          <path d="M5 3a2 2 0 0 0-2 2"/>
-          <path d="M19 3a2 2 0 0 1 2 2"/>
-          <path d="M5 21a2 2 0 0 1-2-2"/>
-          <path d="M9 3h1"/>
-          <path d="M9 21h2"/>
-          <path d="M14 3h1"/>
-          <path d="M3 9v1"/>
-          <path d="M21 9v2"/>
-          <path d="M3 14v1"/>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>
+          <path d="M8 12h.01"/>
+          <path d="M12 12h.01"/>
+          <path d="M16 12h.01"/>
         </svg>
-        SWIPE MORE
-      </div>
-      
-      <!-- SMART: Open Panel Button (shows after first tag) -->
-      <div id="threadcub-open-panel" style="
-        background: #8B5CF6;
-        border: 1px solid #8B5CF6;
-        border-radius: 4px;
-        display: none;
-        align-items: center;
-        gap: 8px;
-        padding: 0 12px;
-        font-size: 13px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.02em;
-        color: #FFFFFF;
-        height: 32px;
-        box-sizing: border-box;
-        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
-        cursor: pointer;
-        transition: all 0.2s ease;
-      ">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect width="18" height="18" x="3" y="3" rx="2"/>
-          <path d="M9 8h6"/>
-          <path d="M9 12h6"/>
-          <path d="M9 16h6"/>
-        </svg>
-        OPEN PANEL
       </div>
     </div>
   `;
   
   document.body.appendChild(this.contextMenu);
-  this.setupSmartContextMenuListeners();
+  this.setupSimplifiedIconListeners();
   this.updateSelectionColor();
 }
 
@@ -243,95 +190,111 @@ updateSelectionColor(color = '#FFD700') {
   document.head.appendChild(style);
 }
 
-setupSmartContextMenuListeners() {
-  const swipeText = this.contextMenu.querySelector('#swipe-text');
-  const swipeButton = this.contextMenu.querySelector('#threadcub-swipe-selector');
-  const selectMoreButton = this.contextMenu.querySelector('#threadcub-select-more');
-  const openPanelButton = this.contextMenu.querySelector('#threadcub-open-panel');
+setupSimplifiedIconListeners() {
+  const saveButton = this.contextMenu.querySelector('#threadcub-save-button');
+  const findoutButton = this.contextMenu.querySelector('#threadcub-findout-button');
   
-  // SMART SWIPE button click - behavior changes based on experience
-  if (swipeText) {
-    swipeText.addEventListener('mousedown', (e) => {
-      e.preventDefault(); // CRITICAL: Prevents selection from being cleared
+  // Tooltip management variables
+  this.tooltipTimeout = null;
+  this.currentHoveredButton = null;
+  
+  // Save for Later button
+  if (saveButton) {
+    saveButton.addEventListener('mousedown', (e) => {
+      e.preventDefault(); // Prevents selection from being cleared
     });
     
-    swipeText.addEventListener('click', (e) => {
+    saveButton.addEventListener('click', (e) => {
       e.stopPropagation();
       e.preventDefault();
-      this.handleSmartSwipeClick();
+      console.log('🏷️ ThreadCub: Save for Later clicked');
+      this.handleSaveForLater();
+    });
+    
+    // Hover effects with custom tooltip
+    saveButton.addEventListener('mouseenter', (e) => {
+      // Clear any pending hide timeout
+      if (this.tooltipTimeout) {
+        clearTimeout(this.tooltipTimeout);
+        this.tooltipTimeout = null;
+      }
+      
+      this.currentHoveredButton = 'save';
+      saveButton.style.background = '#7C3AED';
+      
+      // Change SVG stroke to white on hover
+      const svg = saveButton.querySelector('svg');
+      if (svg) svg.setAttribute('stroke', 'white');
+      
+      // Show tooltip immediately
+      this.showCustomTooltip('SAVE FOR LATER', saveButton);
+    });
+    
+    saveButton.addEventListener('mouseleave', () => {
+      saveButton.style.background = 'transparent';
+      
+      // Change SVG stroke back to purple
+      const svg = saveButton.querySelector('svg');
+      if (svg) svg.setAttribute('stroke', '#7C3AED');
+      
+      this.currentHoveredButton = null;
+      
+      // Delay hiding tooltip to allow for button transitions
+      this.tooltipTimeout = setTimeout(() => {
+        if (!this.currentHoveredButton) {
+          this.hideCustomTooltip();
+        }
+      }, 100);
     });
   }
   
-  // Also make the entire swipe button clickable
-  if (swipeButton) {
-    swipeButton.addEventListener('mousedown', (e) => {
-      if (e.target.closest('#swipe-text')) return; // Let the inner handler deal with it
-      e.preventDefault();
+  // Find Out More button
+  if (findoutButton) {
+    findoutButton.addEventListener('mousedown', (e) => {
+      e.preventDefault(); // Prevents selection from being cleared
     });
     
-    swipeButton.addEventListener('click', (e) => {
-      if (e.target.closest('#swipe-text')) return; // Let the inner handler deal with it
+    findoutButton.addEventListener('click', (e) => {
       e.stopPropagation();
       e.preventDefault();
-      this.handleSmartSwipeClick();
+      console.log('🏷️ ThreadCub: Find Out More clicked');
+      this.handleFindOutMore();
     });
     
-    // Hover effects for the entire button
-    swipeButton.addEventListener('mouseenter', () => {
-      swipeButton.style.background = '#5A6B7D';
-      swipeButton.style.transform = 'scale(1.02)';
-    });
-    swipeButton.addEventListener('mouseleave', () => {
-      swipeButton.style.background = '#4C596E';
-      swipeButton.style.transform = 'scale(1)';
-    });
-  }
-  
-  // SELECT MORE button (unchanged)
-  if (selectMoreButton) {
-    selectMoreButton.addEventListener('mousedown', (e) => {
-      e.preventDefault(); // Prevents selection clearing
-      console.log('🏷️ ThreadCub: SELECT MORE mousedown - prevented default');
-    });
-    
-    selectMoreButton.addEventListener('click', (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-      this.handleSelectMoreClick();
+    // Hover effects with custom tooltip
+    findoutButton.addEventListener('mouseenter', (e) => {
+      // Clear any pending hide timeout
+      if (this.tooltipTimeout) {
+        clearTimeout(this.tooltipTimeout);
+        this.tooltipTimeout = null;
+      }
+      
+      this.currentHoveredButton = 'findout';
+      findoutButton.style.background = '#7C3AED';
+      
+      // Change SVG stroke to white on hover
+      const svg = findoutButton.querySelector('svg');
+      if (svg) svg.setAttribute('stroke', 'white');
+      
+      // Show tooltip immediately
+      this.showCustomTooltip('FIND OUT MORE', findoutButton);
     });
     
-    // Hover effects
-    selectMoreButton.addEventListener('mouseenter', () => {
-      selectMoreButton.style.background = '#333333';
-      selectMoreButton.style.transform = 'scale(1.02)';
-    });
-    selectMoreButton.addEventListener('mouseleave', () => {
-      selectMoreButton.style.background = '#000000';
-      selectMoreButton.style.transform = 'scale(1)';
-    });
-  }
-  
-  // NEW: Open Panel button
-  if (openPanelButton) {
-    openPanelButton.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-    });
-    
-    openPanelButton.addEventListener('click', (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-      this.showSidePanel();
-      this.hideContextMenu();
-    });
-    
-    // Hover effects
-    openPanelButton.addEventListener('mouseenter', () => {
-      openPanelButton.style.background = '#7C3AED';
-      openPanelButton.style.transform = 'scale(1.02)';
-    });
-    openPanelButton.addEventListener('mouseleave', () => {
-      openPanelButton.style.background = '#8B5CF6';
-      openPanelButton.style.transform = 'scale(1)';
+    findoutButton.addEventListener('mouseleave', () => {
+      findoutButton.style.background = 'transparent';
+      
+      // Change SVG stroke back to purple
+      const svg = findoutButton.querySelector('svg');
+      if (svg) svg.setAttribute('stroke', '#7C3AED');
+      
+      this.currentHoveredButton = null;
+      
+      // Delay hiding tooltip to allow for button transitions
+      this.tooltipTimeout = setTimeout(() => {
+        if (!this.currentHoveredButton) {
+          this.hideCustomTooltip();
+        }
+      }, 100);
     });
   }
   
@@ -343,9 +306,77 @@ setupSmartContextMenuListeners() {
   });
 }
 
-// NEW: Smart swipe click handler that adapts based on user experience
-handleSmartSwipeClick() {
-  console.log('🏷️ ThreadCub: Smart swipe clicked - creating tag and offering note option');
+// Custom tooltip system matching your design specifications
+showCustomTooltip(text, buttonElement) {
+  // Remove any existing tooltip immediately
+  this.hideCustomTooltip();
+  
+  // Create tooltip with your exact specifications
+  this.activeTooltip = document.createElement('div');
+  this.activeTooltip.className = 'threadcub-custom-tooltip';
+  this.activeTooltip.style.cssText = `
+    position: fixed;
+    height: 24px;
+    background: #475569;
+    color: white;
+    padding: 0 12px;
+    border-radius: 4px;
+    font-family: 'Karla', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    z-index: 10000002;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(-4px);
+    transition: all 0.2s ease;
+  `;
+  
+  this.activeTooltip.textContent = text;
+  document.body.appendChild(this.activeTooltip);
+  
+  // Position tooltip 8px below the button (corrected from 24px)
+  const buttonRect = buttonElement.getBoundingClientRect();
+  const tooltipWidth = this.activeTooltip.offsetWidth;
+  
+  // Calculate position: centered horizontally, 8px below
+  const x = buttonRect.left + (buttonRect.width / 2) - (tooltipWidth / 2);
+  const y = buttonRect.bottom + 8;
+  
+  this.activeTooltip.style.left = x + 'px';
+  this.activeTooltip.style.top = y + 'px';
+  
+  // Animate in
+  requestAnimationFrame(() => {
+    if (this.activeTooltip) {
+      this.activeTooltip.style.opacity = '1';
+      this.activeTooltip.style.transform = 'translateY(0)';
+    }
+  });
+}
+
+hideCustomTooltip() {
+  if (this.activeTooltip) {
+    this.activeTooltip.style.opacity = '0';
+    this.activeTooltip.style.transform = 'translateY(-4px)';
+    
+    setTimeout(() => {
+      if (this.activeTooltip && this.activeTooltip.parentNode) {
+        this.activeTooltip.parentNode.removeChild(this.activeTooltip);
+      }
+      this.activeTooltip = null;
+    }, 200);
+  }
+}
+
+// Handle "Save for Later" - creates tag and opens side panel
+handleSaveForLater() {
+  console.log('🏷️ ThreadCub: Save for Later clicked');
   
   if (!this.selectedText || !this.selectedRange) {
     console.log('🏷️ ThreadCub: No selection available');
@@ -357,8 +388,9 @@ handleSmartSwipeClick() {
     id: Date.now(),
     text: this.selectedText,
     category: null,
-    categoryLabel: 'Tagged',
-    note: '', // Empty note field for user to fill
+    categoryLabel: 'Saved',
+    note: '',
+    priority: 'medium', // default priority
     timestamp: new Date().toISOString(),
     rangeInfo: this.captureRangeInfo(this.selectedRange)
   };
@@ -371,328 +403,121 @@ handleSmartSwipeClick() {
   // Apply smart highlight
   this.applySmartHighlight(this.selectedRange, tag.id);
   
-  // SMART DECISION: First tag opens panel, subsequent tags show choice
+  // Open side panel (first time) or update (subsequent)
   if (this.tags.length === 1) {
-    console.log('🏷️ ThreadCub: First tag - auto-opening side panel');
     this.showSidePanel();
-    this.hideContextMenu();
   } else {
-    console.log('🏷️ ThreadCub: Subsequent tag - transforming to ADD NOTE with choice');
-    this.transformToAddNoteMode(tag.id);
-  }
-  
-  // Reset selection mode
-  this.isSelectingMore = false;
-  
-  console.log('🏷️ ThreadCub: Smart tag created:', tag);
-}
-
-// NEW: Transform context menu to ADD NOTE mode with dismiss option
-transformToAddNoteMode(tagId) {
-  const swipeButton = this.contextMenu.querySelector('#threadcub-swipe-selector');
-  const selectMoreButton = this.contextMenu.querySelector('#threadcub-select-more');
-  
-  if (!swipeButton || !selectMoreButton) return;
-  
-  // Store the tag ID for the ADD NOTE action
-  this.pendingNoteTagId = tagId;
-  
-  // Transform the swipe button to ADD NOTE
-  swipeButton.style.background = '#8B5CF6';
-  swipeButton.style.borderColor = '#8B5CF6';
-  swipeButton.innerHTML = `
-    <div id="swipe-text" style="
-      flex: 1;
-      padding: 0 12px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      height: 32px;
-    ">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 20h9"/>
-        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
-      </svg>
-      <span>ADD NOTE</span>
-    </div>
-  `;
-  
-  // Transform SELECT MORE button to DISMISS
-  selectMoreButton.style.background = '#64748b';
-  selectMoreButton.style.borderColor = '#64748b';
-  selectMoreButton.innerHTML = `
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M18 6 6 18"/>
-      <path d="m6 6 12 12"/>
-    </svg>
-    DISMISS
-  `;
-  
-  // Update click handlers for the transformed buttons
-  this.setupTransformedButtonListeners();
-  
-  console.log('🏷️ ThreadCub: Context menu transformed to ADD NOTE mode');
-}
-
-// NEW: Setup listeners for transformed buttons
-setupTransformedButtonListeners() {
-  // Remove old listeners by cloning elements
-  const swipeButton = this.contextMenu.querySelector('#threadcub-swipe-selector');
-  const selectMoreButton = this.contextMenu.querySelector('#threadcub-select-more');
-  
-  if (swipeButton) {
-    const newSwipeButton = swipeButton.cloneNode(true);
-    swipeButton.parentNode.replaceChild(newSwipeButton, swipeButton);
-    
-    // ADD NOTE click handler
-    newSwipeButton.addEventListener('click', (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-      console.log('🏷️ ThreadCub: ADD NOTE clicked - opening panel for tag:', this.pendingNoteTagId);
-      
-      // Store the tag ID for auto-opening note input
-      const tagIdForNote = this.pendingNoteTagId;
-      
-      this.showSidePanel();
-      
-      // SMART: Auto-activate note input for the pending tag with proper timing
-      if (tagIdForNote) {
-        // Wait for panel to open and tags list to render
-        setTimeout(() => {
-          console.log('🏷️ ThreadCub: Auto-opening note input for tag:', tagIdForNote);
-          this.showNoteInput(tagIdForNote);
-        }, 500); // Increased delay to ensure rendering is complete
-      }
-      
-      this.hideContextMenu();
-      // Clear pending state
-      this.pendingNoteTagId = null;
-    });
-    
-    // Hover effects
-    newSwipeButton.addEventListener('mouseenter', () => {
-      newSwipeButton.style.background = '#7C3AED';
-      newSwipeButton.style.transform = 'scale(1.02)';
-    });
-    newSwipeButton.addEventListener('mouseleave', () => {
-      newSwipeButton.style.background = '#8B5CF6';
-      newSwipeButton.style.transform = 'scale(1)';
-    });
-  }
-  
-  if (selectMoreButton) {
-    const newSelectMoreButton = selectMoreButton.cloneNode(true);
-    selectMoreButton.parentNode.replaceChild(newSelectMoreButton, selectMoreButton);
-    
-    // DISMISS click handler
-    newSelectMoreButton.addEventListener('click', (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-      console.log('🏷️ ThreadCub: DISMISS clicked - hiding menu');
-      this.hideContextMenu();
-      // Clear pending state
-      this.pendingNoteTagId = null;
-    });
-    
-    // Hover effects
-    newSelectMoreButton.addEventListener('mouseenter', () => {
-      newSelectMoreButton.style.background = '#475569';
-      newSelectMoreButton.style.transform = 'scale(1.02)';
-    });
-    newSelectMoreButton.addEventListener('mouseleave', () => {
-      newSelectMoreButton.style.background = '#64748b';
-      newSelectMoreButton.style.transform = 'scale(1)';
-    });
-  }
-}
-
-// NEW: Update context menu appearance based on user experience
-updateContextMenuForExperience() {
-  // CRITICAL: Always recreate the menu HTML to ensure clean state
-  this.contextMenu.innerHTML = `
-    <div style="
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-family: 'Karla', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    ">
-      <!-- SWIPE Button (always starts as SWIPE THIS!) -->
-      <div id="threadcub-swipe-selector" style="
-        background: #4C596E;
-        border: 1px solid #000000;
-        border-radius: 4px;
-        display: flex;
-        align-items: center;
-        font-size: 13px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.02em;
-        color: #FFFFFF;
-        height: 32px;
-        box-sizing: border-box;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        cursor: pointer;
-        transition: all 0.2s ease;
-      ">
-        <div id="swipe-text" style="
-          flex: 1;
-          padding: 0 12px;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          height: 32px;
-        ">
-          <svg id="swipe-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12.034 12.681a.498.498 0 0 1 .647-.647l9 3.5a.5.5 0 0 1-.033.943l-3.444 1.068a1 1 0 0 0-.66.66l-1.067 3.443a.5.5 0 0 1-.943.033z"/>
-            <path d="M21 11V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h6"/>
-          </svg>
-          <span id="swipe-button-text">SWIPE THIS!</span>
-        </div>
-      </div>
-      
-      <!-- SWIPE MORE Button (always starts as SWIPE MORE) -->
-      <div id="threadcub-select-more" style="
-        background: #000000;
-        border: 1px solid #000000;
-        border-radius: 4px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 0 12px;
-        font-size: 13px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.02em;
-        color: #FFFFFF;
-        height: 32px;
-        box-sizing: border-box;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        cursor: pointer;
-        transition: all 0.2s ease;
-      ">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12.034 12.681a.498.498 0 0 1 .647-.647l9 3.5a.5.5 0 0 1-.033.943l-3.444 1.068a1 1 0 0 0-.66.66l-1.067 3.443a.5.5 0 0 1-.943.033z"/>
-          <path d="M5 3a2 2 0 0 0-2 2"/>
-          <path d="M19 3a2 2 0 0 1 2 2"/>
-          <path d="M5 21a2 2 0 0 1-2-2"/>
-          <path d="M9 3h1"/>
-          <path d="M9 21h2"/>
-          <path d="M14 3h1"/>
-          <path d="M3 9v1"/>
-          <path d="M21 9v2"/>
-          <path d="M3 14v1"/>
-        </svg>
-        SWIPE MORE
-      </div>
-    </div>
-  `;
-  
-  // Re-setup listeners for the fresh HTML
-  this.setupSmartContextMenuListeners();
-}
-
-// NEW: Show quick tagged feedback for subsequent tags
-showQuickTaggedFeedback() {
-  const feedback = document.createElement('div');
-  feedback.style.cssText = `
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background: linear-gradient(135deg, #10b981, #059669);
-    color: white;
-    padding: 12px 16px;
-    border-radius: 8px;
-    font-family: 'Karla', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    font-size: 13px;
-    font-weight: 600;
-    z-index: 10000000;
-    opacity: 0;
-    transform: translateX(100%);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-  `;
-  
-  feedback.innerHTML = `
-    <span>📝</span>
-    <span>Tagged! Click to add note</span>
-  `;
-  
-  // Click to open side panel
-  feedback.addEventListener('click', () => {
-    this.showSidePanel();
-    feedback.remove();
-  });
-  
-  document.body.appendChild(feedback);
-  
-  // Animate in
-  setTimeout(() => {
-    feedback.style.opacity = '1';
-    feedback.style.transform = 'translateX(0)';
-  }, 100);
-  
-  // Auto-hide
-  setTimeout(() => {
-    feedback.style.opacity = '0';
-    feedback.style.transform = 'translateX(100%)';
-    setTimeout(() => {
-      if (feedback.parentNode) {
-        feedback.parentNode.removeChild(feedback);
-      }
-    }, 300);
-  }, 3000);
-}
-
-// Keep existing handleSelectMoreClick method (unchanged)
-handleSelectMoreClick() {
-  console.log('🏷️ ThreadCub: SELECT MORE clicked - preserving selection and enabling multi-select mode');
-  
-  // CRITICAL: Capture selection data BEFORE any DOM changes
-  const currentSelection = window.getSelection();
-  let preservedRange = null;
-  let preservedText = '';
-  
-  if (currentSelection.rangeCount > 0) {
-    preservedRange = currentSelection.getRangeAt(0).cloneRange();
-    preservedText = currentSelection.toString();
-    console.log('🏷️ ThreadCub: Captured selection:', preservedText.length, 'characters');
-  }
-  
-  // Store in multiple places for safety
-  this.preservedRange = preservedRange;
-  this.preservedText = preservedText;
-  this.selectedText = preservedText;
-  this.selectedRange = preservedRange;
-  
-  // Set flag to indicate we're in "select more" mode
-  this.isSelectingMore = true;
-  
-  // Hide the context menu immediately
-  this.contextMenu.style.display = 'none';
-  this.contextMenu.classList.remove('visible');
-  this.isContextMenuVisible = false;
-  
-  // CRITICAL: Restore the selection after a tiny delay (browser may have cleared it)
-  setTimeout(() => {
-    if (preservedRange) {
-      try {
-        const selection = window.getSelection();
-        selection.removeAllRanges();
-        selection.addRange(preservedRange);
-        console.log('🏷️ ThreadCub: Selection restored after menu hide');
-      } catch (error) {
-        console.log('🏷️ ThreadCub: Could not restore selection:', error);
-      }
+    if (this.isPanelOpen) {
+      this.updateTagsList();
     }
-  }, 10);
+  }
   
-  console.log('🏷️ ThreadCub: Multi-select mode enabled');
+  this.hideContextMenu();
+  
+  console.log('🏷️ ThreadCub: Tag saved for later:', tag);
+}
+
+// Handle "Find Out More" - sends selection to chat input
+handleFindOutMore() {
+  console.log('🏷️ ThreadCub: Find Out More clicked');
+  
+  if (!this.selectedText) {
+    console.log('🏷️ ThreadCub: No selection available');
+    return;
+  }
+  
+  // Use the existing continueTagInChat logic but with current selection
+  const success = this.populateChatInputDirectly(this.selectedText);
+  
+  if (success) {
+    console.log('🏷️ ThreadCub: Selection sent to chat input');
+  } else {
+    console.log('🏷️ ThreadCub: Could not find chat input field');
+  }
+  
+  this.hideContextMenu();
+}
+
+// Direct chat input population (reuse existing logic)
+populateChatInputDirectly(text) {
+  console.log('🏷️ ThreadCub: Adding text directly to chat input:', text.substring(0, 50) + '...');
+  
+  // Detect current platform
+  const hostname = window.location.hostname;
+  let selectors = [];
+  
+  if (hostname.includes('claude.ai')) {
+    selectors = [
+      'textarea[data-testid="chat-input"]',
+      'div[contenteditable="true"]',
+      'textarea[placeholder*="Talk to Claude"]',
+      'textarea'
+    ];
+  } else if (hostname.includes('chatgpt.com') || hostname.includes('chat.openai.com')) {
+    selectors = [
+      'textarea[data-testid="prompt-textarea"]', 
+      '#prompt-textarea',
+      'textarea[placeholder*="Message"]',
+      'textarea'
+    ];
+  } else if (hostname.includes('gemini.google.com')) {
+    selectors = [
+      'rich-textarea div[contenteditable="true"]',
+      'textarea[placeholder*="Enter a prompt"]',
+      'textarea'
+    ];
+  } else {
+    // Generic selectors for other platforms
+    selectors = [
+      'textarea[placeholder*="message"]',
+      'textarea[placeholder*="prompt"]',
+      'div[contenteditable="true"]',
+      'textarea'
+    ];
+  }
+  
+  // Try each selector until we find a working input field
+  for (const selector of selectors) {
+    try {
+      const elements = document.querySelectorAll(selector);
+      for (const element of elements) {
+        // Check if element is visible and not disabled
+        if (element.offsetHeight > 0 && !element.disabled && !element.readOnly) {
+          console.log('🏷️ ThreadCub: Found input field:', selector);
+          
+          // Focus the element first
+          element.focus();
+          
+          // Set the text based on element type
+          if (element.tagName === 'TEXTAREA') {
+            element.value = text;
+            // Trigger input events to notify the platform
+            element.dispatchEvent(new Event('input', { bubbles: true }));
+            element.dispatchEvent(new Event('change', { bubbles: true }));
+          } else if (element.contentEditable === 'true') {
+            element.textContent = text;
+            // For contenteditable divs
+            element.dispatchEvent(new Event('input', { bubbles: true }));
+            element.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+          
+          // Move cursor to end
+          if (element.setSelectionRange) {
+            element.setSelectionRange(element.value.length, element.value.length);
+          }
+          
+          console.log('🏷️ ThreadCub: ✅ Successfully populated chat input');
+          return true;
+        }
+      }
+    } catch (error) {
+      console.log('🏷️ ThreadCub: Error with selector:', selector, error);
+      continue;
+    }
+  }
+  
+  console.log('🏷️ ThreadCub: ❌ Could not find suitable input field');
+  return false;
 }
 
 // === END SECTION 1C ===
@@ -1295,13 +1120,6 @@ handleGlobalClick(e) {
 showContextMenu(x, y) {
   if (!this.contextMenu) return;
   
-  // CRITICAL: Reset transformation state for every new selection
-  this.isTransformed = false;
-  this.pendingNoteTagId = null;
-  
-  // SMART: Update menu appearance based on user experience
-  this.updateContextMenuForExperience();
-  
   // Store initial scroll position
   this.menuScrollX = window.scrollX;
   this.menuScrollY = window.scrollY;
@@ -1318,9 +1136,9 @@ showContextMenu(x, y) {
     }
   }
   
-  // Context menu dimensions (approximate)
-  const menuWidth = 220; // Keep consistent width
-  const menuHeight = 120;
+  // Context menu dimensions for simplified icon menu
+  const menuWidth = 96; // Two 40px icons + 8px gap + padding
+  const menuHeight = 60; // Height including tooltips
   
   // Calculate optimal position relative to viewport
   let menuX = x;
@@ -1380,10 +1198,10 @@ showContextMenu(x, y) {
   this.scrollHandler = this.handleMenuScroll.bind(this);
   window.addEventListener('scroll', this.scrollHandler, true);
   
-  console.log('🏷️ ThreadCub: Smart context menu positioned to follow scroll');
+  console.log('🏷️ ThreadCub: Simplified icon context menu positioned');
 }
 
-// NEW: Handle scrolling while menu is open
+// Handle scrolling while menu is open
 handleMenuScroll() {
   if (!this.isContextMenuVisible || !this.contextMenu) return;
   
@@ -1404,32 +1222,22 @@ handleMenuScroll() {
   this.menuScrollY = window.scrollY;
 }
 
-// IMPROVED: Clean hide function with scroll listener cleanup
+// Clean hide function with scroll listener cleanup
 hideContextMenu() {
   if (this.contextMenu) {
     this.contextMenu.style.display = 'none';
     this.contextMenu.classList.remove('visible');
     this.isContextMenuVisible = false;
     
-    // CRITICAL: Reset transformation state when hiding
-    this.isTransformed = false;
-    this.pendingNoteTagId = null;
-    
     // Remove scroll listener
     if (this.scrollHandler) {
       window.removeEventListener('scroll', this.scrollHandler, true);
       this.scrollHandler = null;
     }
-    
-    // Hide dropdown too
-    const dropdown = this.contextMenu.querySelector('#threadcub-tag-dropdown');
-    if (dropdown) {
-      dropdown.style.display = 'none';
-    }
   }
 }
 
-// Side panel methods with auto-note support
+// Side panel methods
 showSidePanel() {
   if (this.sidePanel && this.panelOverlay) {
     // Show overlay first
@@ -1441,18 +1249,9 @@ showSidePanel() {
       this.sidePanel.style.right = '0px';
       this.isPanelOpen = true;
       this.updateTagsList();
-      
-      // SMART: If there's a pending note tag, auto-open it after tags list renders
-      if (this.pendingNoteTagId) {
-        console.log('🏷️ ThreadCub: Panel opened, auto-opening note for tag:', this.pendingNoteTagId);
-        setTimeout(() => {
-          this.showNoteInput(this.pendingNoteTagId);
-          this.pendingNoteTagId = null; // Clear after use
-        }, 200);
-      }
     }, 50);
     
-    console.log('🏷️ ThreadCub: Side panel opened with overlay');
+    console.log('🏷️ ThreadCub: Side panel opened');
   }
 }
 
@@ -1470,9 +1269,6 @@ hideSidePanel() {
     }, 200);
     
     console.log('🏷️ ThreadCub: Side panel closed');
-    
-    // REMOVED: Don't clear highlights when panel closes
-    // Tags should persist until manually deleted
   }
 }
 

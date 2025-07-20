@@ -540,6 +540,9 @@ function setupEventListeners() {
 
     // Handle chat actions on saved page
     setupSavedPageEventListeners();
+    
+    // Handle Quick Links functionality
+    setupQuickLinksEventListeners();
 }
 
 // === END SECTION 1E ===
@@ -900,4 +903,57 @@ function updatePageStatus(supported, url, customError = null) {
 }
 
 // === END SECTION 1J ===
+
+// === SECTION 1K: Quick Links Event Listeners ===
+
+// Quick Links event listeners
+function setupQuickLinksEventListeners() {
+    console.log('🔗 Setting up Quick Links event listeners...');
+    
+    // Ways of Working copy button
+    const copyWaysOfWorking = document.getElementById('copyWaysOfWorking');
+    if (copyWaysOfWorking) {
+        console.log('✅ Found copyWaysOfWorking button');
+        
+        copyWaysOfWorking.addEventListener('click', async function() {
+            const link = this.getAttribute('data-link');
+            console.log('🔗 Ways of Working button clicked, link:', link);
+            
+            try {
+                // Copy to clipboard
+                await navigator.clipboard.writeText(link);
+                console.log('✅ Link copied to clipboard successfully');
+                
+                // Show success feedback
+                this.classList.add('copied');
+                const titleEl = this.querySelector('.quick-link-title');
+                const originalText = titleEl.textContent;
+                titleEl.textContent = 'Link Copied!';
+                
+                // Show success toast
+                showNotification('Ways of Working link copied! Paste it in your AI chat.');
+                
+                // Reset after 2 seconds
+                setTimeout(() => {
+                    this.classList.remove('copied');
+                    titleEl.textContent = originalText;
+                }, 2000);
+                
+            } catch (error) {
+                console.error('❌ Failed to copy link:', error);
+                
+                // Fallback: show link in prompt for manual copy
+                const userCopy = prompt('Copy this Ways of Working link:', link);
+                if (userCopy !== null) {
+                    showNotification('Link ready to paste in your AI chat!');
+                }
+            }
+        });
+    } else {
+        console.log('❌ copyWaysOfWorking button not found');
+    }
+}
+
+// === END SECTION 1K ===
+
 // === END OF ALL SECTIONS ===

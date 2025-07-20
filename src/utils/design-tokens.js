@@ -1,8 +1,10 @@
+console.log('🔧 LOADING: design-tokens.js');
+
 // ThreadCub Design System - Design Tokens
 // This file contains all design constants used across the ThreadCub project
 
 // ===== COLORS =====
-export const colors = {
+const colors = {
   // Primary Brand Colors
   primary: '#7C3AED',
   primaryHover: '#6D28D9',
@@ -58,8 +60,7 @@ export const colors = {
 };
 
 // ===== SPACING =====
-// All spacing values in 4px increments
-export const spacing = {
+const spacing = {
   0: '0px',
   1: '4px',
   2: '8px',
@@ -78,7 +79,7 @@ export const spacing = {
 };
 
 // ===== TYPOGRAPHY =====
-export const typography = {
+const typography = {
   fontFamily: {
     primary: "'Karla', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     system: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
@@ -118,7 +119,7 @@ export const typography = {
 };
 
 // ===== BORDERS & RADII =====
-export const borders = {
+const borders = {
   width: {
     none: '0px',
     thin: '1px',
@@ -139,7 +140,7 @@ export const borders = {
 };
 
 // ===== SHADOWS =====
-export const shadows = {
+const shadows = {
   none: 'none',
   sm: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
   base: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
@@ -154,7 +155,7 @@ export const shadows = {
 };
 
 // ===== TRANSITIONS =====
-export const transitions = {
+const transitions = {
   fast: '0.15s ease',
   base: '0.2s ease',
   slow: '0.3s ease',
@@ -166,7 +167,7 @@ export const transitions = {
 };
 
 // ===== Z-INDEX SCALE =====
-export const zIndex = {
+const zIndex = {
   base: 1,
   dropdown: 10,
   overlay: 100,
@@ -177,11 +178,11 @@ export const zIndex = {
 };
 
 // ===== COMPONENT SIZES =====
-export const sizes = {
+const sizes = {
   button: {
-    sm: { height: '32px', padding: `${spacing[2]} ${spacing[3]}` },
-    base: { height: '40px', padding: `${spacing[3]} ${spacing[4]}` },
-    lg: { height: '48px', padding: `${spacing[4]} ${spacing[6]}` }
+    sm: { height: '32px', padding: spacing[2] + ' ' + spacing[3] },
+    base: { height: '40px', padding: spacing[3] + ' ' + spacing[4] },
+    lg: { height: '48px', padding: spacing[4] + ' ' + spacing[6] }
   },
   
   icon: {
@@ -199,60 +200,20 @@ export const sizes = {
 };
 
 // ===== ICONS =====
-// SVG icon definitions for consistent usage
-export const icons = {
-  pawPrint: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="4" r="2"/><circle cx="18" cy="8" r="2"/><circle cx="20" cy="16" r="2"/><path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z"/></svg>`,
+const icons = {
+  pawPrint: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="4" r="2"/><circle cx="18" cy="8" r="2"/><circle cx="20" cy="16" r="2"/><path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z"/></svg>',
   
-  cornerDownLeft: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4v7a4 4 0 0 1-4 4H4"/><path d="m9 10-5 5 5 5"/></svg>`,
+  cornerDownLeft: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4v7a4 4 0 0 1-4 4H4"/><path d="m9 10-5 5 5 5"/></svg>',
   
-  squarePen: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg>`,
+  squarePen: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg>',
   
-  tag: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></svg>`,
+  tag: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></svg>',
   
-  trash: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`
+  trash: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>'
 };
 
-// ===== UTILITY FUNCTIONS =====
-export const utils = {
-  // Helper to create consistent button styles
-  createButtonStyle: (variant = 'primary', size = 'base') => {
-    const baseStyle = {
-      fontFamily: typography.fontFamily.primary,
-      fontSize: typography.fontSize.sm,
-      fontWeight: typography.fontWeight.extrabold,
-      textTransform: 'uppercase',
-      letterSpacing: typography.letterSpacing.wider,
-      border: 'none',
-      borderRadius: borders.radius.base,
-      cursor: 'pointer',
-      transition: transitions.base,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      ...sizes.button[size]
-    };
-    
-    const variants = {
-      primary: {
-        background: colors.addTag.background,
-        color: colors.addTag.text
-      },
-      secondary: {
-        background: colors.white,
-        color: colors.gray[700],
-        border: `${borders.width.thin} solid ${colors.gray[300]}`
-      }
-    };
-    
-    return { ...baseStyle, ...variants[variant] };
-  },
-  
-  // Helper to create consistent spacing
-  spacing: (multiplier) => `${4 * multiplier}px`
-};
-
-// Default export with everything
-export default {
+// Make everything globally available for Chrome extension context
+window.ThreadCubTokens = {
   colors,
   spacing,
   typography,
@@ -261,6 +222,7 @@ export default {
   transitions,
   zIndex,
   sizes,
-  icons,
-  utils
+  icons
 };
+
+console.log('✅ ThreadCubTokens defined:', typeof window.ThreadCubTokens);

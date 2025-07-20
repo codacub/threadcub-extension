@@ -1,16 +1,15 @@
+console.log('🔧 LOADING: side-panel.js');
+
 // ThreadCub Side Panel UI Module
 // Extracted from Section 1H of content.js - all syntax errors fixed
-
-// Import design tokens (adjust path as needed)
-// import tokens from '../utils/design-tokens.js';
 
 class ThreadCubSidePanel {
   constructor(taggingSystem) {
     this.taggingSystem = taggingSystem;
     this.sidePanel = null;
     
-    // Use inline tokens for now (can switch to import later)
-    this.tokens = {
+    // Use tokens from design system if available, fallback to inline
+    this.tokens = window.ThreadCubTokens || {
       colors: {
         primary: '#7C3AED',
         white: '#FFFFFF',
@@ -581,3 +580,5 @@ class ThreadCubSidePanel {
 
 // Make the class globally available
 window.ThreadCubSidePanel = ThreadCubSidePanel;
+
+console.log('✅ ThreadCubSidePanel defined:', typeof window.ThreadCubSidePanel);

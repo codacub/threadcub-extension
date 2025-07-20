@@ -22,10 +22,7 @@
         "icons/icon-happy.png",
         "icons/icon-sad.png",
         "icons/icon-happier.png",
-        "icons/threadcub-logo.png",
-        "src/utils/design-tokens.js",
-        "src/ui/side-panel.js",
-        "src/core/floating-button.js"
+        "icons/threadcub-logo.png"
       ],
       "matches": ["<all_urls>"]
     }

@@ -1,3 +1,5 @@
+console.log('🔧 LOADING: floating-button.js');
+
 // ThreadCub Floating Button Module
 // Extracted from Section 4A-4F of content.js
 
@@ -955,19 +957,21 @@ class ThreadCubFloatingButton {
   }
 
   // ===== PLACEHOLDER METHODS =====
-  // These will be moved to separate extractor modules
+  // These will be enhanced by content.js
   saveAndOpenConversation(source = 'floating') {
     console.log('🐻 ThreadCub: saveAndOpenConversation called from:', source);
-    // This method will be implemented in the continuation module
+    // This method will be overridden by content.js enhancement
     this.showSuccessToast('Feature coming soon!');
   }
 
   downloadConversationJSON() {
     console.log('🐻 ThreadCub: downloadConversationJSON called');
-    // This method will be implemented in the extractor modules
+    // This method will be overridden by content.js enhancement
     this.showSuccessToast('Download feature coming soon!');
   }
 }
 
 // Make the class globally available
 window.ThreadCubFloatingButton = ThreadCubFloatingButton;
+
+console.log('✅ ThreadCubFloatingButton defined:', typeof window.ThreadCubFloatingButton);

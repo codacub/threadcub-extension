@@ -2492,1929 +2492,21 @@ function detectCurrentPlatform() {
 
 // === END SECTION 3A ===
 
-// === SECTION 4A: ThreadCubFloatingButton Core ===
+// === SECTION 4A-4E: Floating Button Integration with Modular Architecture ===
 
-class ThreadCubFloatingButton {
-  constructor() {
-    this.button = null;
-    this.shadowButton = null;
-    this.borderOverlay = null;
-    this.isDragging = false;
-    this.startX = 0;
-    this.startY = 0;
-    this.currentEdge = 'right';
-    this.currentPosition = 0.5;
-    this.edgeMargin = 25;
-    this.buttonSize = 60;
-    this.currentBearState = 'default';
-    this.isExporting = false;
-    this.lastExportTime = 0;
-    
-    console.log('🐻 ThreadCub: Starting floating button...');
-    
-    this.init();
-  }
+// The ThreadCubFloatingButton class is now loaded from src/core/floating-button.js
+// This section provides the conversation functionality that the floating button needs
 
-  init() {
-    this.createButton();
-    this.createBorderOverlay();
-    this.addStyles();
-    this.setupEventListeners();
-    this.loadPosition();
-    
-    console.log('🐻 ThreadCub: Floating button ready!');
-  }
+// === CONVERSATION EXTRACTION FUNCTIONS ===
 
-  createButton() {
-    this.button = document.createElement('div');
-    this.button.id = 'threadcub-edge-btn';
-    
-    // Try to get bear images first
-    const bearImages = this.getBearImages();
-    
-    this.button.innerHTML = `
-  <div class="threadcub-btn-content">
-    <div class="threadcub-bear-face" id="bear-face">
-      ${bearImages.default}
-    </div>
-  </div>
-  <div class="threadcub-action-buttons">
-    <div class="threadcub-new-btn" data-action="new">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/>
-        <path d="m21 3-9 9"/>
-        <path d="M15 3h6v6"/>
-      </svg>
-    </div>
-    <div class="threadcub-download-btn" data-action="download">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 15V3"/>
-        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-        <path d="m7 10 5 5 5-5"/>
-      </svg>
-    </div>
-    <div class="threadcub-tag-btn" data-action="tag">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="m15 5 6.3 6.3a2.4 2.4 0 0 1 0 3.4L17 19"/>
-        <path d="M9.586 5.586A2 2 0 0 0 8.172 5H3a1 1 0 0 0-1 1v5.172a2 2 0 0 0 .586 1.414L8.29 18.29a2.426 2.426 0 0 0 3.42 0l3.58-3.58a2.426 2.426 0 0 0 0-3.42z"/>
-        <circle cx="6.5" cy="9.5" r=".5" fill="currentColor"/>
-      </svg>
-    </div>
-    <div class="threadcub-close-btn" data-action="close">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M18 6 6 18"/>
-        <path d="m6 6 12 12"/>
-      </svg>
-    </div>
-  </div>
-  <div class="threadcub-grip-icon">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="9" cy="12" r="1"/>
-      <circle cx="9" cy="5" r="1"/>
-      <circle cx="9" cy="19" r="1"/>
-      <circle cx="15" cy="12" r="1"/>
-      <circle cx="15" cy="5" r="1"/>
-      <circle cx="15" cy="19" r="1"/>
-    </svg>
-  </div>
-`;
-
-    // Store the bear image URLs for later use
-    this.bearImages = bearImages;
-
-    // Apply base styles
-    this.button.style.cssText = `
-      position: fixed;
-      width: ${this.buttonSize}px;
-      height: ${this.buttonSize}px;
-      background: rgba(255, 255, 255, 0.95);
-      border: 2px solid rgba(226, 232, 240, 0.8);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      z-index: 999999;
-      transition: all 0.2s ease;
-      user-select: none;
-      color: #94a3b8;
-      filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.15));
-      backdrop-filter: blur(10px);
-    `;
-
-    // Set initial position
-    this.setEdgePosition('right', 0.5);
-    
-    // Add to page
-    document.body.appendChild(this.button);
-    console.log('🐻 ThreadCub: Button added to page');
-  }
-
-  getBearImages() {
-    console.log('🐻 ThreadCub: Getting bear images with fallback handling...');
-    
-    // FIXED: More robust extension context checking
-    let useExtensionImages = false;
-    
-    try {
-      // Check if we're in a proper extension context
-      if (typeof chrome !== 'undefined' && 
-          chrome.runtime && 
-          chrome.runtime.getURL && 
-          chrome.runtime.id) {
-        
-        // Test if we can actually generate a URL
-        const testUrl = chrome.runtime.getURL('icons/icon-48.png');
-        if (testUrl && testUrl.startsWith('chrome-extension://')) {
-          useExtensionImages = true;
-          console.log('🐻 ThreadCub: Extension context available, using extension images');
-        }
-      }
-    } catch (error) {
-      console.log('🐻 ThreadCub: Extension context not available:', error);
-      useExtensionImages = false;
-    }
-    
-    if (useExtensionImages) {
-      try {
-        const defaultIcon = chrome.runtime.getURL('icons/icon-48.png');
-        const happyIcon = chrome.runtime.getURL('icons/icon-happy.png');
-        const sadIcon = chrome.runtime.getURL('icons/icon-sad.png');
-        const taggingIcon = chrome.runtime.getURL('icons/icon-happier.png');
-        
-        return {
-          default: `<img src="${defaultIcon}" width="48" height="48" alt="ThreadCub" style="transition: all 0.2s ease;" onerror="console.log('🐻 Image load failed, using emoji'); this.style.display='none'; this.nextElementSibling.style.display='block';" />
-                    <span style="display: none; font-size: 32px;">🐻</span>`,
-          happy: `<img src="${happyIcon}" width="48" height="48" alt="Happy ThreadCub" style="transition: all 0.2s ease;" onerror="console.log('🐻 Happy image failed, using emoji'); this.style.display='none'; this.nextElementSibling.style.display='block';" />
-                  <span style="display: none; font-size: 32px;">😊</span>`,
-          sad: `<img src="${sadIcon}" width="48" height="48" alt="Sad ThreadCub" style="transition: all 0.2s ease;" onerror="console.log('🐻 Sad image failed, using emoji'); this.style.display='none'; this.nextElementSibling.style.display='block';" />
-                <span style="display: none; font-size: 32px;">😢</span>`,
-          tagging: `<img src="${taggingIcon}" width="48" height="48" alt="Tagging ThreadCub" style="transition: all 0.2s ease;" onerror="console.log('🐻 Tagging image failed, using emoji'); this.style.display='none'; this.nextElementSibling.style.display='block';" />
-                    <span style="display: none; font-size: 32px;">🏷️</span>`
-        };
-      } catch (error) {
-        console.log('🐻 ThreadCub: Error generating extension image URLs:', error);
-      }
-    }
-    
-    // Fallback to emojis (always works)
-    console.log('🐻 ThreadCub: Using emoji fallbacks for maximum compatibility');
-    return {
-      default: '<span style="font-size: 32px;">🐻</span>',
-      happy: '<span style="font-size: 32px;">😊</span>',
-      sad: '<span style="font-size: 32px;">😢</span>',
-      tagging: '<span style="font-size: 32px;">🏷️</span>'
-    };
-  }
-
-  createBorderOverlay() {
-    this.borderOverlay = document.createElement('div');
-    this.borderOverlay.id = 'threadcub-border-overlay';
-    this.borderOverlay.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      border: 4px solid #4F46E5;
-      pointer-events: none;
-      z-index: 999998;
-      opacity: 0;
-      transition: opacity 0.2s ease;
-    `;
-    document.body.appendChild(this.borderOverlay);
-  }
-
-// === END SECTION 4A ===
-
-// === SECTION 4B: Button Styles & Layout ===
-
-  addStyles() {
-    if (document.getElementById('threadcub-styles')) return;
-   
-    const style = document.createElement('style');
-    style.id = 'threadcub-styles';
-    style.textContent = `
-      #threadcub-edge-btn {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      }
-      
-      #threadcub-edge-btn:hover {
-        transform: scale(1.05);
-        filter: drop-shadow(0 4px 16px rgba(0, 0, 0, 0.2));
-        background: rgba(255, 255, 255, 1);
-        border-color: #4F46E5;
-      }
-      
-      #threadcub-edge-btn.dragging {
-        transform: scale(1.1);
-        filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.25));
-        cursor: grabbing;
-        transition: none;
-      }
-      
-      .threadcub-btn-content {
-        position: relative;
-        width: 100%;
-        height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      
-      .threadcub-bear-face {
-        font-size: 32px;
-        transition: all 0.2s ease;
-        user-select: none;
-        cursor: grab;
-      }
-      
-      .threadcub-bear-face:active {
-        cursor: grabbing;
-      }
-      
-      .threadcub-action-buttons {
-        position: absolute;
-        display: flex;
-        gap: 6px;
-        opacity: 0;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        pointer-events: none;
-        flex-direction: column;
-      }
-      
-      .threadcub-grip-icon {
-        position: absolute;
-        opacity: 0;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        color: #94a3b8;
-        pointer-events: none;
-        transform: scale(0.8);
-      }
-      
-      .threadcub-shadow-button {
-        position: fixed;
-        width: 48px;
-        height: 48px;
-        background: rgba(79, 70, 229, 0.3);
-        border: 2px dashed rgba(79, 70, 229, 0.6);
-        border-radius: 50%;
-        pointer-events: none;
-        z-index: 999997;
-        opacity: 0;
-        transition: opacity 0.2s ease;
-      }
-      
-      .threadcub-shadow-button.active {
-        opacity: 1;
-      }
-
-      .threadcub-new-btn,
-      .threadcub-download-btn,
-      .threadcub-tag-btn,
-      .threadcub-close-btn {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        cursor: pointer;
-        backdrop-filter: blur(10px);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        transform: scale(0.7);
-        pointer-events: auto;
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        background: rgba(255, 255, 255, 0.95);
-        color: #64748b;
-      }
-      
-      .threadcub-new-btn:hover {
-        background: #925FE2 !important;
-        color: white !important;
-        transform: scale(1.1) !important;
-        box-shadow: 0 4px 12px rgba(146, 95, 226, 0.4) !important;
-      }
-      
-      .threadcub-download-btn:hover {
-        background: #99DAFA !important;
-        color: #4C596E !important;
-        transform: scale(1.1) !important;
-        box-shadow: 0 4px 12px rgba(153, 218, 250, 0.4) !important;
-      }
-      
-      .threadcub-tag-btn:hover {
-        background: #FFD700 !important;
-        color: #4C596E !important;
-        transform: scale(1.1) !important;
-        box-shadow: 0 4px 12px rgba(254, 239, 144, 0.4) !important;
-      }
-   
-      .threadcub-close-btn:hover {
-        background: #ef4444 !important;
-        color: white !important;
-        transform: scale(1.1) !important;
-        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4) !important;
-      }
-
-      #threadcub-edge-btn.edge-right .threadcub-action-buttons,
-      #threadcub-edge-btn.edge-left .threadcub-action-buttons {
-        top: 70px;
-        left: 50%;
-        transform: translateX(-50%);
-        flex-direction: column;
-      }
-      
-      #threadcub-edge-btn.edge-top .threadcub-action-buttons {
-        top: 70px;
-        left: 50%;
-        transform: translateX(-50%);
-        flex-direction: column;
-      }
-      
-      #threadcub-edge-btn.edge-bottom .threadcub-action-buttons {
-        bottom: 70px;
-        left: 50%;
-        transform: translateX(-50%);
-        flex-direction: column;
-      }
-
-      #threadcub-edge-btn:hover .threadcub-action-buttons,
-      #threadcub-edge-btn .threadcub-action-buttons:hover {
-        opacity: 1;
-        pointer-events: auto;
-      }
-      
-      #threadcub-edge-btn:hover .threadcub-new-btn,
-      #threadcub-edge-btn:hover .threadcub-download-btn,
-      #threadcub-edge-btn:hover .threadcub-tag-btn,
-      #threadcub-edge-btn:hover .threadcub-close-btn {
-        transform: scale(1);
-      }
-      
-      #threadcub-edge-btn:hover .threadcub-grip-icon {
-        opacity: 1;
-      }
-      
-      #threadcub-edge-btn.dragging .threadcub-action-buttons {
-        opacity: 0;
-        pointer-events: none;
-      }
-      
-      #threadcub-edge-btn.dragging .threadcub-grip-icon {
-        opacity: 1;
-        left: 50% !important;
-        right: auto !important;
-        top: 50% !important;
-        bottom: auto !important;
-        transform: translate(-50%, -50%) scale(1) !important;
-      }
-
-      .threadcub-tooltip {
-        position: fixed !important;
-        background: #4C596E !important;
-        color: white !important;
-        padding: 6px 12px !important;
-        border-radius: 6px !important;
-        font-family: 'Karla', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
-        font-size: 13px !important;
-        font-weight: 600 !important;
-        text-transform: uppercase !important;
-        letter-spacing: 0.5px !important;
-        white-space: nowrap !important;
-        z-index: 10000001 !important;
-        opacity: 0 !important;
-        transform: scale(0.8) !important;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        pointer-events: none !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-      }
-      
-      .threadcub-tooltip.show {
-        opacity: 1 !important;
-        transform: scale(1) !important;
-      }
-    `;
-    
-    document.head.appendChild(style);
-  }
-
-// === END SECTION 4B ===
-
-// === SECTION 4C: Event Handling & Interactions ===
-
-setupEventListeners() {
-  // Mouse events
-  this.button.addEventListener('mousedown', this.handleMouseDown.bind(this));
-  document.addEventListener('mousemove', this.handleMouseMove.bind(this));
-  document.addEventListener('mouseup', this.handleMouseUp.bind(this));
-  
-  // Touch events
-  this.button.addEventListener('touchstart', this.handleTouchStart.bind(this));
-  document.addEventListener('touchmove', this.handleTouchMove.bind(this));
-  document.addEventListener('touchend', this.handleTouchEnd.bind(this));
-  
-  // Click events for action buttons
-  this.button.addEventListener('click', this.handleClick.bind(this));
-  
-  // Custom tooltip system
-  this.setupTooltips();
-  
-  // Hover events for bear expressions
-  this.setupBearExpressionListeners();
-  
-  // Window resize
-  window.addEventListener('resize', this.handleResize.bind(this));
-}
-
-setupTooltips() {
-  const tooltipData = {
-    'threadcub-new-btn': 'CONTINUE YOUR CHAT',
-    'threadcub-download-btn': 'QUICK STASH',
-    'threadcub-tag-btn': 'REMEMBEAR TAGS',
-    'threadcub-close-btn': 'OH REALLY?'
-  };
-  
-  Object.entries(tooltipData).forEach(([className, text]) => {
-    const button = this.button.querySelector(`.${className}`);
-    if (!button) return;
-    
-    let tooltip = null;
-    let showTimeout = null;
-    let hideTimeout = null;
-    
-    const showTooltip = (e) => {
-      clearTimeout(showTimeout);
-      clearTimeout(hideTimeout);
-      
-      showTimeout = setTimeout(() => {
-        // Remove any existing tooltips
-        document.querySelectorAll('.threadcub-tooltip').forEach(t => t.remove());
-        
-        // Create new tooltip
-        tooltip = document.createElement('div');
-        tooltip.className = 'threadcub-tooltip';
-        tooltip.textContent = text;
-        
-        // Set initial styles to prevent flash
-        tooltip.style.position = 'fixed';
-        tooltip.style.opacity = '0';
-        tooltip.style.pointerEvents = 'none';
-        
-        // Add to DOM
-        document.body.appendChild(tooltip);
-        
-        // Get button position
-        const buttonRect = button.getBoundingClientRect();
-        
-        // Force layout calculation by accessing offsetWidth
-        const tooltipWidth = tooltip.offsetWidth;
-        const tooltipHeight = tooltip.offsetHeight;
-        
-        // Simple positioning: 8px to the left, vertically centered
-        const x = buttonRect.left - tooltipWidth - 8;
-        const y = buttonRect.top + (buttonRect.height - tooltipHeight) / 2;
-        
-        // Apply position
-        tooltip.style.left = x + 'px';
-        tooltip.style.top = y + 'px';
-        
-        // Show with animation
-        requestAnimationFrame(() => {
-          tooltip.classList.add('show');
-        });
-        
-      }, 150);
-    };
-    
-    const hideTooltip = () => {
-      clearTimeout(showTimeout);
-      clearTimeout(hideTimeout);
-      
-      if (tooltip) {
-        tooltip.classList.remove('show');
-        hideTimeout = setTimeout(() => {
-          if (tooltip && tooltip.parentNode) {
-            tooltip.parentNode.removeChild(tooltip);
-          }
-          tooltip = null;
-        }, 200);
-      }
-    };
-    
-    button.addEventListener('mouseenter', showTooltip);
-    button.addEventListener('mouseleave', hideTooltip);
-  });
-}
-
-setupBearExpressionListeners() {
-  const newBtn = this.button.querySelector('.threadcub-new-btn');
-  const downloadBtn = this.button.querySelector('.threadcub-download-btn');
-  const tagBtn = this.button.querySelector('.threadcub-tag-btn');
-  const closeBtn = this.button.querySelector('.threadcub-close-btn');
-  
-  if (newBtn) {
-    newBtn.addEventListener('mouseenter', () => this.setBearExpression('happy'));
-    newBtn.addEventListener('mouseleave', () => this.setBearExpression('happy'));
-  }
-  
-  if (downloadBtn) {
-    downloadBtn.addEventListener('mouseenter', () => this.setBearExpression('happy'));
-    downloadBtn.addEventListener('mouseleave', () => this.setBearExpression('happy'));
-  }
-  
-  if (tagBtn) {
-    tagBtn.addEventListener('mouseenter', () => this.setBearExpression('tagging'));
-    tagBtn.addEventListener('mouseleave', () => this.setBearExpression('happy'));
-  }
-  
-  if (closeBtn) {
-    closeBtn.addEventListener('mouseenter', () => this.setBearExpression('sad'));
-    closeBtn.addEventListener('mouseleave', () => this.setBearExpression('happy'));
-  }
-  
-  this.button.addEventListener('mouseenter', () => {
-    if (this.currentBearState === 'default') {
-      this.setBearExpression('happy');
-      this.currentBearState = 'happy';
-    }
-  });
-  
-  this.button.addEventListener('mouseleave', () => {
-    this.setBearExpression('default');
-    this.currentBearState = 'default';
-  });
-}
-
-setBearExpression(state) {
-  const bearFace = this.button.querySelector('.threadcub-bear-face');
-  if (!bearFace || !this.bearImages) return;
-  
-  let newContent;
-  switch (state) {
-    case 'happy':
-      newContent = this.bearImages.happy;
-      break;
-    case 'sad':
-      newContent = this.bearImages.sad;
-      break;
-    case 'tagging':
-      newContent = this.bearImages.tagging;
-      break;
-    default:
-      newContent = this.bearImages.default;
-  }
-  
-  bearFace.innerHTML = newContent;
-}
-
-// Handle tag button click with proper error handling
-handleTagButtonClick() {
-  try {
-    console.log('🏷️ ThreadCub: Handling tag button click...');
-    console.log('🏷️ ThreadCub: window.threadcubTagging exists:', !!window.threadcubTagging);
-    
-    if (window.threadcubTagging && typeof window.threadcubTagging.toggleSidePanel === 'function') {
-      console.log('🏷️ ThreadCub: Calling toggleSidePanel...');
-      window.threadcubTagging.toggleSidePanel();
-    } else {
-      console.log('🏷️ ThreadCub: Tagging system not available, initializing...');
-      this.initializeTagging();
-    }
-  } catch (error) {
-    console.error('🏷️ ThreadCub: Error in handleTagButtonClick:', error);
-    this.showErrorToast('Tagging system error');
-  }
-}
-
-// Initialize tagging system if not already available
-initializeTagging() {
-  if (typeof window.ThreadCubTagging !== 'undefined' && !window.threadcubTagging) {
-    try {
-      window.threadcubTagging = new window.ThreadCubTagging(this);
-      console.log('🏷️ ThreadCub: Tagging system initialized from button click');
-      
-      // Now try to toggle the panel
-      if (window.threadcubTagging.toggleSidePanel) {
-        window.threadcubTagging.toggleSidePanel();
-      }
-    } catch (error) {
-      console.error('🏷️ ThreadCub: Failed to initialize tagging system:', error);
-    }
-  } else {
-    console.log('🏷️ ThreadCub: ThreadCubTagging class not available');
-  }
-}
-
-// Public method to ensure tagging is available
-ensureTaggingAvailable() {
-  if (!window.threadcubTagging) {
-    this.initializeTagging();
-  }
-  return !!window.threadcubTagging;
-}
-
-// Event handlers
-handleMouseDown(e) {
-  if (e.button !== 0) return;
-  e.preventDefault();
-  e.stopPropagation();
-  
-  // Check for action button clicks
-  const newBtn = e.target.closest('.threadcub-new-btn');
-  const downloadBtn = e.target.closest('.threadcub-download-btn');
-  const tagBtn = e.target.closest('.threadcub-tag-btn');
-  const closeBtn = e.target.closest('.threadcub-close-btn');
-  
-  if (newBtn) {
-    this.saveAndOpenConversation('floating');
-    return;
-  }
-  
-  if (downloadBtn) {
-    console.log('🐻 ThreadCub: Download button clicked by user - manual download only');
-    this.downloadConversationJSON();
-    return;
-  }
-  
-  if (tagBtn) {
-    console.log('🏷️ ThreadCub: Tag button clicked');
-    this.handleTagButtonClick();
-    return;
-  }
-  
-  if (closeBtn) {
-    this.destroy();
-    return;
-  }
-  
-  // Start drag for bear head, grip icon, or main button (but not action buttons)
-  if (!e.target.closest('.threadcub-action-buttons')) {
-    this.startDrag(e.clientX, e.clientY);
-  }
-}
-
-handleTouchStart(e) {
-  e.preventDefault();
-  const touch = e.touches[0];
-  this.startDrag(touch.clientX, touch.clientY);
-}
-
-handleMouseMove(e) {
-  if (!this.isDragging) return;
-  e.preventDefault();
-  this.updateDragPosition(e.clientX, e.clientY);
-}
-
-handleTouchMove(e) {
-  if (!this.isDragging) return;
-  e.preventDefault();
-  const touch = e.touches[0];
-  this.updateDragPosition(touch.clientX, touch.clientY);
-}
-
-handleMouseUp(e) {
-  if (!this.isDragging) return;
-  this.endDrag(e.clientX, e.clientY);
-}
-
-handleTouchEnd(e) {
-  if (!this.isDragging) return;
-  const touch = e.changedTouches[0];
-  this.endDrag(touch.clientX, touch.clientY);
-}
-
-handleClick(e) {
-  if (this.isDragging) return;
-  
-  e.preventDefault();
-  e.stopPropagation();
-}
-
-handleResize() {
-  setTimeout(() => {
-    this.setEdgePosition(this.currentEdge, this.currentPosition);
-  }, 100);
-}
-
-// Toast notification methods
-showSuccessToast(message = '✅ Success!') {
-  this.showToast(message, 'success');
-}
-
-showErrorToast(message = '❌ Error occurred') {
-  this.showToast(message, 'error');
-}
-
-showToast(message, type = 'success') {
-  const toast = document.createElement('div');
-  toast.style.cssText = `
-    position: fixed;
-    bottom: 80px;
-    left: 50%;
-    transform: translateX(-50%) translateY(10px);
-    height: 40px;
-    background: ${type === 'success' ? '#DDFCFC' : '#FAE1E1'};
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 0 16px;
-    font-family: 'Karla', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    font-weight: 800;
-    font-size: 14px;
-    color: ${type === 'success' ? '#4B84A3' : '#E32920'};
-    z-index: 10000000;
-    opacity: 0;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    white-space: nowrap;
-    user-select: none;
-    pointer-events: none;
-  `;
-
-  toast.innerHTML = `
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      ${type === 'success' 
-        ? '<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/>' 
-        : '<circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6"/><path d="m9 9 6 6"/>'
-      }
-    </svg>
-    <span>${message}</span>
-  `;
-
-  document.body.appendChild(toast);
-
-  // Animate in
-  setTimeout(() => {
-    toast.style.opacity = '1';
-    toast.style.transform = 'translateX(-50%) translateY(0)';
-  }, 50);
-
-  // Animate out and remove
-  setTimeout(() => {
-    toast.style.opacity = '0';
-    toast.style.transform = 'translateX(-50%) translateY(10px)';
-    setTimeout(() => {
-      if (toast.parentNode) {
-        toast.parentNode.removeChild(toast);
-      }
-    }, 300);
-  }, 3000);
-}
-
-// Static method for global access
-static showGlobalSuccessToast(message = 'Operation completed successfully!') {
-  if (window.threadcubButton && typeof window.threadcubButton.showSuccessToast === 'function') {
-    window.threadcubButton.showSuccessToast(message);
-  } else {
-    // Fallback toast creation
-    console.log('🐻 ThreadCub:', message);
-  }
-}
-
-// Add destroy method if missing
-destroy() {
-  if (this.button && this.button.parentNode) {
-    this.button.parentNode.removeChild(this.button);
-  }
-  if (this.borderOverlay && this.borderOverlay.parentNode) {
-    this.borderOverlay.parentNode.removeChild(this.borderOverlay);
-  }
-  console.log('🐻 ThreadCub: Button destroyed');
-}
-
-// === END SECTION 4C ===
-
-// === SECTION 4D: Drag & Drop Functionality ===
-
-  startDrag(clientX, clientY) {
-    this.isDragging = true;
-    this.button.classList.add('dragging');
-    this.startX = clientX;
-    this.startY = clientY;
-    
-    this.borderOverlay.style.opacity = '1';
-    this.createShadowButton();
-  }
-
-  createShadowButton() {
-    if (this.shadowButton) this.shadowButton.remove();
-    
-    this.shadowButton = document.createElement('div');
-    this.shadowButton.className = 'threadcub-shadow-button';
-    document.body.appendChild(this.shadowButton);
-    this.updateShadowPosition();
-  }
-
-  updateShadowPosition() {
-    if (!this.shadowButton) return;
-    
-    const snapPosition = this.calculateSnapPosition(this.currentEdge, this.currentPosition);
-    const x = snapPosition.x + 6;
-    const y = snapPosition.y + 6;
-    
-    this.shadowButton.style.left = `${x}px`;
-    this.shadowButton.style.top = `${y}px`;
-    this.shadowButton.classList.add('active');
-  }
-
-  calculateSnapPosition(edge, position) {
-    const { innerWidth: width, innerHeight: height } = window;
-    let x, y;
-    
-    switch (edge) {
-      case 'left':
-        x = this.edgeMargin;
-        y = position * (height - this.buttonSize);
-        break;
-      case 'right':
-        x = width - this.buttonSize - this.edgeMargin;
-        y = position * (height - this.buttonSize);
-        break;
-      case 'top':
-        x = position * (width - this.buttonSize);
-        y = this.edgeMargin;
-        break;
-      case 'bottom':
-        x = position * (width - this.buttonSize);
-        y = height - this.buttonSize - this.edgeMargin;
-        break;
-    }
-    
-    x = Math.max(this.edgeMargin, Math.min(width - this.buttonSize - this.edgeMargin, x));
-    y = Math.max(this.edgeMargin, Math.min(height - this.buttonSize - this.edgeMargin, y));
-    
-    return { x, y };
-  }
-
-  updateDragPosition(clientX, clientY) {
-    // Update button position
-    this.button.style.left = `${clientX - this.buttonSize/2}px`;
-    this.button.style.top = `${clientY - this.buttonSize/2}px`;
-    
-    // Calculate nearest edge
-    const { innerWidth: width, innerHeight: height } = window;
-    const distances = {
-      left: clientX,
-      right: width - clientX,
-      top: clientY,
-      bottom: height - clientY
-    };
-    
-    const nearestEdge = Object.keys(distances).reduce((a, b) => distances[a] < distances[b] ? a : b);
-    
-    let position;
-    if (nearestEdge === 'left' || nearestEdge === 'right') {
-      position = Math.max(0, Math.min(1, (clientY - this.buttonSize/2) / (height - this.buttonSize)));
-    } else {
-      position = Math.max(0, Math.min(1, (clientX - this.buttonSize/2) / (width - this.buttonSize)));
-    }
-    
-    this.currentEdge = nearestEdge;
-    this.currentPosition = position;
-    this.updateShadowPosition();
-  }
-
-  endDrag(clientX, clientY) {
-    const moveDistance = Math.sqrt(
-      Math.pow(clientX - this.startX, 2) + Math.pow(clientY - this.startY, 2)
-    );
-    
-    this.isDragging = false;
-    this.button.classList.remove('dragging');
-    this.borderOverlay.style.opacity = '0';
-    
-    if (this.shadowButton) {
-      this.shadowButton.classList.remove('active');
-      setTimeout(() => {
-        if (this.shadowButton) {
-          this.shadowButton.remove();
-          this.shadowButton = null;
-        }
-      }, 200);
-    }
-    
-    if (moveDistance >= 10) {
-      this.animateToEdgePosition();
-      this.savePosition();
-    }
-  }
-
-  animateToEdgePosition() {
-    this.button.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-    this.setEdgePosition(this.currentEdge, this.currentPosition);
-    
-    setTimeout(() => {
-      this.button.style.transition = 'all 0.2s ease';
-    }, 300);
-  }
-
-  // Position management
-  setEdgePosition(edge, position) {
-    const snapPosition = this.calculateSnapPosition(edge, position);
-    
-    this.button.style.left = `${snapPosition.x}px`;
-    this.button.style.top = `${snapPosition.y}px`;
-    
-    this.button.className = this.button.className.replace(/edge-\w+/g, '');
-    this.button.classList.add(`edge-${edge}`);
-    
-    this.currentEdge = edge;
-    this.currentPosition = position;
-  }
-
-  savePosition() {
-    const position = { edge: this.currentEdge, position: this.currentPosition };
-    try {
-      if (typeof chrome !== 'undefined' && chrome.storage) {
-        chrome.storage.local.set({ threadcubButtonPosition: position });
-      } else {
-        localStorage.setItem('threadcubButtonPosition', JSON.stringify(position));
-      }
-    } catch (error) {
-      console.log('🐻 ThreadCub: Could not save position:', error);
-    }
-  }
-
-  async loadPosition() {
-    try {
-      let savedPosition = null;
-      
-      if (typeof chrome !== 'undefined' && chrome.storage) {
-        const result = await chrome.storage.local.get(['threadcubButtonPosition']);
-        savedPosition = result.threadcubButtonPosition;
-      } else {
-        const saved = localStorage.getItem('threadcubButtonPosition');
-        savedPosition = saved ? JSON.parse(saved) : null;
-      }
-      
-      if (savedPosition && savedPosition.edge && typeof savedPosition.position === 'number') {
-        this.setEdgePosition(savedPosition.edge, savedPosition.position);
-      }
-    } catch (error) {
-      console.log('🐻 ThreadCub: Could not load position:', error);
-    }
-  }
-
-  handleResize() {
-    setTimeout(() => {
-      this.setEdgePosition(this.currentEdge, this.currentPosition);
-    }, 100);
-  }
-
-// === END SECTION 4D ===
-
-// === SECTION 4E-1: Core API Integration (FIXED Extension Context) ===
-
-// ===== MAIN METHOD: saveAndOpenConversation (FIXED) =====
-async saveAndOpenConversation(source = 'floating') {
-  console.log('🐻 ThreadCub: Starting conversation save and open from:', source);
-  
-  // Prevent double exports with debounce
-  const now = Date.now();
-  if (this.isExporting || (now - this.lastExportTime) < 2000) {
-    console.log('🐻 ThreadCub: Export already in progress or too soon after last export');
-    return;
-  }
-  
-  this.isExporting = true;
-  this.lastExportTime = now;
-  
-  try {
-    // Extract conversation data from the current AI platform
-    console.log('🐻 ThreadCub: Extracting conversation data...');
-    
-    let conversationData;
-    const hostname = window.location.hostname;
-    
-    if (hostname.includes('claude.ai')) {
-      conversationData = await this.extractClaudeConversation();
-    } else if (hostname.includes('chatgpt.com') || hostname.includes('chat.openai.com')) {
-      conversationData = this.extractChatGPTMessages();
-    } else {
-      conversationData = this.extractGenericConversation();
-    }
-    
-    // CRITICAL FIX: Validate conversation data before proceeding
-    if (!conversationData) {
-      console.error('🐻 ThreadCub: No conversation data returned from extraction');
-      this.showErrorToast('No conversation found to save');
-      this.isExporting = false;
-      return;
-    }
-    
-    if (!conversationData.messages || conversationData.messages.length === 0) {
-      console.error('🐻 ThreadCub: No messages found in conversation data');
-      this.showErrorToast('No messages found in conversation');
-      this.isExporting = false;
-      return;
-    }
-    
-    console.log(`🐻 ThreadCub: Successfully extracted ${conversationData.messages.length} messages`);
-    
-    // FIXED: Store conversation data globally for later use
-    this.lastConversationData = conversationData;
-    
-    // FIXED: Format data to match your API route expectations
-    const apiData = {
-      conversationData: conversationData,
-      source: conversationData.platform?.toLowerCase() || 'unknown',
-      title: conversationData.title || 'Untitled Conversation'
-    };
-    
-    console.log('🐻 ThreadCub: Attempting to save via background script...');
-    
-    // FIXED: Better extension context handling
-    let response;
-    try {
-      // Check if extension context is valid before attempting
-      if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.sendMessage) {
-        throw new Error('Extension context not available');
-      }
-      
-      // Test if extension context is actually working
-      if (chrome.runtime.lastError) {
-        throw new Error('Extension context invalidated: ' + chrome.runtime.lastError.message);
-      }
-      
-      response = await chrome.runtime.sendMessage({
-        action: 'saveConversation',
-        data: apiData
-      });
-      
-      // Additional check for context invalidation after the call
-      if (chrome.runtime.lastError) {
-        throw new Error('Extension context invalidated during call: ' + chrome.runtime.lastError.message);
-      }
-      
-    } catch (contextError) {
-      console.log('🐻 ThreadCub: Extension context error:', contextError.message);
-      console.log('🐻 ThreadCub: Falling back to direct continuation without API save...');
-      
-      // FALLBACK: Skip API save and go straight to continuation
-      this.handleDirectContinuation(conversationData);
-      this.isExporting = false;
-      return;
-    }
-
-    if (!response || !response.success) {
-      console.error('🐻 ThreadCub: Background script API call failed:', response?.error);
-      console.log('🐻 ThreadCub: Falling back to direct continuation without API save...');
-      
-      // FALLBACK: Skip API save and go straight to continuation
-      this.handleDirectContinuation(conversationData);
-      this.isExporting = false;
-      return;
-    }
-
-    const data = response.data;
-    console.log('✅ ThreadCub: Conversation saved via background script:', data);
-
-    // Generate continuation prompt and handle platform-specific flow
-    const summary = data.summary || this.generateQuickSummary(conversationData.messages);
-    const shareUrl = data.shareableUrl || `https://threadcub.com/api/share/${data.conversationId}`;
-    
-    // Generate minimal continuation prompt
-    const minimalPrompt = this.generateContinuationPrompt(summary, shareUrl, conversationData.platform, conversationData);
-    
-    // FIXED: Detect target platform for smart routing
-    const targetPlatform = this.getTargetPlatformFromCurrentUrl();
-    
-    if (targetPlatform === 'chatgpt') {
-      // ChatGPT flow: Auto-download + cross-tab continuation
-      console.log('🐻 ThreadCub: Routing to ChatGPT flow (with file download)');
-      this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
-    } else if (targetPlatform === 'claude') {
-      // Claude flow: API-only + cross-tab continuation (no download)
-      console.log('🐻 ThreadCub: Routing to Claude flow (no file download)');
-      this.handleClaudeFlow(minimalPrompt, shareUrl, conversationData);
-    } else {
-      // Default to ChatGPT flow
-      console.log('🐻 ThreadCub: Unknown platform, defaulting to ChatGPT flow');
-      this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
-    }
-
-    this.setBearExpression('happy');
-    setTimeout(() => {
-      if (this.currentBearState !== 'default') {
-        this.setBearExpression('default');
-      }
-    }, 2000);
-
-    this.isExporting = false;
-
-  } catch (error) {
-    console.error('🐻 ThreadCub: Export error:', error);
-    this.showErrorToast('Export failed: ' + error.message);
-    this.isExporting = false;
-  }
-}
-
-// NEW: Handle direct continuation without API save (fallback)
-handleDirectContinuation(conversationData) {
-  console.log('🐻 ThreadCub: Handling direct continuation without API save...');
-  
-  // Create a fallback share URL
-  const fallbackShareUrl = `https://threadcub.com/fallback/${Date.now()}`;
-  
-  // Generate a simple continuation prompt
-  const summary = this.generateQuickSummary(conversationData.messages);
-  const minimalPrompt = this.generateContinuationPrompt(summary, fallbackShareUrl, conversationData.platform, conversationData);
-  
-  // Route to appropriate platform flow
-  const targetPlatform = this.getTargetPlatformFromCurrentUrl();
-  
-  if (targetPlatform === 'chatgpt') {
-    console.log('🐻 ThreadCub: Direct ChatGPT continuation (no API save)');
-    this.handleChatGPTFlow(minimalPrompt, fallbackShareUrl, conversationData);
-  } else if (targetPlatform === 'claude') {
-    console.log('🐻 ThreadCub: Direct Claude continuation (no API save)');
-    this.handleClaudeFlow(minimalPrompt, fallbackShareUrl, conversationData);
-  } else {
-    console.log('🐻 ThreadCub: Direct continuation - defaulting to ChatGPT flow');
-    this.handleChatGPTFlow(minimalPrompt, fallbackShareUrl, conversationData);
-  }
-  
-  this.showSuccessToast('Continuing conversation (offline mode)');
-}
-
-// === HELPER METHODS (UNCHANGED) ===
-
-getTargetPlatformFromCurrentUrl() {
-  const hostname = window.location.hostname;
-  if (hostname.includes('chatgpt.com') || hostname.includes('chat.openai.com')) {
-    return 'chatgpt';
-  } else if (hostname.includes('claude.ai')) {
-    return 'claude';
-  } else if (hostname.includes('gemini.google.com')) {
-    return 'gemini';
-  }
-  return 'unknown';
-}
-
-generateQuickSummary(messages) {
-  if (!messages || messages.length === 0) return 'Empty conversation';
-  
-  const userMessages = messages.filter(msg => msg.role === 'user' || msg.role === 'human');
-  if (userMessages.length === 0) return 'No user messages found';
-  
-  const lastUserMessage = userMessages[userMessages.length - 1];
-  const firstUserMessage = userMessages[0];
-  
-  if (userMessages.length === 1) {
-    return `Previous conversation about: "${firstUserMessage.content.substring(0, 100)}..."`;
-  }
-  
-  return `Previous conversation: Started with "${firstUserMessage.content.substring(0, 60)}..." and most recently discussed "${lastUserMessage.content.substring(0, 60)}..."`;
-}
-
-// === END SECTION 4E-1 ===
-
-// === SECTION 4E-2: ChatGPT Flow Handler (ENHANCED UX WITH AUTO-DOWNLOAD) ===
-
-// ENHANCED: Same smooth UX as Claude but with auto-download + file upload approach
-handleChatGPTFlow(continuationPrompt, shareUrl, conversationData) {
-  console.log('🤖 ThreadCub: Starting ENHANCED ChatGPT flow with auto-download...');
-  console.log('🤖 ThreadCub: Conversation data:', conversationData);
-  console.log('🤖 ThreadCub: Message count:', conversationData.messages?.length || 0);
-  
-  // STEP 1: Auto-download the conversation file in background
-  this.autoDownloadChatGPTFile(conversationData, shareUrl);
-  
-  // STEP 2: Create continuation data for cross-tab modal (same as Claude)
-  const continuationData = {
-    prompt: this.generateChatGPTContinuationPrompt(), // Generic upload prompt
-    shareUrl: shareUrl,
-    platform: 'ChatGPT',
-    timestamp: Date.now(),
-    // Include message count data for modal display
-    messages: conversationData.messages || [],
-    totalMessages: conversationData.total_messages || conversationData.messages?.length || 0,
-    title: conversationData.title || 'Previous Conversation',
-    conversationData: conversationData,
-    // Special flag for ChatGPT flow
-    chatGPTFlow: true,
-    downloadCompleted: true
-  };
-  
-  console.log('🤖 ThreadCub: ChatGPT continuation data prepared');
-  
-  // STEP 3: Use same storage approach as Claude for modal
-  const canUseChrome = this.canUseChromStorage();
-  
-  if (canUseChrome) {
-    console.log('🤖 ThreadCub: Using Chrome storage for ChatGPT modal...');
-    this.storeWithChrome(continuationData)
-      .then(() => {
-        console.log('🐻 ThreadCub: ChatGPT data stored successfully');
-        // Open ChatGPT tab (modal will show there)
-        const chatGPTUrl = 'https://chatgpt.com/';
-        window.open(chatGPTUrl, '_blank');
-        this.showSuccessToast('File downloaded! Check your new ChatGPT tab.');
-      })
-      .catch(error => {
-        console.log('🤖 ThreadCub: Chrome storage failed, using fallback:', error);
-        this.handleChatGPTFlowFallback(continuationData);
-      });
-  } else {
-    console.log('🤖 ThreadCub: Using ChatGPT fallback method directly');
-    this.handleChatGPTFlowFallback(continuationData);
-  }
-}
-
-// ENHANCED: Auto-download conversation file for ChatGPT
-autoDownloadChatGPTFile(conversationData, shareUrl) {
-  try {
-    console.log('🤖 ThreadCub: Auto-downloading conversation file for ChatGPT...');
-    
-    // Create comprehensive conversation file
-    const conversationJSON = {
-      title: conversationData.title || 'ThreadCub Conversation Continuation',
-      url: conversationData.url || window.location.href,
-      platform: conversationData.platform,
-      exportDate: new Date().toISOString(),
-      totalMessages: conversationData.messages.length,
-      source: 'ThreadCub Browser Extension - ChatGPT Continuation',
-      shareUrl: shareUrl,
-      instructions: 'This file contains our previous conversation. Please review it and continue from where we left off.',
-      
-      // Include all the conversation messages
-      messages: conversationData.messages,
-      
-      // Metadata for context
-      summary: this.generateQuickSummary(conversationData.messages)
-    };
-    
-    const filename = `threadcub-continuation-${new Date().toISOString().split('T')[0]}.json`;
-    
-    // Trigger download
-    const blob = new Blob([JSON.stringify(conversationJSON, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    console.log('🤖 ThreadCub: ✅ ChatGPT file auto-downloaded:', filename);
-    
-  } catch (error) {
-    console.error('🤖 ThreadCub: Error auto-downloading ChatGPT file:', error);
-  }
-}
-
-// ENHANCED: Generate specific continuation prompt for ChatGPT input field
-generateChatGPTContinuationPrompt() {
-  return `I'd like to continue our previous conversation. While you can't currently access external URLs, I have our complete conversation history as a file attachment that I'll share now.
-
-Please read through the attached conversation file and provide your assessment of:
-- What we were working on
-- The current status/progress
-- Any next steps or tasks mentioned
-
-Once you've reviewed it, let me know you're ready to continue from where we left off.`;
-}
-
-// Fallback method (same as before but with auto-download)
-handleChatGPTFlowFallback(continuationData) {
-  console.log('🤖 ThreadCub: Using localStorage fallback for ChatGPT...');
-  
-  try {
-    // Store in localStorage as fallback
-    localStorage.setItem('threadcubContinuationData', JSON.stringify(continuationData));
-    console.log('🔧 ChatGPT Fallback: Data stored in localStorage');
-    
-    // Open ChatGPT tab
-    const chatGPTUrl = 'https://chatgpt.com/';
-    window.open(chatGPTUrl, '_blank');
-    this.showSuccessToast('File downloaded! Check your new ChatGPT tab.');
-    
-  } catch (error) {
-    console.error('🔧 ChatGPT Fallback: localStorage failed:', error);
-    this.showManualChatGPTInstructions(continuationData);
-  }
-}
-
-// Manual instructions for ultimate fallback
-showManualChatGPTInstructions(continuationData) {
-  console.log('🤖 ThreadCub: Showing manual ChatGPT instructions');
-  
-  const instructionPopup = document.createElement('div');
-  instructionPopup.className = 'threadcub-manual-instructions';
-  instructionPopup.style.cssText = `
-    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    background: white; border-radius: 16px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    max-width: 520px; width: 90%; z-index: 10000001;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    opacity: 0; transition: all 0.3s ease;
-  `;
-  
-  instructionPopup.innerHTML = `
-    <div style="padding: 32px; text-align: center;">
-      <div style="background: linear-gradient(135deg, #10a37f 0%, #0d8f6f 100%); width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 28px;">💬</div>
-      <h2 style="margin: 0 0 8px; color: #1e293b; font-size: 24px;">File Downloaded!</h2>
-      <p style="margin: 0 0 20px; color: #64748b; font-size: 14px;">Your conversation file is ready to upload to ChatGPT</p>
-      
-      <div style="background: #f0fdf4; border: 2px solid #22c55e; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: left;">
-        <h3 style="margin: 0 0 12px; color: #16a34a; font-size: 16px;">📁 Next Steps:</h3>
-        <ol style="margin: 0; padding-left: 20px; color: #166534; font-size: 14px; line-height: 1.6;">
-          <li><strong>Click "Open ChatGPT"</strong> below</li>
-          <li><strong>Upload the downloaded JSON file</strong> (drag & drop or click + icon)</li>
-          <li><strong>Ask ChatGPT to continue</strong> from where you left off</li>
-        </ol>
-      </div>
-      
-      <div style="display: flex; gap: 12px; justify-content: center;">
-        <button id="manual-open-chatgpt" style="padding: 16px 32px; background: #10a37f; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600;">Open ChatGPT</button>
-        <button id="close-manual-instructions" style="padding: 16px 32px; background: #e5e7eb; border: none; border-radius: 8px; color: #6b7280; cursor: pointer; font-weight: 600;">Close</button>
-      </div>
-    </div>
-  `;
-  
-  document.body.appendChild(instructionPopup);
-  setTimeout(() => instructionPopup.style.opacity = '1', 50);
-  
-  instructionPopup.querySelector('#manual-open-chatgpt').addEventListener('click', () => {
-    window.open('https://chatgpt.com/', '_blank');
-    instructionPopup.remove();
-  });
-  
-  instructionPopup.querySelector('#close-manual-instructions').addEventListener('click', () => {
-    instructionPopup.remove();
-  });
-}
-
-// === END SECTION 4E-2 ===
-
-// === SECTION 4E-3: Claude Flow Handler (NO DOWNLOADS) ===
-
-// CLAUDE-ONLY: Handle Claude with API-based continuation (no file downloads)
-handleClaudeFlow(continuationPrompt, shareUrl, conversationData) {
-  console.log('🤖 ThreadCub: Starting Claude flow (API-only, no downloads)...');
-  console.log('🤖 ThreadCub: Conversation data:', conversationData);
-  
-  // CLAUDE: Create continuation data for cross-tab modal (no downloads)
-  const continuationData = {
-    prompt: continuationPrompt, // URL-based prompt for Claude
-    shareUrl: shareUrl,
-    platform: 'Claude',
-    timestamp: Date.now(),
-    // Include message count data
-    messages: conversationData.messages || [],
-    totalMessages: conversationData.total_messages || conversationData.messages?.length || 0,
-    title: conversationData.title || 'Previous Conversation',
-    conversationData: conversationData,
-    // Claude-specific flag (no download needed)
-    claudeFlow: true,
-    downloadCompleted: false // Claude doesn't need downloads
-  };
-  
-  console.log('🤖 ThreadCub: Claude continuation data with message count:', continuationData.totalMessages);
-  
-  // Use same storage approach for cross-tab continuation
-  const canUseChrome = this.canUseChromStorage();
-  
-  if (canUseChrome) {
-    console.log('🤖 ThreadCub: Using Chrome storage for Claude...');
-    this.storeWithChrome(continuationData)
-      .then(() => {
-        console.log('🐻 ThreadCub: Claude data stored successfully');
-        // Open Claude tab (streamlined continuation will handle the rest)
-        const claudeUrl = 'https://claude.ai/';
-        window.open(claudeUrl, '_blank');
-        this.showSuccessToast('Opening Claude with conversation context...');
-      })
-      .catch(error => {
-        console.log('🤖 ThreadCub: Chrome storage failed, using fallback:', error);
-        this.handleClaudeFlowFallback(continuationData);
-      });
-  } else {
-    console.log('🤖 ThreadCub: Using Claude fallback method directly');
-    this.handleClaudeFlowFallback(continuationData);
-  }
-}
-
-// MISSING FUNCTION: Check if Chrome storage is available
-canUseChromStorage() {
-  try {
-    return typeof chrome !== 'undefined' && 
-           chrome.runtime && 
-           chrome.storage && 
-           chrome.storage.local &&
-           !chrome.runtime.lastError;
-  } catch (error) {
-    console.log('🔧 Chrome check failed:', error);
-    return false;
-  }
-}
-
-// MISSING FUNCTION: Store with Chrome storage
-async storeWithChrome(continuationData) {
-  return new Promise((resolve, reject) => {
-    try {
-      chrome.storage.local.set({ threadcubContinuationData: continuationData }, () => {
-        if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
-        } else {
-          console.log('🔧 Chrome storage: Success with message count:', continuationData.totalMessages);
-          resolve();
-        }
-      });
-    } catch (error) {
-      reject(error);
-    }
-  });
-}
-
-// CLAUDE: Fallback method when Chrome storage fails
-handleClaudeFlowFallback(continuationData) {
-  console.log('🤖 ThreadCub: Using localStorage fallback for Claude...');
-  
-  try {
-    // Store in localStorage as fallback
-    localStorage.setItem('threadcubContinuationData', JSON.stringify(continuationData));
-    console.log('🔧 Claude Fallback: Data stored in localStorage');
-    
-    // Open Claude tab
-    const claudeUrl = 'https://claude.ai/';
-    window.open(claudeUrl, '_blank');
-    this.showSuccessToast('Opening Claude with conversation context...');
-    
-  } catch (error) {
-    console.error('🔧 Claude Fallback: localStorage failed:', error);
-    this.showManualClaudeInstructions(continuationData);
-  }
-}
-
-// CLAUDE: Manual instructions for ultimate fallback
-showManualClaudeInstructions(continuationData) {
-  console.log('🤖 ThreadCub: Showing manual Claude instructions');
-  
-  const instructionPopup = document.createElement('div');
-  instructionPopup.className = 'threadcub-manual-instructions';
-  instructionPopup.style.cssText = `
-    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    background: white; border-radius: 16px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    max-width: 520px; width: 90%; z-index: 10000001;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    opacity: 0; transition: all 0.3s ease;
-  `;
-  
-  instructionPopup.innerHTML = `
-    <div style="padding: 32px; text-align: center;">
-      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 28px;">🐻</div>
-      <h2 style="margin: 0 0 8px; color: #1e293b; font-size: 24px;">Continue Manually</h2>
-      <p style="margin: 0 0 20px; color: #64748b; font-size: 14px;">The conversation context URL is ready to share!</p>
-      
-      <div style="background: #f0f9ff; border: 2px solid #0ea5e9; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: left;">
-        <h3 style="margin: 0 0 12px; color: #0369a1; font-size: 16px;">🔗 Simple Steps:</h3>
-        <ol style="margin: 0; padding-left: 20px; color: #0c4a6e; font-size: 14px; line-height: 1.6;">
-          <li><strong>Click "Open Claude"</strong> below</li>
-          <li><strong>Share the conversation URL</strong> with Claude</li>
-          <li><strong>Continue your conversation</strong> (${continuationData.totalMessages} messages)</li>
-        </ol>
-      </div>
-      
-      <div style="display: flex; gap: 12px; justify-content: center;">
-        <button id="manual-open-claude" style="padding: 16px 32px; background: #667eea; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600;">Open Claude</button>
-        <button id="close-manual-instructions" style="padding: 16px 32px; background: #e5e7eb; border: none; border-radius: 8px; color: #6b7280; cursor: pointer; font-weight: 600;">Close</button>
-      </div>
-    </div>
-  `;
-  
-  document.body.appendChild(instructionPopup);
-  setTimeout(() => instructionPopup.style.opacity = '1', 50);
-  
-  instructionPopup.querySelector('#manual-open-claude').addEventListener('click', () => {
-    window.open('https://claude.ai/', '_blank');
-    instructionPopup.remove();
-  });
-  
-  instructionPopup.querySelector('#close-manual-instructions').addEventListener('click', () => {
-    instructionPopup.remove();
-  });
-}
-
-// === END SECTION 4E-3 ===
-
-// === SECTION 4E-4: Manual Download Function (IMPROVED NAMING) ===
-
-// ===== Generate manual download with improved naming =====
-downloadContinuationJSON(conversationData, shareUrl) {
-  try {
-    console.log('🐻 ThreadCub: Creating manual download JSON...');
-    
-    // Create comprehensive conversation file
-    const conversationJSON = {
-      title: conversationData.title || 'ThreadCub Conversation',
-      url: conversationData.url || window.location.href,
-      platform: conversationData.platform,
-      exportDate: new Date().toISOString(),
-      totalMessages: conversationData.messages.length,
-      source: 'ThreadCub Browser Extension - Manual Export',
-      shareUrl: shareUrl,
-      
-      // Include all the conversation messages
-      messages: conversationData.messages,
-      
-      // Metadata for context
-      summary: this.generateQuickSummary(conversationData.messages)
-    };
-    
-    // IMPROVED: Use same clean naming convention as ChatGPT auto-download
-    const filename = `threadcub-continuation-${new Date().toISOString().split('T')[0]}.json`;
-    
-    // Trigger download
-    const blob = new Blob([JSON.stringify(conversationJSON, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    console.log('🐻 ThreadCub: ✅ Manual download completed:', filename);
-    
-  } catch (error) {
-    console.error('🐻 ThreadCub: Error creating manual download:', error);
-  }
-}
-
-// === END SECTION 4E-4 ===
-
-// === SECTION 4E-5: Instruction Event Listeners ===
-
-setupInstructionEventListeners(instructionPopup) {
-  const showDownloadsBtn = instructionPopup.querySelector('#show-downloads');
-  const openChatGPTBtn = instructionPopup.querySelector('#open-chatgpt');
-  const closeInstructionsBtn = instructionPopup.querySelector('#close-instructions');
-  
-  // FIXED: Show downloads folder with multiple fallback methods
-  showDownloadsBtn.addEventListener('click', () => {
-    console.log('🐻 ThreadCub: Attempting to show downloads folder...');
-    
-    let downloadOpened = false;
-    
-    // Method 1: Try Chrome downloads API
-    if (typeof chrome !== 'undefined' && chrome.downloads) {
-      try {
-        chrome.downloads.showDefaultFolder();
-        downloadOpened = true;
-        console.log('🐻 ThreadCub: Downloads opened via Chrome API');
-      } catch (error) {
-        console.log('🐻 ThreadCub: Chrome downloads API failed:', error);
-      }
-    }
-    
-    // Method 2: Try opening downloads page
-    if (!downloadOpened) {
-      try {
-        window.open('chrome://downloads/', '_blank');
-        downloadOpened = true;
-        console.log('🐻 ThreadCub: Downloads page opened');
-      } catch (error) {
-        console.log('🐻 ThreadCub: Chrome downloads page failed:', error);
-      }
-    }
-    
-    // Method 3: Fallback to file explorer for different OS
-    if (!downloadOpened) {
-      try {
-        // Try to open file manager (works on some systems)
-        const userAgent = navigator.userAgent.toLowerCase();
-        if (userAgent.includes('mac')) {
-          window.open('file:///Users/' + (process.env.USER || process.env.USERNAME || 'user') + '/Downloads/', '_blank');
-        } else if (userAgent.includes('win')) {
-          window.open('file:///C:/Users/' + (process.env.USER || process.env.USERNAME || 'user') + '/Downloads/', '_blank');
-        } else {
-          // Linux or others
-          window.open('file:///home/' + (process.env.USER || process.env.USERNAME || 'user') + '/Downloads/', '_blank');
-        }
-        downloadOpened = true;
-        console.log('🐻 ThreadCub: File manager opened');
-      } catch (error) {
-        console.log('🐻 ThreadCub: File manager failed:', error);
-      }
-    }
-    
-    // Method 4: Show message if all else fails
-    if (!downloadOpened) {
-      alert('Please check your Downloads folder for:\nthreadcub-continuation-' + new Date().toISOString().split('T')[0] + '.json');
-    }
-    
-    // Visual feedback regardless
-    showDownloadsBtn.style.background = '#15803d';
-    showDownloadsBtn.innerHTML = `
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M18 6 6 18"/>
-        <path d="m6 6 12 12"/>
-      </svg>
-      Downloads Opened
-    `;
-  });
-  
-  openChatGPTBtn.addEventListener('click', () => {
-    // Add loading state
-    openChatGPTBtn.style.background = '#0d8f6f';
-    openChatGPTBtn.innerHTML = `
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>
-      </svg>
-      Opening ChatGPT...
-    `;
-    
-    setTimeout(() => {
-      window.open('https://chatgpt.com/', '_blank');
-      
-      // Update button to show success
-      openChatGPTBtn.style.background = '#16a34a';
-      openChatGPTBtn.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M18 6 6 18"/>
-          <path d="m6 6 12 12"/>
-        </svg>
-        ChatGPT Opened
-      `;
-      
-      // Change the close button text
-      closeInstructionsBtn.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M18 6 6 18"/>
-          <path d="m6 6 12 12"/>
-        </svg>
-        Done! Close This
-      `;
-      closeInstructionsBtn.style.background = '#16a34a';
-      closeInstructionsBtn.style.color = 'white';
-    }, 500);
-  });
-  
-  closeInstructionsBtn.addEventListener('click', () => {
-    instructionPopup.style.opacity = '0';
-    setTimeout(() => {
-      if (instructionPopup.parentNode) {
-        instructionPopup.parentNode.removeChild(instructionPopup);
-      }
-    }, 300);
-  });
-}
-
-// === END SECTION 4E-5 ===
-
-// === SECTION 4E-6: Regular Download Methods (COMPLETE WITH ALL METHODS) ===
-
-// SIMPLIFIED: Enhanced download conversation as JSON functionality
-async downloadConversationJSON() {
-  console.log('🐻 ThreadCub: Starting JSON download...');
-  
-  try {
-    // Extract conversation data
-    console.log('🐻 ThreadCub: Extracting conversation data for download...');
-    
-    let conversationData;
-    const hostname = window.location.hostname;
-    
-    if (hostname.includes('claude.ai')) {
-      conversationData = await this.extractClaudeConversation();
-    } else if (hostname.includes('chatgpt.com') || hostname.includes('chat.openai.com')) {
-      conversationData = this.extractChatGPTMessages();
-    } else {
-      conversationData = this.extractGenericConversation();
-    }
-    
-    if (!conversationData || !conversationData.messages || conversationData.messages.length === 0) {
-      console.error('🐻 ThreadCub: No conversation data found');
-      console.log('🐻 ThreadCub: Conversation data:', conversationData);
-      
-      // Create a fallback download with basic page info
-      const fallbackData = {
-        title: document.title || 'AI Conversation',
-        url: window.location.href,
-        platform: hostname.includes('claude.ai') ? 'Claude.ai' : 'Unknown',
-        exportDate: new Date().toISOString(),
-        totalMessages: 0,
-        messages: [],
-        note: 'No conversation messages could be extracted from this page'
-      };
-      
-      this.createDownloadFromData(fallbackData);
-      this.showSuccessToast();
-      return;
-    }
-    
-    console.log(`🐻 ThreadCub: Successfully extracted ${conversationData.messages.length} messages for download`);
-    
-    // Create and download the conversation data
-    this.createDownloadFromData(conversationData);
-    this.showSuccessToast();
-    
-  } catch (error) {
-    console.error('🐻 ThreadCub: Download error:', error);
-    
-    // Create emergency fallback download
-    const emergencyData = {
-      title: 'ThreadCub Emergency Download',
-      url: window.location.href,
-      platform: 'Unknown',
-      exportDate: new Date().toISOString(),
-      totalMessages: 0,
-      messages: [],
-      error: error.message,
-      note: 'An error occurred during conversation extraction'
-    };
-    
-    this.createDownloadFromData(emergencyData);
-    this.showErrorToast();
-  }
-}
-
-// FIXED: Method to create download from data
-createDownloadFromData(conversationData) {
-  try {
-    // Create JSON file
-    const tagsData = {
-      title: conversationData.title || 'ThreadCub Conversation',
-      url: conversationData.url || window.location.href,
-      platform: conversationData.platform || 'Unknown',
-      exportDate: new Date().toISOString(),
-      totalMessages: conversationData.messages ? conversationData.messages.length : 0,
-      messages: conversationData.messages || []
-    };
-    
-    // Generate smart filename
-    const filename = this.generateSmartFilename(conversationData);
-    
-    // Trigger download
-    const blob = new Blob([JSON.stringify(tagsData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    console.log('🐻 ThreadCub: JSON download completed with filename:', filename);
-  } catch (error) {
-    console.error('🐻 ThreadCub: Error in createDownloadFromData:', error);
-    throw error;
-  }
-}
-
-// FIXED: Generate smart filename based on conversation content
-generateSmartFilename(conversationData) {
-  try {
-    const platform = conversationData.platform?.toLowerCase() || 'chat';
-    
-    // Extract meaningful title or first user message
-    let conversationIdentifier = '';
-    
-    if (conversationData.title && conversationData.title !== 'ThreadCub Conversation' && conversationData.title.trim().length > 0) {
-      // Use page title if available and meaningful
-      conversationIdentifier = this.sanitizeFilename(conversationData.title);
-    } else if (conversationData.messages && conversationData.messages.length > 0) {
-      // Find first user message and use it as identifier
-      const firstUserMessage = conversationData.messages.find(msg => 
-        msg.role === 'user' || msg.role === 'human'
-      );
-      
-      if (firstUserMessage && firstUserMessage.content) {
-        // Take first 50 characters of first user message
-        const content = firstUserMessage.content.trim();
-        conversationIdentifier = this.sanitizeFilename(content.substring(0, 50));
-      }
-    }
-    
-    // Fallback to generic identifier if nothing found
-    if (!conversationIdentifier) {
-      conversationIdentifier = 'conversation';
-    }
-    
-    // Create timestamp for uniqueness
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    
-    // Construct filename: platform-identifier-date-time.json
-    const filename = `${platform}-${conversationIdentifier}-${timestamp}.json`;
-    
-    console.log('🐻 ThreadCub: Generated filename:', filename);
-    return filename;
-  } catch (error) {
-    console.error('🐻 ThreadCub: Error generating filename:', error);
-    return `threadcub-conversation-${Date.now()}.json`;
-  }
-}
-
-// FIXED: Sanitize text for filename use
-sanitizeFilename(text) {
-  try {
-    return text
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '') // Remove special characters except spaces and hyphens
-      .replace(/\s+/g, '-') // Replace spaces with hyphens
-      .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
-      .replace(/^-|-$/g, '') // Remove leading/trailing hyphens
-      .slice(0, 50); // Limit length
-  } catch (error) {
-    console.error('🐻 ThreadCub: Error sanitizing filename:', error);
-    return 'conversation';
-  }
-}
-
-// FIXED: Download conversation for continuation with FULL data
-downloadContinuationJSON(fullPrompt, shareUrl, conversationData) {
-  try {
-    // Use the same structure as regular download but optimized for continuation
-    const conversationJSON = {
-      title: conversationData.title || 'ThreadCub Conversation Continuation',
-      url: conversationData.url || window.location.href,
-      platform: conversationData.platform,
-      exportDate: new Date().toISOString(),
-      totalMessages: conversationData.messages.length,
-      source: 'ThreadCub Browser Extension - Continuation',
-      shareUrl: shareUrl,
-      instructions: 'Upload this file to ChatGPT and ask: "Continue our conversation from where we left off"',
-      
-      // Include all the conversation messages
-      messages: conversationData.messages,
-      
-      // Also include the formatted prompt for reference
-      formattedPrompt: fullPrompt
-    };
-    
-    const filename = `threadcub-continuation-${new Date().toISOString().split('T')[0]}.json`;
-    
-    const blob = new Blob([JSON.stringify(conversationJSON, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    console.log('🐻 ThreadCub: Full continuation JSON downloaded with', conversationData.messages.length, 'messages');
-    
-  } catch (error) {
-    console.error('🐻 ThreadCub: Error downloading continuation JSON:', error);
-  }
-}
-
-// === END SECTION 4E-6 ===
-
-// === SECTION 4E-7: Continuation Prompt Generation (FIXED - PLATFORM-SPECIFIC PROMPTS) ===
-
-// ===== FIXED: Generate platform-specific continuation prompts =====
-generateContinuationPrompt(summary, shareUrl, platform, conversationData) {
-  console.log('🐻 ThreadCub: Generating continuation prompt for platform:', platform);
-  
-  // FIXED: Return platform-specific prompts instead of generic URL-based ones
-  if (platform && platform.toLowerCase().includes('chatgpt')) {
-    // ChatGPT-specific prompt (acknowledges URL limitations)
-    const chatGPTPrompt = `I'd like to continue our previous conversation. While you can't currently access external URLs, I have our complete conversation history as a file attachment that I'll share now.
-
-Please read through the attached conversation file and provide your assessment of:
-- What we were working on
-- The current status/progress  
-- Any next steps or tasks mentioned
-
-Once you've reviewed it, let me know you're ready to continue from where we left off.`;
-    
-    console.log('🐻 ThreadCub: Generated ChatGPT-specific continuation prompt:', chatGPTPrompt.length, 'characters');
-    return chatGPTPrompt;
-  } else {
-    // Claude-specific prompt (can access URLs)
-    const claudePrompt = `I'd like to continue our previous conversation. The complete context is available at: ${shareUrl}
-
-Please access the conversation history and let me know when you're ready to continue from where we left off.`;
-    
-    console.log('🐻 ThreadCub: Generated Claude-specific continuation prompt:', claudePrompt.length, 'characters');
-    return claudePrompt;
-  }
-}
-
-// === END SECTION 4E-7 ===
-
-// === SECTION 4E-8: Claude Conversation Extraction with Smart Scrolling (COMPLETE) ===
-
-async extractClaudeConversation() {
+async function extractClaudeConversation() {
   console.log('🐻 ThreadCub: Starting SIMPLE WORKING Claude.ai extraction...');
   
   const title = document.title.replace(' | Claude', '') || 'Claude Conversation';
   
   try {
     // Use the EXACT approach that worked in the diagnostic
-    const extractedMessages = this.simpleWorkingExtraction();
+    const extractedMessages = simpleWorkingExtraction();
     
     const conversationData = {
       title: title,
@@ -4434,7 +2526,7 @@ async extractClaudeConversation() {
     console.error('🐻 ThreadCub: Simple extraction failed:', error);
     
     // Fallback to working method
-    const fallbackMessages = this.workingContainerExtraction();
+    const fallbackMessages = workingContainerExtraction();
     
     return {
       title: title,
@@ -4449,8 +2541,7 @@ async extractClaudeConversation() {
   }
 }
 
-// === SIMPLE WORKING EXTRACTION (COPY DIAGNOSTIC SUCCESS) ===
-simpleWorkingExtraction() {
+function simpleWorkingExtraction() {
   console.log('🐻 ThreadCub: Using SIMPLE working extraction - copying diagnostic success...');
   
   const messages = [];
@@ -4474,17 +2565,17 @@ simpleWorkingExtraction() {
     
     if (text && text.length > 50) {
       // Use ENHANCED role detection (FIX #1)
-      const role = this.enhancedRoleDetection(text, index);
+      const role = enhancedRoleDetection(text, index);
       
       messages.push({
         id: messageIndex++,
         role: role,
-        content: this.simpleCleanContent(text),
+        content: simpleCleanContent(text),
         timestamp: new Date().toISOString(),
         extractionMethod: 'simple_working',
         selector_used: 'div[class*="flex"][class*="flex-col"]',
         element_classes: element.className,
-        element_data_attrs: this.getDataAttributes(element)
+        element_data_attrs: getDataAttributes(element)
       });
     }
   });
@@ -4493,8 +2584,7 @@ simpleWorkingExtraction() {
   return messages;
 }
 
-// === ENHANCED ROLE DETECTION (FIX #1) ===
-enhancedRoleDetection(text, index) {
+function enhancedRoleDetection(text, index) {
   console.log(`🔍 Enhanced role detection for message ${index}: "${text.substring(0, 50)}..."`);
   
   // Method 1: Very specific content patterns from our actual conversation
@@ -4597,8 +2687,7 @@ enhancedRoleDetection(text, index) {
   return alternatingRole;
 }
 
-// === SIMPLE CONTENT CLEANING (UNCHANGED) ===
-simpleCleanContent(content) {
+function simpleCleanContent(content) {
   return content
     .replace(/\n{3,}/g, '\n\n')
     .replace(/^\s*Copy\s*$/gm, '')
@@ -4607,8 +2696,7 @@ simpleCleanContent(content) {
     .trim();
 }
 
-// === GET DATA ATTRIBUTES (UNCHANGED) ===
-getDataAttributes(element) {
+function getDataAttributes(element) {
   const dataAttrs = {};
   if (element && element.attributes) {
     Array.from(element.attributes).forEach(attr => {
@@ -4620,8 +2708,7 @@ getDataAttributes(element) {
   return dataAttrs;
 }
 
-// === FALLBACK METHOD (UNCHANGED) ===
-workingContainerExtraction() {
+function workingContainerExtraction() {
   console.log('🐻 ThreadCub: Using fallback working extraction method...');
   
   const messages = [];
@@ -4634,12 +2721,12 @@ workingContainerExtraction() {
     const text = container.innerText?.trim() || container.textContent?.trim() || '';
     
     if (text && text.length > 50 && text.length < 15000) {
-      const role = this.enhancedRoleDetection(text, index);
+      const role = enhancedRoleDetection(text, index);
       
       messages.push({
         id: messageIndex++,
         role: role,
-        content: this.simpleCleanContent(text),
+        content: simpleCleanContent(text),
         timestamp: new Date().toISOString(),
         extractionMethod: 'working_container'
       });
@@ -4649,566 +2736,7 @@ workingContainerExtraction() {
   return messages;
 }
 
-// === KEEP EXISTING HELPER METHODS (UNCHANGED) ===
-improvedRoleDetection(text, index) {
-  return this.enhancedRoleDetection(text, index);
-}
-
-isUIElement(text, element) {
-  const uiPatterns = [
-    'New Chat', 'Copy', 'Send', 'Regenerate', 'Share', 'Settings',
-    'Sign in', 'Sign out', 'Claude', 'Anthropic'
-  ];
-  
-  const hasUIPattern = uiPatterns.some(pattern => text.includes(pattern));
-  const hasInteractiveElements = element && element.querySelector && element.querySelector('input, textarea, button, a');
-  const isTooShort = text.length < 20;
-  
-  return hasUIPattern || hasInteractiveElements || isTooShort;
-}
-
-emergencyExtraction() {
-  console.log('🐻 ThreadCub: Using emergency extraction...');
-  
-  const messages = [];
-  const allText = document.body.innerText || '';
-  
-  const chunks = allText.split(/\n\s*\n\s*\n/);
-  
-  chunks.forEach((chunk, index) => {
-    const trimmed = chunk.trim();
-    if (trimmed.length > 50 && !this.isUIElement(trimmed, document.body)) {
-      messages.push({
-        id: index,
-        role: index % 2 === 0 ? 'user' : 'assistant',
-        content: trimmed,
-        timestamp: new Date().toISOString(),
-        extractionMethod: 'emergency'
-      });
-    }
-  });
-  
-  return messages.slice(0, 50);
-}
-
-// === END SECTION 4E-8 ===
-
-// === SECTION 4E-8-PART2: Claude Message Processing ===
-
-processClaudeMessageElements(messageElements, title, messageIndex) {
-  const messages = [];
-  
-  // If no messages found with selectors, try a different approach
-  if (messageElements.length === 0) {
-    console.log('🐻 ThreadCub: No messages found with selectors, trying manual approach...');
-    
-    // Look for any text content that might be messages
-    const allTextElements = document.querySelectorAll('p, div[class*="text"], div[class*="content"], span');
-    const potentialMessages = Array.from(allTextElements).filter(el => {
-      const text = el.textContent?.trim();
-      return text && 
-             text.length > 20 && 
-             text.length < 5000 && 
-             !el.querySelector('button') &&
-             !el.querySelector('input') &&
-             !text.includes('New Chat') &&
-             !text.includes('Copy');
-    });
-    
-    console.log(`🐻 ThreadCub: Found ${potentialMessages.length} potential messages manually`);
-    
-    if (potentialMessages.length > 0) {
-      messageElements = potentialMessages.slice(0, 50); // Limit to 50 most likely messages
-    }
-  }
-  
-  // Process found message elements
-  if (messageElements.length > 0) {
-    // Group consecutive elements that might be part of the same message
-    const groupedMessages = [];
-    let currentGroup = [];
-    let lastY = -1;
-    
-    messageElements.forEach((element) => {
-      const rect = element.getBoundingClientRect();
-      const currentY = rect.top;
-      
-      // If elements are close vertically, group them
-      if (Math.abs(currentY - lastY) < 100 && currentGroup.length > 0) {
-        currentGroup.push(element);
-      } else {
-        if (currentGroup.length > 0) {
-          groupedMessages.push(currentGroup);
-        }
-        currentGroup = [element];
-      }
-      lastY = currentY;
-    });
-    
-    // Add the last group
-    if (currentGroup.length > 0) {
-      groupedMessages.push(currentGroup);
-    }
-    
-    // Convert groups to messages
-    groupedMessages.forEach((group, groupIndex) => {
-      try {
-        const combinedText = group.map(el => el.innerText?.trim()).filter(t => t).join(' ');
-        
-        if (combinedText && combinedText.length > 10) {
-          // Alternate between user and assistant
-          const role = groupIndex % 2 === 0 ? 'user' : 'assistant';
-          
-          messages.push({
-            id: messageIndex++,
-            role: role,
-            content: combinedText,
-            timestamp: new Date().toISOString()
-          });
-        }
-      } catch (error) {
-        console.log('🐻 ThreadCub: Error processing message group:', error);
-      }
-    });
-  }
-  
-  const conversationData = {
-    title: title,
-    url: window.location.href,
-    timestamp: new Date().toISOString(),
-    platform: 'Claude.ai',
-    total_messages: messages.length,
-    messages: messages
-  };
-  
-  console.log(`🐻 ThreadCub: ✅ Extracted ${messages.length} messages from Claude.ai`);
-  if (messages.length > 0) {
-    console.log('🐻 ThreadCub: Sample message:', messages[0]);
-  }
-  
-  return conversationData;
-}
-
-// === END SECTION 4E-8-PART2 ===
-
-// === SECTION 4E-8-PART3: Platform-Specific Warning System with Matching Style ===
-
-// ===== PROACTIVE MESSAGE COUNT MONITORING =====
-
-initializeMessageMonitoring() {
-  console.log('🐻 ThreadCub: Initializing platform-specific message count monitoring...');
-  
-  // Session tracking to avoid repeat warnings
-  this.warningSession = {
-    shown150: false,
-    shown180: false,
-    shown200: false,
-    lastCount: 0,
-    monitoringActive: false
-  };
-  
-  // CRITICAL: Initialize URL tracking for new conversation detection
-  this.lastUrl = window.location.href;
-  
-  // Start monitoring after page is fully loaded
-  setTimeout(() => {
-    this.startMessageCountMonitoring();
-  }, 3000);
-}
-
-startMessageCountMonitoring() {
-  if (this.warningSession.monitoringActive) {
-    console.log('🐻 ThreadCub: Monitoring already active');
-    return;
-  }
-  
-  this.warningSession.monitoringActive = true;
-  console.log('🐻 ThreadCub: Starting platform-specific continuous message count monitoring...');
-  
-  // Check immediately
-  this.checkCurrentMessageCount();
-  
-  // Then check every 30 seconds
-  this.monitoringInterval = setInterval(() => {
-    this.checkCurrentMessageCount();
-  }, 30000);
-  
-  // Also check when user scrolls (for dynamic loading)
-  let scrollTimeout;
-  window.addEventListener('scroll', () => {
-    clearTimeout(scrollTimeout);
-    scrollTimeout = setTimeout(() => {
-      this.checkCurrentMessageCount();
-    }, 2000);
-  });
-}
-
-stopMessageCountMonitoring() {
-  if (this.monitoringInterval) {
-    clearInterval(this.monitoringInterval);
-    this.monitoringInterval = null;
-  }
-  this.warningSession.monitoringActive = false;
-  console.log('🐻 ThreadCub: Message count monitoring stopped');
-}
-
-// NEW: Detect new conversations by URL changes
-detectNewConversation() {
-  // Store the current URL to detect navigation
-  if (!this.lastUrl) {
-    this.lastUrl = window.location.href;
-    return false;
-  }
-  
-  const currentUrl = window.location.href;
-  const urlChanged = currentUrl !== this.lastUrl;
-  
-  if (urlChanged) {
-    console.log('🐻 ThreadCub: New conversation detected - URL changed');
-    console.log('🐻 ThreadCub: Old URL:', this.lastUrl);
-    console.log('🐻 ThreadCub: New URL:', currentUrl);
-    this.lastUrl = currentUrl;
-    return true;
-  }
-  
-  return false;
-}
-
-async checkCurrentMessageCount() {
-  try {
-    // CRITICAL: Check for new conversation first
-    if (this.detectNewConversation()) {
-      console.log('🐻 ThreadCub: New conversation detected - resetting warning session');
-      this.resetWarningSession();
-    }
-    
-    const hostname = window.location.hostname;
-    let messageCount = 0;
-    
-    if (hostname.includes('claude.ai')) {
-      messageCount = await this.countClaudeMessagesAccurately();
-    } else if (hostname.includes('chatgpt.com') || hostname.includes('chat.openai.com')) {
-      messageCount = this.countChatGPTMessages();
-    } else {
-      messageCount = this.countGenericMessages();
-    }
-    
-    // Only process if count has changed significantly (avoid noise)
-    if (Math.abs(messageCount - this.warningSession.lastCount) >= 2) {
-      console.log(`🐻 ThreadCub: Platform-specific message count check: ${messageCount} (was ${this.warningSession.lastCount})`);
-      this.warningSession.lastCount = messageCount;
-      this.processPlatformSpecificWarnings(messageCount);
-    }
-    
-  } catch (error) {
-    console.log('🐻 ThreadCub: Error checking message count:', error);
-  }
-}
-
-async countClaudeMessagesAccurately() {
-  console.log('🐻 ThreadCub: Counting Claude messages using smart extraction...');
-  
-  try {
-    let messages = [];
-    
-    // Try smart container extraction first
-    messages = this.workingContainerExtraction();
-    
-    if (messages.length === 0) {
-      messages = this.emergencyExtraction();
-    }
-    
-    console.log(`🐻 ThreadCub: Smart counting found ${messages.length} Claude messages`);
-    return messages.length;
-    
-  } catch (error) {
-    console.log('🐻 ThreadCub: Error in smart counting, using fallback:', error);
-    return this.countClaudeMessagesFallback();
-  }
-}
-
-countClaudeMessagesFallback() {
-  try {
-    const messageSelectors = [
-      '[data-testid*="message"]',
-      '[class*="message-"]',
-      '[class*="conversation-turn"]',
-      'div[class*="group"]:has(div[class*="whitespace-pre-wrap"])',
-      'div[class*="prose"]'
-    ];
-    
-    let messageElements = [];
-    
-    for (const selector of messageSelectors) {
-      try {
-        const elements = document.querySelectorAll(selector);
-        if (elements.length > 0) {
-          messageElements = Array.from(elements).filter(el => {
-            const text = el.textContent?.trim() || '';
-            return text.length >= 50 && 
-                   text.length < 15000 &&
-                   !text.includes('New Chat') &&
-                   !text.includes('Copy') &&
-                   !el.querySelector('input, textarea');
-          });
-          
-          if (messageElements.length > 0) {
-            break;
-          }
-        }
-      } catch (error) {
-        continue;
-      }
-    }
-    
-    return Math.min(messageElements.length, 100);
-    
-  } catch (error) {
-    console.log('🐻 ThreadCub: Error in fallback counting:', error);
-    return 0;
-  }
-}
-
-countChatGPTMessages() {
-  try {
-    const messageSelectors = [
-      '[data-message-author-role]',
-      '[data-message-id]',
-      '[class*="group"][class*="w-full"]',
-      'div[class*="markdown"]',
-      '[role="presentation"] > div'
-    ];
-    
-    let messageElements = [];
-    
-    for (const selector of messageSelectors) {
-      try {
-        const elements = document.querySelectorAll(selector);
-        if (elements.length > 0) {
-          messageElements = Array.from(elements).filter(el => {
-            const text = el.textContent?.trim() || '';
-            return text.length >= 10 && 
-                   text.length < 15000 &&
-                   !text.includes('New chat') &&
-                   !text.includes('Copy') &&
-                   !el.querySelector('input, textarea');
-          });
-          
-          if (messageElements.length > 0) {
-            break;
-          }
-        }
-      } catch (error) {
-        continue;
-      }
-    }
-    
-    return Math.min(messageElements.length, 500);
-    
-  } catch (error) {
-    console.log('🐻 ThreadCub: Error counting ChatGPT messages:', error);
-    return 0;
-  }
-}
-
-countGenericMessages() {
-  try {
-    const textElements = document.querySelectorAll('p, div[class*="message"], .prose, div[class*="text"]');
-    
-    const validMessages = Array.from(textElements).filter(element => {
-      try {
-        const text = element.innerText?.trim();
-        return text && 
-               text.length > 20 && 
-               text.length < 5000 &&
-               !element.querySelector('button') &&
-               !element.querySelector('input');
-      } catch (error) {
-        return false;
-      }
-    });
-    
-    return Math.min(validMessages.length, 500);
-    
-  } catch (error) {
-    console.log('🐻 ThreadCub: Error counting generic messages:', error);
-    return 0;
-  }
-}
-
-processPlatformSpecificWarnings(messageCount) {
-  const hostname = window.location.hostname;
-  let thresholds;
-  let platform;
-  
-  // Set platform-specific thresholds
-  if (hostname.includes('claude.ai')) {
-    thresholds = { info: 50, warning: 75, danger: 100 };
-    platform = 'Claude';
-  } else if (hostname.includes('chatgpt.com') || hostname.includes('chat.openai.com')) {
-    thresholds = { info: 150, warning: 180, danger: 200 };
-    platform = 'ChatGPT';
-  } else {
-    thresholds = { info: 100, warning: 150, danger: 200 };
-    platform = 'Generic';
-  }
-  
-  console.log(`🐻 ThreadCub: Processing ${platform} warning for ${messageCount} messages (thresholds: ${thresholds.info}/${thresholds.warning}/${thresholds.danger})`);
-  
-  // Check thresholds and show warnings only once per session
-  if (messageCount >= thresholds.danger && !this.warningSession.shown200) {
-    this.warningSession.shown200 = true;
-    this.showMatchingStyleWarning('danger', messageCount, platform);
-  } else if (messageCount >= thresholds.warning && !this.warningSession.shown180) {
-    this.warningSession.shown180 = true;
-    this.showMatchingStyleWarning('warning', messageCount, platform);
-  } else if (messageCount >= thresholds.info && !this.warningSession.shown150) {
-    this.warningSession.shown150 = true;
-    this.showMatchingStyleWarning('info', messageCount, platform);
-  }
-}
-
-showMatchingStyleWarning(severity, messageCount, platform) {
-  console.log(`🐻 ThreadCub: Showing ${platform} ${severity} warning for ${messageCount} messages with matching style`);
-  
-  // Remove any existing message warnings first
-  const existingWarnings = document.querySelectorAll('.threadcub-message-warning');
-  existingWarnings.forEach(warning => warning.remove());
-  
-  // Create warning banner that matches your existing success banner style
-  const toast = document.createElement('div');
-  toast.className = 'threadcub-message-warning';
-  
-  // Your exact styling to match success banners
-  const configs = {
-    info: { 
-      bg: '#DDFCFC', 
-      text: '#4B84A3',
-      message: `Psst... this thread's getting long (${messageCount} messages to be precise)`,
-      icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>'
-    },
-    warning: { 
-      bg: '#FBFCDD', 
-      text: '#72765D',
-      message: `Whoa bear! We're nearly at the limit (${messageCount} messages to be precise)`,
-      icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="m12 17 .01 0"/></svg>'
-    },
-    danger: { 
-      bg: '#FAE1E1', 
-      text: '#E32920',
-      message: 'Time to wrap up. Tap the save or continue a new chat',
-      icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="m12 17 .01 0"/></svg>'
-    }
-  };
-  
-  const config = configs[severity] || configs.info;
-  
-  // Match your exact success banner styling
-  toast.style.cssText = `
-    position: fixed;
-    bottom: 80px;
-    left: 50%;
-    transform: translateX(-50%) translateY(10px);
-    height: 40px;
-    background: ${config.bg};
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 0 16px;
-    font-family: 'Karla', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    font-weight: 800;
-    font-size: 14px;
-    color: ${config.text};
-    z-index: 10000000;
-    opacity: 0;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    white-space: nowrap;
-    user-select: none;
-    pointer-events: auto;
-    cursor: pointer;
-  `;
-  
-  // Build content with Lucide icon and your messaging style
-  let content = `${config.icon}<span>${config.message}</span>`;
-  
-  // Add "OK, got it" button for danger level only (like your existing pattern)
-  if (severity === 'danger') {
-    content += `
-      <div style="margin-left: 8px; background: #E32920; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 800; cursor: pointer;" 
-           onclick="this.closest('.threadcub-message-warning').style.display='none'">
-        OK, got it
-      </div>
-    `;
-  }
-  
-  toast.innerHTML = content;
-  document.body.appendChild(toast);
-  
-  // Click to dismiss functionality
-  toast.addEventListener('click', (e) => {
-    if (!e.target.textContent.includes('OK, got it')) {
-      console.log(`🐻 ThreadCub: ${platform} warning dismissed`);
-      toast.style.opacity = '0';
-      toast.style.transform = 'translateX(-50%) translateY(10px)';
-      setTimeout(() => {
-        if (toast.parentNode) {
-          toast.parentNode.removeChild(toast);
-        }
-      }, 300);
-    }
-  });
-  
-  // Animate in with your existing style
-  setTimeout(() => {
-    toast.style.opacity = '1';
-    toast.style.transform = 'translateX(-50%) translateY(0)';
-  }, 50);
-  
-  // Auto-hide for info and warning levels (danger persists like your existing banners)
-  if (severity !== 'danger') {
-    const hideDelay = severity === 'warning' ? 8000 : 6000;
-    
-    setTimeout(() => {
-      if (toast.parentNode) {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateX(-50%) translateY(10px)';
-        setTimeout(() => {
-          if (toast.parentNode) {
-            toast.parentNode.removeChild(toast);
-          }
-        }, 300);
-      }
-    }, hideDelay);
-  }
-  
-  console.log(`🐻 ThreadCub: ${platform} ${severity} warning shown with matching style`);
-}
-
-// UPDATED: Reset warnings when page changes (for SPA navigation)
-resetWarningSession() {
-  console.log('🐻 ThreadCub: Resetting warning session for new conversation');
-  this.warningSession = {
-    shown150: false,
-    shown180: false,
-    shown200: false,
-    lastCount: 0,
-    monitoringActive: this.warningSession?.monitoringActive || false
-  };
-  
-  // CRITICAL: Also remove any existing warning banners from previous conversation
-  const existingWarnings = document.querySelectorAll('.threadcub-message-warning');
-  existingWarnings.forEach(warning => warning.remove());
-  
-  console.log('🐻 ThreadCub: Warning session reset complete - banners cleared');
-}
-
-// === END SECTION 4E-8-PART3 ===
-
-// === SECTION 4E-9: ChatGPT Conversation Extraction (TARGETED FIX) ===
-
-extractChatGPTConversation() {
+function extractChatGPTConversation() {
   console.log('🤖 ThreadCub: Extracting ChatGPT conversation with TARGETED fix...');
   
   const messages = [];
@@ -5225,7 +2753,7 @@ extractChatGPTConversation() {
   
   if (messageElements.length === 0) {
     console.log('🤖 ThreadCub: No role-attributed messages found, using fallback');
-    return this.extractChatGPTFallback(title);
+    return extractChatGPTFallback(title);
   }
   
   // Process each message element
@@ -5236,7 +2764,7 @@ extractChatGPTConversation() {
       const role = authorRole === 'user' ? 'user' : 'assistant';
       
       // Extract content using multiple strategies
-      let messageContent = this.extractChatGPTMessageContent(element);
+      let messageContent = extractChatGPTMessageContent(element);
       
       // Skip if no valid content or if it's too short
       if (!messageContent || messageContent.length < 5) {
@@ -5295,14 +2823,13 @@ extractChatGPTConversation() {
   return conversationData;
 }
 
-// TARGETED: Extract content from ChatGPT message element
-extractChatGPTMessageContent(element) {
+function extractChatGPTMessageContent(element) {
   // Strategy 1: Look for whitespace-pre-wrap (most common ChatGPT content container)
   const preWrap = element.querySelector('.whitespace-pre-wrap');
   if (preWrap) {
     const content = preWrap.textContent?.trim();
     if (content && content.length > 5) {
-      return this.cleanChatGPTContent(content);
+      return cleanChatGPTContent(content);
     }
   }
   
@@ -5320,7 +2847,7 @@ extractChatGPTMessageContent(element) {
     if (contentEl) {
       const content = contentEl.textContent?.trim();
       if (content && content.length > 5) {
-        return this.cleanChatGPTContent(content);
+        return cleanChatGPTContent(content);
       }
     }
   }
@@ -5336,11 +2863,10 @@ extractChatGPTMessageContent(element) {
     return '';
   }
   
-  return this.cleanChatGPTContent(directText);
+  return cleanChatGPTContent(directText);
 }
 
-// Clean ChatGPT content
-cleanChatGPTContent(content) {
+function cleanChatGPTContent(content) {
   if (!content) return '';
   
   return content
@@ -5360,8 +2886,7 @@ cleanChatGPTContent(content) {
     .trim();
 }
 
-// Fallback extraction method for ChatGPT
-extractChatGPTFallback(title) {
+function extractChatGPTFallback(title) {
   console.log('🤖 ThreadCub: Using ChatGPT fallback extraction...');
   
   const messages = [];
@@ -5383,7 +2908,7 @@ extractChatGPTFallback(title) {
         messages.push({
           id: messageIndex++,
           role: isUser ? 'user' : 'assistant',
-          content: this.cleanChatGPTContent(text),
+          content: cleanChatGPTContent(text),
           timestamp: new Date().toISOString(),
           extractionMethod: 'chatgpt_fallback'
         });
@@ -5402,83 +2927,7 @@ extractChatGPTFallback(title) {
   };
 }
 
-// Also add the missing method that uses this one
-extractChatGPTMessages() {
-  return this.extractChatGPTConversation();
-}
-
-// === END SECTION 4E-9 ===
-
-// === SECTION 4E-10: Generic & Gemini Conversation Extraction ===
-
-extractGeminiConversation() {
-  console.log('🐻 ThreadCub: Extracting Gemini conversation...');
-  
-  const messages = [];
-  let messageIndex = 0;
-  
-  const title = document.title.replace(' - Gemini', '') || 'Gemini Conversation';
-  
-  // Gemini-specific selectors
-  const messageSelectors = [
-    '[data-test-id*="message"]',
-    '.conversation-turn',
-    '.model-response',
-    '.user-input',
-    '[class*="message-content"]',
-    '[class*="response-container"]',
-    'div[class*="markdown"]'
-  ];
-  
-  let messageElements = [];
-  
-  for (const selector of messageSelectors) {
-    try {
-      messageElements = document.querySelectorAll(selector);
-      console.log(`🐻 ThreadCub: Gemini selector "${selector}" found ${messageElements.length} elements`);
-      if (messageElements.length > 0) {
-        break;
-      }
-    } catch (error) {
-      console.log(`🐻 ThreadCub: Error with Gemini selector "${selector}":`, error);
-    }
-  }
-
-  messageElements.forEach((element, index) => {
-    try {
-      const text = element.innerText?.trim();
-      if (text && text.length > 5) {
-        const isUser = element.classList.contains('user') || 
-                      element.querySelector('.user') ||
-                      element.closest('[class*="user"]') ||
-                      index % 2 === 0;
-        
-        messages.push({
-          id: messageIndex++,
-          role: isUser ? 'user' : 'assistant',
-          content: text,
-          timestamp: new Date().toISOString()
-        });
-      }
-    } catch (error) {
-      console.log('🐻 ThreadCub: Error extracting Gemini message:', error);
-    }
-  });
-  
-  const conversationData = {
-    title: title,
-    url: window.location.href,
-    timestamp: new Date().toISOString(),
-    platform: 'Gemini',
-    total_messages: messages.length,
-    messages: messages
-  };
-  
-  console.log(`🐻 ThreadCub: ✅ Extracted ${messages.length} messages from Gemini`);
-  return conversationData;
-}
-
-extractGenericConversation() {
+function extractGenericConversation() {
   console.log('🐻 ThreadCub: Attempting generic conversation extraction...');
   
   const messages = [];
@@ -5539,31 +2988,661 @@ extractGenericConversation() {
   return conversationData;
 }
 
-// === END SECTION 4E-10 ===
+// === CONTINUATION SYSTEM FUNCTIONS ===
 
-// === SECTION 4E-11: Conversation Extraction Router ===
+function generateContinuationPrompt(summary, shareUrl, platform, conversationData) {
+  console.log('🐻 ThreadCub: Generating continuation prompt for platform:', platform);
+  
+  // FIXED: Return platform-specific prompts instead of generic URL-based ones
+  if (platform && platform.toLowerCase().includes('chatgpt')) {
+    // ChatGPT-specific prompt (acknowledges URL limitations)
+    const chatGPTPrompt = `I'd like to continue our previous conversation. While you can't currently access external URLs, I have our complete conversation history as a file attachment that I'll share now.
 
-extractConversation() {
-  console.log('🐻 ThreadCub: Extracting conversation...');
-  
-  // Detect platform and use appropriate extraction method
-  const hostname = window.location.hostname;
-  
-  if (hostname.includes('claude.ai')) {
-    return this.extractClaudeConversation();
-  } else if (hostname.includes('chatgpt.com') || hostname.includes('chat.openai.com')) {
-    return this.extractChatGPTMessages();
-  } else if (hostname.includes('gemini.google.com')) {
-    return this.extractGeminiConversation();
+Please read through the attached conversation file and provide your assessment of:
+- What we were working on
+- The current status/progress  
+- Any next steps or tasks mentioned
+
+Once you've reviewed it, let me know you're ready to continue from where we left off.`;
+    
+    console.log('🐻 ThreadCub: Generated ChatGPT-specific continuation prompt:', chatGPTPrompt.length, 'characters');
+    return chatGPTPrompt;
   } else {
-    // Generic extraction attempt
-    return this.extractGenericConversation();
+    // Claude-specific prompt (can access URLs)
+    const claudePrompt = `I'd like to continue our previous conversation. The complete context is available at: ${shareUrl}  Please access the conversation history and let me know when you're ready to continue from where we left off.`;
+    
+    console.log('🐻 ThreadCub: Generated Claude-specific continuation prompt:', claudePrompt.length, 'characters');
+    return claudePrompt;
   }
 }
 
-} // END of ThreadCubFloatingButton class
+function getTargetPlatformFromCurrentUrl() {
+  const hostname = window.location.hostname;
+  if (hostname.includes('chatgpt.com') || hostname.includes('chat.openai.com')) {
+    return 'chatgpt';
+  } else if (hostname.includes('claude.ai')) {
+    return 'claude';
+  } else if (hostname.includes('gemini.google.com')) {
+    return 'gemini';
+  }
+  return 'unknown';
+}
 
-// Export the class to window for global access
-window.ThreadCubFloatingButton = ThreadCubFloatingButton;
+function generateQuickSummary(messages) {
+  if (!messages || messages.length === 0) return 'Empty conversation';
+  
+  const userMessages = messages.filter(msg => msg.role === 'user' || msg.role === 'human');
+  if (userMessages.length === 0) return 'No user messages found';
+  
+  const lastUserMessage = userMessages[userMessages.length - 1];
+  const firstUserMessage = userMessages[0];
+  
+  if (userMessages.length === 1) {
+    return `Previous conversation about: "${firstUserMessage.content.substring(0, 100)}..."`;
+  }
+  
+  return `Previous conversation: Started with "${firstUserMessage.content.substring(0, 60)}..." and most recently discussed "${lastUserMessage.content.substring(0, 60)}..."`;
+}
 
-// === END SECTION 4E-11 ===
+function handleDirectContinuation(conversationData) {
+  console.log('🐻 ThreadCub: Handling direct continuation without API save...');
+  
+  // Create a fallback share URL
+  const fallbackShareUrl = `https://threadcub.com/fallback/${Date.now()}`;
+  
+  // Generate a simple continuation prompt
+  const summary = generateQuickSummary(conversationData.messages);
+  const minimalPrompt = generateContinuationPrompt(summary, fallbackShareUrl, conversationData.platform, conversationData);
+  
+  // Route to appropriate platform flow
+  const targetPlatform = getTargetPlatformFromCurrentUrl();
+  
+  if (targetPlatform === 'chatgpt') {
+    console.log('🐻 ThreadCub: Direct ChatGPT continuation (no API save)');
+    handleChatGPTFlow(minimalPrompt, fallbackShareUrl, conversationData);
+  } else if (targetPlatform === 'claude') {
+    console.log('🐻 ThreadCub: Direct Claude continuation (no API save)');
+    handleClaudeFlow(minimalPrompt, fallbackShareUrl, conversationData);
+  } else {
+    console.log('🐻 ThreadCub: Direct continuation - defaulting to ChatGPT flow');
+    handleChatGPTFlow(minimalPrompt, fallbackShareUrl, conversationData);
+  }
+  
+  if (window.threadcubButton && window.threadcubButton.showSuccessToast) {
+    window.threadcubButton.showSuccessToast('Continuing conversation (offline mode)');
+  }
+}
+
+function handleChatGPTFlow(continuationPrompt, shareUrl, conversationData) {
+  console.log('🤖 ThreadCub: Starting ENHANCED ChatGPT flow with auto-download...');
+  
+  // STEP 1: Auto-download the conversation file in background
+  autoDownloadChatGPTFile(conversationData, shareUrl);
+  
+  // STEP 2: Create continuation data for cross-tab modal
+  const continuationData = {
+    prompt: generateChatGPTContinuationPrompt(),
+    shareUrl: shareUrl,
+    platform: 'ChatGPT',
+    timestamp: Date.now(),
+    messages: conversationData.messages || [],
+    totalMessages: conversationData.total_messages || conversationData.messages?.length || 0,
+    title: conversationData.title || 'Previous Conversation',
+    conversationData: conversationData,
+    chatGPTFlow: true,
+    downloadCompleted: true
+  };
+  
+  console.log('🤖 ThreadCub: ChatGPT continuation data prepared');
+  
+  // STEP 3: Use storage for modal
+  const canUseChrome = canUseChromStorage();
+  
+  if (canUseChrome) {
+    console.log('🤖 ThreadCub: Using Chrome storage for ChatGPT modal...');
+    storeWithChrome(continuationData)
+      .then(() => {
+        console.log('🐻 ThreadCub: ChatGPT data stored successfully');
+        const chatGPTUrl = 'https://chatgpt.com/';
+        window.open(chatGPTUrl, '_blank');
+        if (window.threadcubButton && window.threadcubButton.showSuccessToast) {
+          window.threadcubButton.showSuccessToast('File downloaded! Check your new ChatGPT tab.');
+        }
+      })
+      .catch(error => {
+        console.log('🤖 ThreadCub: Chrome storage failed, using fallback:', error);
+        handleChatGPTFlowFallback(continuationData);
+      });
+  } else {
+    console.log('🤖 ThreadCub: Using ChatGPT fallback method directly');
+    handleChatGPTFlowFallback(continuationData);
+  }
+}
+
+function autoDownloadChatGPTFile(conversationData, shareUrl) {
+  try {
+    console.log('🤖 ThreadCub: Auto-downloading conversation file for ChatGPT...');
+    
+    const conversationJSON = {
+      title: conversationData.title || 'ThreadCub Conversation Continuation',
+      url: conversationData.url || window.location.href,
+      platform: conversationData.platform,
+      exportDate: new Date().toISOString(),
+      totalMessages: conversationData.messages.length,
+      source: 'ThreadCub Browser Extension - ChatGPT Continuation',
+      shareUrl: shareUrl,
+      instructions: 'This file contains our previous conversation. Please review it and continue from where we left off.',
+      messages: conversationData.messages,
+      summary: generateQuickSummary(conversationData.messages)
+    };
+    
+    const filename = `threadcub-continuation-${new Date().toISOString().split('T')[0]}.json`;
+    
+    const blob = new Blob([JSON.stringify(conversationJSON, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    console.log('🤖 ThreadCub: ✅ ChatGPT file auto-downloaded:', filename);
+    
+  } catch (error) {
+    console.error('🤖 ThreadCub: Error auto-downloading ChatGPT file:', error);
+  }
+}
+
+function generateChatGPTContinuationPrompt() {
+  return `I'd like to continue our previous conversation. While you can't currently access external URLs, I have our complete conversation history as a file attachment that I'll share now.
+
+Please read through the attached conversation file and provide your assessment of:
+- What we were working on
+- The current status/progress
+- Any next steps or tasks mentioned
+
+Once you've reviewed it, let me know you're ready to continue from where we left off.`;
+}
+
+function handleChatGPTFlowFallback(continuationData) {
+  console.log('🤖 ThreadCub: Using localStorage fallback for ChatGPT...');
+  
+  try {
+    localStorage.setItem('threadcubContinuationData', JSON.stringify(continuationData));
+    console.log('🔧 ChatGPT Fallback: Data stored in localStorage');
+    
+    const chatGPTUrl = 'https://chatgpt.com/';
+    window.open(chatGPTUrl, '_blank');
+    if (window.threadcubButton && window.threadcubButton.showSuccessToast) {
+      window.threadcubButton.showSuccessToast('File downloaded! Check your new ChatGPT tab.');
+    }
+    
+  } catch (error) {
+    console.error('🔧 ChatGPT Fallback: localStorage failed:', error);
+  }
+}
+
+function handleClaudeFlow(continuationPrompt, shareUrl, conversationData) {
+  console.log('🤖 ThreadCub: Starting Claude flow (API-only, no downloads)...');
+  
+  const continuationData = {
+    prompt: continuationPrompt,
+    shareUrl: shareUrl,
+    platform: 'Claude',
+    timestamp: Date.now(),
+    messages: conversationData.messages || [],
+    totalMessages: conversationData.total_messages || conversationData.messages?.length || 0,
+    title: conversationData.title || 'Previous Conversation',
+    conversationData: conversationData,
+    claudeFlow: true,
+    downloadCompleted: false
+  };
+  
+  console.log('🤖 ThreadCub: Claude continuation data with message count:', continuationData.totalMessages);
+  
+  const canUseChrome = canUseChromStorage();
+  
+  if (canUseChrome) {
+    console.log('🤖 ThreadCub: Using Chrome storage for Claude...');
+    storeWithChrome(continuationData)
+      .then(() => {
+        console.log('🐻 ThreadCub: Claude data stored successfully');
+        const claudeUrl = 'https://claude.ai/';
+        window.open(claudeUrl, '_blank');
+        if (window.threadcubButton && window.threadcubButton.showSuccessToast) {
+          window.threadcubButton.showSuccessToast('Opening Claude with conversation context...');
+        }
+      })
+      .catch(error => {
+        console.log('🤖 ThreadCub: Chrome storage failed, using fallback:', error);
+        handleClaudeFlowFallback(continuationData);
+      });
+  } else {
+    console.log('🤖 ThreadCub: Using Claude fallback method directly');
+    handleClaudeFlowFallback(continuationData);
+  }
+}
+
+function canUseChromStorage() {
+  try {
+    return typeof chrome !== 'undefined' && 
+           chrome.runtime && 
+           chrome.storage && 
+           chrome.storage.local &&
+           !chrome.runtime.lastError;
+  } catch (error) {
+    console.log('🔧 Chrome check failed:', error);
+    return false;
+  }
+}
+
+async function storeWithChrome(continuationData) {
+  return new Promise((resolve, reject) => {
+    try {
+      chrome.storage.local.set({ threadcubContinuationData: continuationData }, () => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+        } else {
+          console.log('🔧 Chrome storage: Success with message count:', continuationData.totalMessages);
+          resolve();
+        }
+      });
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+function handleClaudeFlowFallback(continuationData) {
+  console.log('🤖 ThreadCub: Using localStorage fallback for Claude...');
+  
+  try {
+    localStorage.setItem('threadcubContinuationData', JSON.stringify(continuationData));
+    console.log('🔧 Claude Fallback: Data stored in localStorage');
+    
+    const claudeUrl = 'https://claude.ai/';
+    window.open(claudeUrl, '_blank');
+    if (window.threadcubButton && window.threadcubButton.showSuccessToast) {
+      window.threadcubButton.showSuccessToast('Opening Claude with conversation context...');
+    }
+    
+  } catch (error) {
+    console.error('🔧 Claude Fallback: localStorage failed:', error);
+  }
+}
+
+// === DOWNLOAD FUNCTIONS ===
+
+function createDownloadFromData(conversationData) {
+  try {
+    const tagsData = {
+      title: conversationData.title || 'ThreadCub Conversation',
+      url: conversationData.url || window.location.href,
+      platform: conversationData.platform || 'Unknown',
+      exportDate: new Date().toISOString(),
+      totalMessages: conversationData.messages ? conversationData.messages.length : 0,
+      messages: conversationData.messages || []
+    };
+    
+    const filename = generateSmartFilename(conversationData);
+    
+    const blob = new Blob([JSON.stringify(tagsData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    console.log('🐻 ThreadCub: JSON download completed with filename:', filename);
+  } catch (error) {
+    console.error('🐻 ThreadCub: Error in createDownloadFromData:', error);
+    throw error;
+  }
+}
+
+function generateSmartFilename(conversationData) {
+  try {
+    const platform = conversationData.platform?.toLowerCase() || 'chat';
+    
+    let conversationIdentifier = '';
+    
+    if (conversationData.title && conversationData.title !== 'ThreadCub Conversation' && conversationData.title.trim().length > 0) {
+      conversationIdentifier = sanitizeFilename(conversationData.title);
+    } else if (conversationData.messages && conversationData.messages.length > 0) {
+      const firstUserMessage = conversationData.messages.find(msg => 
+        msg.role === 'user' || msg.role === 'human'
+      );
+      
+      if (firstUserMessage && firstUserMessage.content) {
+        const content = firstUserMessage.content.trim();
+        conversationIdentifier = sanitizeFilename(content.substring(0, 50));
+      }
+    }
+    
+    if (!conversationIdentifier) {
+      conversationIdentifier = 'conversation';
+    }
+    
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const filename = `${platform}-${conversationIdentifier}-${timestamp}.json`;
+    
+    console.log('🐻 ThreadCub: Generated filename:', filename);
+    return filename;
+  } catch (error) {
+    console.error('🐻 ThreadCub: Error generating filename:', error);
+    return `threadcub-conversation-${Date.now()}.json`;
+  }
+}
+
+function sanitizeFilename(text) {
+  try {
+    return text
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 50);
+  } catch (error) {
+    console.error('🐻 ThreadCub: Error sanitizing filename:', error);
+    return 'conversation';
+  }
+}
+
+// === FLOATING BUTTON ENHANCEMENT FUNCTION ===
+
+function enhanceFloatingButtonWithConversationFeatures() {
+  if (window.threadcubButton && typeof window.threadcubButton === 'object') {
+    console.log('🐻 ThreadCub: Enhancing modular floating button with conversation features...');
+    
+    // Override the placeholder methods with real functionality
+    window.threadcubButton.saveAndOpenConversation = async function(source = 'floating') {
+      console.log('🐻 ThreadCub: saveAndOpenConversation called from:', source);
+      
+      const now = Date.now();
+      if (this.isExporting || (now - this.lastExportTime) < 2000) {
+        console.log('🐻 ThreadCub: Export already in progress');
+        return;
+      }
+      
+      this.isExporting = true;
+      this.lastExportTime = now;
+      
+      try {
+        console.log('🐻 ThreadCub: Extracting conversation data...');
+        
+        let conversationData;
+        const hostname = window.location.hostname;
+        
+        if (hostname.includes('claude.ai')) {
+          conversationData = await extractClaudeConversation();
+        } else if (hostname.includes('chatgpt.com') || hostname.includes('chat.openai.com')) {
+          conversationData = extractChatGPTConversation();
+        } else {
+          conversationData = extractGenericConversation();
+        }
+        
+        if (!conversationData || !conversationData.messages || conversationData.messages.length === 0) {
+          console.error('🐻 ThreadCub: No conversation data found');
+          this.showErrorToast('No conversation found to save');
+          this.isExporting = false;
+          return;
+        }
+        
+        console.log(`🐻 ThreadCub: Successfully extracted ${conversationData.messages.length} messages`);
+        
+        this.lastConversationData = conversationData;
+        
+        // FIXED: Now using the API endpoint from your route.js
+        const apiData = {
+          title: conversationData.title || 'Untitled Conversation',
+          url: conversationData.url || window.location.href,
+          platform: conversationData.platform?.toLowerCase() || 'unknown',
+          messages: conversationData.messages,
+          extractionMethod: conversationData.extraction_method || 'unknown'
+        };
+        
+        console.log('🐻 ThreadCub: Saving to ThreadCub API via background script...');
+        
+        let response;
+        try {
+          if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.sendMessage) {
+            throw new Error('Extension context not available');
+          }
+          
+          if (chrome.runtime.lastError) {
+            throw new Error('Extension context invalidated: ' + chrome.runtime.lastError.message);
+          }
+          
+          response = await chrome.runtime.sendMessage({
+            action: 'saveConversation',
+            data: apiData
+          });
+          
+          if (chrome.runtime.lastError) {
+            throw new Error('Extension context invalidated during call: ' + chrome.runtime.lastError.message);
+          }
+          
+        } catch (contextError) {
+          console.log('🐻 ThreadCub: Extension context error:', contextError.message);
+          console.log('🐻 ThreadCub: Falling back to direct continuation...');
+          
+          handleDirectContinuation(conversationData);
+          this.isExporting = false;
+          return;
+        }
+
+        if (!response || !response.success) {
+          console.error('🐻 ThreadCub: API call failed:', response?.error);
+          console.log('🐻 ThreadCub: Falling back to direct continuation...');
+          
+          handleDirectContinuation(conversationData);
+          this.isExporting = false;
+          return;
+        }
+
+        const data = response.data;
+        console.log('✅ ThreadCub: Conversation saved successfully:', data);
+
+        // Generate continuation prompt with real API data
+        const summary = data.summary || generateQuickSummary(conversationData.messages);
+        const shareUrl = data.shareableUrl || `https://threadcub.com/api/share/${data.conversationId}`;
+        
+        const continuationPrompt = generateContinuationPrompt(summary, shareUrl, conversationData.platform, conversationData);
+        
+        const targetPlatform = getTargetPlatformFromCurrentUrl();
+        
+        if (targetPlatform === 'chatgpt') {
+          console.log('🐻 ThreadCub: Routing to ChatGPT flow');
+          handleChatGPTFlow(continuationPrompt, shareUrl, conversationData);
+        } else if (targetPlatform === 'claude') {
+          console.log('🐻 ThreadCub: Routing to Claude flow');
+          handleClaudeFlow(continuationPrompt, shareUrl, conversationData);
+        } else {
+          console.log('🐻 ThreadCub: Defaulting to ChatGPT flow');
+          handleChatGPTFlow(continuationPrompt, shareUrl, conversationData);
+        }
+
+        this.setBearExpression('happy');
+        setTimeout(() => {
+          if (this.currentBearState !== 'default') {
+            this.setBearExpression('default');
+          }
+        }, 2000);
+
+        this.isExporting = false;
+
+      } catch (error) {
+        console.error('🐻 ThreadCub: Export error:', error);
+        this.showErrorToast('Export failed: ' + error.message);
+        this.isExporting = false;
+      }
+    };
+    
+    window.threadcubButton.downloadConversationJSON = async function() {
+      console.log('🐻 ThreadCub: Starting JSON download...');
+      
+      try {
+        console.log('🐻 ThreadCub: Extracting conversation data for download...');
+        
+        let conversationData;
+        const hostname = window.location.hostname;
+        
+        if (hostname.includes('claude.ai')) {
+          conversationData = await extractClaudeConversation();
+        } else if (hostname.includes('chatgpt.com') || hostname.includes('chat.openai.com')) {
+          conversationData = extractChatGPTConversation();
+        } else {
+          conversationData = extractGenericConversation();
+        }
+        
+        if (!conversationData || !conversationData.messages || conversationData.messages.length === 0) {
+          console.error('🐻 ThreadCub: No conversation data found');
+          
+          const fallbackData = {
+            title: document.title || 'AI Conversation',
+            url: window.location.href,
+            platform: hostname.includes('claude.ai') ? 'Claude.ai' : 'Unknown',
+            exportDate: new Date().toISOString(),
+            totalMessages: 0,
+            messages: [],
+            note: 'No conversation messages could be extracted from this page'
+          };
+          
+          createDownloadFromData(fallbackData);
+          this.showSuccessToast('Downloaded basic page info');
+          return;
+        }
+        
+        console.log(`🐻 ThreadCub: Successfully extracted ${conversationData.messages.length} messages for download`);
+        
+        createDownloadFromData(conversationData);
+        this.showSuccessToast('Conversation downloaded successfully!');
+        
+      } catch (error) {
+        console.error('🐻 ThreadCub: Download error:', error);
+        
+        const emergencyData = {
+          title: 'ThreadCub Emergency Download',
+          url: window.location.href,
+          platform: 'Unknown',
+          exportDate: new Date().toISOString(),
+          totalMessages: 0,
+          messages: [],
+          error: error.message,
+          note: 'An error occurred during conversation extraction'
+        };
+        
+        createDownloadFromData(emergencyData);
+        this.showErrorToast('Download completed with errors');
+      }
+    };
+    
+    console.log('🐻 ThreadCub: ✅ Floating button enhanced with full conversation functionality');
+  }
+}
+
+// === END SECTION 4A-4E ===
+
+// === SECTION 5A: Main Application Initialization ===
+
+// Main initialization when DOM is ready
+function initializeThreadCub() {
+  console.log('🐻 ThreadCub: Initializing main application...');
+  
+  // Wait for DOM to be ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startThreadCub);
+  } else {
+    startThreadCub();
+  }
+}
+
+function startThreadCub() {
+  console.log('🐻 ThreadCub: Starting ThreadCub application...');
+  console.log('🐻 ThreadCub: Checking modular classes...');
+  console.log('🐻 ThreadCub: ThreadCubFloatingButton available:', typeof window.ThreadCubFloatingButton);
+  console.log('🐻 ThreadCub: ThreadCubTagging available:', typeof window.ThreadCubTagging);
+  console.log('🐻 ThreadCub: enhanceFloatingButtonWithConversationFeatures available:', typeof enhanceFloatingButtonWithConversationFeatures);
+  
+  // Initialize the floating button (now from external module)
+  if (typeof window.ThreadCubFloatingButton !== 'undefined') {
+    console.log('🐻 ThreadCub: ✅ Initializing floating button from module...');
+    
+    try {
+      window.threadcubButton = new window.ThreadCubFloatingButton();
+      console.log('🐻 ThreadCub: ✅ Floating button instance created:', typeof window.threadcubButton);
+      
+      // CRITICAL: Enhance the modular floating button with all conversation functionality
+      if (typeof enhanceFloatingButtonWithConversationFeatures === 'function') {
+        console.log('🐻 ThreadCub: ✅ Enhancing floating button with conversation features...');
+        enhanceFloatingButtonWithConversationFeatures();
+        console.log('🐻 ThreadCub: ✅ Floating button enhanced successfully');
+      } else {
+        console.error('🐻 ThreadCub: ❌ enhanceFloatingButtonWithConversationFeatures function not found');
+      }
+      
+      // Initialize tagging system
+      if (typeof window.ThreadCubTagging !== 'undefined') {
+        console.log('🐻 ThreadCub: ✅ Initializing tagging system...');
+        try {
+          window.threadcubTagging = new window.ThreadCubTagging(window.threadcubButton);
+          console.log('🐻 ThreadCub: ✅ Tagging system initialized:', typeof window.threadcubTagging);
+        } catch (taggingError) {
+          console.error('🐻 ThreadCub: ❌ Error initializing tagging system:', taggingError);
+        }
+      } else {
+        console.log('🐻 ThreadCub: ⚠️ ThreadCubTagging not available, will initialize on demand');
+      }
+      
+      // Check for continuation data
+      try {
+        checkForContinuationData();
+        console.log('🐻 ThreadCub: ✅ Continuation data check completed');
+      } catch (continuationError) {
+        console.error('🐻 ThreadCub: ❌ Error checking continuation data:', continuationError);
+      }
+      
+      console.log('🐻 ThreadCub: ✅ Application fully initialized with all features!');
+      
+      // Final verification
+      setTimeout(() => {
+        const buttonElement = document.querySelector('#threadcub-edge-btn');
+        console.log('🐻 ThreadCub: Final verification - Button in DOM:', !!buttonElement);
+        if (buttonElement) {
+          console.log('🐻 ThreadCub: 🎉 SUCCESS! Floating button is visible on the page!');
+        } else {
+          console.error('🐻 ThreadCub: ❌ FAILED! Button not found in DOM after initialization');
+        }
+      }, 1000);
+      
+    } catch (buttonError) {
+      console.error('🐻 ThreadCub: ❌ Error creating floating button instance:', buttonError);
+    }
+    
+  } else {
+    console.error('🐻 ThreadCub: ❌ ThreadCubFloatingButton class not found - module may not have loaded');
+    
+    // Retry after a short delay
+    setTimeout(() => {
+      if (typeof window.ThreadCubFloatingButton !== 'undefined') {
+        console.log('🐻 ThreadCub: 🔄 Retrying initialization...');
+        startThreadCub();
+      } else {
+        console.error('🐻 ThreadCub: ❌ Failed to load floating button module after retry');
+      }
+    }, 1000);
+  }
+}
+
+// Start the application immediately
+console.log('🐻 ThreadCub: Starting initialization...');
+initializeThreadCub();
+
+// === END SECTION 5A ===

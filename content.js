@@ -51,6 +51,10 @@ window.ThreadCubTagging = class ThreadCubTagging {
     this.createContextMenu();
     this.createSidePanel();
     this.setupEventListeners();
+    
+    // ADD THIS LINE:
+    this.initializeSidePanelUI();
+    
     console.log('🏷️ ThreadCub: Tagging system ready');
   }
 
@@ -1803,9 +1807,33 @@ adjustDropdownPosition(dropdown) {
 
 // === END SECTION 1G-5 ===
 
-// === SECTION 1H: Simplified Tag Cards with Priority ===
+// === SECTION 1H: REPLACED WITH MODULAR INTEGRATION ===
 
+// NEW: Initialize the side panel UI manager
+initializeSidePanelUI() {
+  if (typeof window.ThreadCubSidePanel !== 'undefined') {
+    this.sidePanelUI = new window.ThreadCubSidePanel(this);
+    this.sidePanelUI.setSidePanel(this.sidePanel);
+    console.log('🏷️ ThreadCub: Side panel UI manager initialized');
+  } else {
+    console.warn('🏷️ ThreadCub: ThreadCubSidePanel class not found');
+  }
+}
+
+// NEW: Updated tags list method that uses the modular side panel
 updateTagsList() {
+  console.log('🏷️ ThreadCub: Updating tags list via side panel UI manager');
+  
+  if (this.sidePanelUI && typeof this.sidePanelUI.updateTagsList === 'function') {
+    this.sidePanelUI.updateTagsList();
+  } else {
+    console.warn('🏷️ ThreadCub: Side panel UI manager not available, using fallback');
+    this.updateTagsListFallback();
+  }
+}
+
+// Fallback method for when side panel UI is not loaded
+updateTagsListFallback() {
   const tagsList = this.sidePanel.querySelector('#threadcub-tags-container');
   if (!tagsList) return;
   
@@ -1813,14 +1841,14 @@ updateTagsList() {
     tagsList.innerHTML = `
       <div id="threadcub-empty-state" style="
         text-align: center;
-        padding: 40px 20px;
-        color: #64748b;
+        padding: 32px 20px;
+        color: #6B7280;
       ">
         <div style="
           width: 80px;
           height: 80px;
           margin: 0 auto 20px;
-          background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+          background: linear-gradient(135deg, #F3F4F6 0%, #E5E7EB 100%);
           border-radius: 50%;
           display: flex;
           align-items: center;
@@ -1845,814 +1873,101 @@ updateTagsList() {
       </div>
     `;
   } else {
-    tagsList.innerHTML = this.tags.map(tag => {
-      const hasNote = tag.note && tag.note.trim().length > 0;
-      const priority = tag.priority || 'medium'; // default to medium
-      const priorityColors = {
-        high: '#86EFAC',   // light green
-        medium: '#FDE68A', // light yellow/orange
-        low: '#FECACA'     // light pink/red
-      };
-      
-      return `
-        <div class="threadcub-tag-card" data-tag-id="${tag.id}" style="
-          background: white;
-          border: 1px solid #e5e7eb;
-          border-radius: 8px;
-          padding: 16px;
-          margin-bottom: 12px;
-          position: relative;
-        ">
-          <!-- REMOVED: Purple Square Indicator -->
-          
-          <!-- Priority Selector and Action Icons Row -->
-          <div style="
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-          ">
-            <!-- Priority Dropdown -->
-            <div class="priority-selector" data-tag-id="${tag.id}" style="
-              position: relative;
-              cursor: pointer;
-            ">
-              <div class="priority-button" style="
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                padding: 4px 8px;
-                border-radius: 4px;
-                background: #f9fafb;
-                border: 1px solid #e5e7eb;
-              ">
-                <div style="
-                  width: 12px;
-                  height: 12px;
-                  background: ${priorityColors[priority]};
-                  border-radius: 2px;
-                "></div>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="m6 9 6 6 6-6"/>
-                </svg>
-              </div>
-              
-              <!-- Priority Dropdown Menu (hidden by default) -->
-              <div class="priority-menu" style="
-                display: none;
-                position: absolute;
-                top: 100%;
-                left: 0;
-                background: white;
-                border: 1px solid #e5e7eb;
-                border-radius: 6px;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-                z-index: 1000;
-                min-width: 120px;
-                margin-top: 4px;
-              ">
-                <div class="priority-option" data-priority="high" style="
-                  display: flex;
-                  align-items: center;
-                  gap: 8px;
-                  padding: 8px 12px;
-                  cursor: pointer;
-                  border-bottom: 1px solid #f3f4f6;
-                ">
-                  <div style="
-                    width: 12px;
-                    height: 12px;
-                    background: #86EFAC;
-                    border-radius: 2px;
-                  "></div>
-                  <span style="font-size: 14px; color: #374151;">High</span>
-                </div>
-                
-                <div class="priority-option" data-priority="medium" style="
-                  display: flex;
-                  align-items: center;
-                  gap: 8px;
-                  padding: 8px 12px;
-                  cursor: pointer;
-                  border-bottom: 1px solid #f3f4f6;
-                ">
-                  <div style="
-                    width: 12px;
-                    height: 12px;
-                    background: #FDE68A;
-                    border-radius: 2px;
-                  "></div>
-                  <span style="font-size: 14px; color: #374151;">Medium</span>
-                </div>
-                
-                <div class="priority-option" data-priority="low" style="
-                  display: flex;
-                  align-items: center;
-                  gap: 8px;
-                  padding: 8px 12px;
-                  cursor: pointer;
-                ">
-                  <div style="
-                    width: 12px;
-                    height: 12px;
-                    background: #FECACA;
-                    border-radius: 2px;
-                  "></div>
-                  <span style="font-size: 14px; color: #374151;">Low</span>
-                </div>
-              </div>
-            </div>
-            
-            <!-- Action Icons with hover states -->
-            <div style="display: flex; gap: 8px; align-items: center;">
-              ${hasNote ? `
-                <!-- Edit Note Icon - Updated to square-pen -->
-                <button class="edit-note-btn" data-tag-id="${tag.id}" style="
-                  background: transparent;
-                  border: none;
-                  cursor: pointer;
-                  color: #6b7280;
-                  display: flex;
-                  align-items: center;
-                  justify-content: center;
-                  width: 32px;
-                  height: 32px;
-                  border-radius: 4px;
-                  transition: all 0.2s ease;
-                ">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                    <path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/>
-                  </svg>
-                </button>
-              ` : ''}
-              
-              <!-- Continue in Chat Icon - Updated to corner-down-left -->
-              <button class="undo-btn" data-tag-id="${tag.id}" style="
-                background: transparent;
-                border: none;
-                cursor: pointer;
-                color: #6b7280;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                width: 32px;
-                height: 32px;
-                border-radius: 4px;
-                transition: all 0.2s ease;
-              ">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M20 4v7a4 4 0 0 1-4 4H4"/>
-                  <path d="m9 10-5 5 5 5"/>
-                </svg>
-              </button>
-              
-              <!-- Delete Icon -->
-              <button class="delete-tag-btn" data-tag-id="${tag.id}" style="
-                background: transparent;
-                border: none;
-                cursor: pointer;
-                color: #ef4444;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                width: 32px;
-                height: 32px;
-                border-radius: 4px;
-                transition: all 0.2s ease;
-              ">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M3 6h18"/>
-                  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
-                  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
-                  <line x1="10" x2="10" y1="11" y2="17"/>
-                  <line x1="14" x2="14" y1="11" y2="17"/>
-                </svg>
-              </button>
-            </div>
-          </div>
-          
-          <!-- Tag Text -->
-          <div style="
-            font-size: 14px;
-            line-height: 1.4;
-            color: #374151;
-            margin-bottom: ${hasNote ? '12px' : '16px'};
-          ">${tag.text}</div>
-          
-          <!-- Note Section -->
-          ${hasNote ? `
-            <!-- Show existing note with design styling -->
-            <div class="note-display" data-tag-id="${tag.id}" style="
-              background: #f8fafc;
-              border: 1px solid #e2e8f0;
-              border-radius: 6px;
-              padding: 12px;
-              margin-bottom: 0;
-              font-size: 13px;
-              line-height: 1.4;
-              color: #475569;
-            ">${tag.note}</div>
-          ` : `
-            <!-- Add Note Button with updated styling to match design -->
-            <button class="add-note-btn" data-tag-id="${tag.id}" style="
-              background: transparent;
-              border: 1px solid #10b981;
-              color: #10b981;
-              padding: 8px 16px;
-              border-radius: 6px;
-              font-size: 12px;
-              font-weight: 600;
-              cursor: pointer;
-              text-transform: uppercase;
-              letter-spacing: 0.5px;
-              transition: all 0.2s ease;
-              display: flex;
-              align-items: center;
-              gap: 6px;
-            ">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 5v14"/>
-                <path d="M5 12h14"/>
-              </svg>
-              ADD NOTE
-            </button>
-          `}
-          
-          <!-- Note Input Area (hidden by default) -->
-          <div class="note-input-area" data-tag-id="${tag.id}" style="display: none;">
-            <textarea class="note-textarea" placeholder="Add your note..." style="
-              width: 100%;
-              min-height: 80px;
-              padding: 12px;
-              border: 2px solid #8B5CF6;
-              border-radius: 6px;
-              font-size: 13px;
-              line-height: 1.4;
-              color: #374151;
-              resize: vertical;
-              font-family: inherit;
-              margin-bottom: 12px;
-              box-sizing: border-box;
-            ">${tag.note || ''}</textarea>
-            
-            <div style="display: flex; gap: 8px;">
-              <button class="save-note-btn" data-tag-id="${tag.id}" style="
-                background: #8B5CF6;
-                border: none;
-                color: white;
-                padding: 6px 12px;
-                border-radius: 4px;
-                font-size: 12px;
-                font-weight: 600;
-                cursor: pointer;
-                text-transform: uppercase;
-                transition: all 0.2s ease;
-              ">SAVE</button>
-              
-              <button class="cancel-note-btn" data-tag-id="${tag.id}" style="
-                background: transparent;
-                border: none;
-                color: #6b7280;
-                padding: 6px 12px;
-                border-radius: 4px;
-                font-size: 12px;
-                font-weight: 600;
-                cursor: pointer;
-                text-transform: uppercase;
-                transition: all 0.2s ease;
-              ">CANCEL</button>
-            </div>
-          </div>
-        </div>
-      `;
-    }).join('');
-    
-    this.setupSimplifiedListeners();
+    tagsList.innerHTML = this.tags.map(tag => `
+      <div class="threadcub-tag-card" data-tag-id="${tag.id}" style="
+        background: white;
+        border: 1px solid #E5E7EB;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 12px;
+        transition: all 0.2s ease;
+      ">
+        <div style="font-size: 14px; color: #374151;">${tag.text}</div>
+      </div>
+    `).join('');
   }
 }
 
-setupSimplifiedListeners() {
-  // Priority dropdown listeners
-  const prioritySelectors = this.sidePanel.querySelectorAll('.priority-selector');
-  prioritySelectors.forEach(selector => {
-    const button = selector.querySelector('.priority-button');
-    const menu = selector.querySelector('.priority-menu');
-    const tagId = parseInt(selector.getAttribute('data-tag-id'));
-    
-    // Toggle dropdown
-    button.addEventListener('click', (e) => {
-      e.stopPropagation();
-      
-      // Close other dropdowns
-      this.sidePanel.querySelectorAll('.priority-menu').forEach(m => {
-        if (m !== menu) m.style.display = 'none';
-      });
-      
-      // Toggle this dropdown
-      menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
-    });
-    
-    // Priority option clicks
-    menu.querySelectorAll('.priority-option').forEach(option => {
-      option.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const priority = option.getAttribute('data-priority');
-        this.setPriority(tagId, priority);
-        menu.style.display = 'none';
-      });
-      
-      // Hover effect
-      option.addEventListener('mouseenter', () => {
-        option.style.background = '#f3f4f6';
-      });
-      option.addEventListener('mouseleave', () => {
-        option.style.background = 'transparent';
-      });
-    });
-  });
-  
-  // Close dropdowns when clicking outside
-  document.addEventListener('click', () => {
-    this.sidePanel.querySelectorAll('.priority-menu').forEach(menu => {
-      menu.style.display = 'none';
-    });
-  });
-  
-  // Add Note buttons
-  const addNoteButtons = this.sidePanel.querySelectorAll('.add-note-btn');
-  addNoteButtons.forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const tagId = parseInt(btn.getAttribute('data-tag-id'));
-      this.showNoteInput(tagId);
-    });
-    
-    // Hover effects to match design
-    btn.addEventListener('mouseenter', () => {
-      btn.style.background = '#10b981';
-      btn.style.color = 'white';
-    });
-    btn.addEventListener('mouseleave', () => {
-      btn.style.background = 'transparent';
-      btn.style.color = '#10b981';
-    });
-  });
-  
-  // Edit Note buttons with hover effects
-  const editNoteButtons = this.sidePanel.querySelectorAll('.edit-note-btn');
-  editNoteButtons.forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const tagId = parseInt(btn.getAttribute('data-tag-id'));
-      this.showNoteInput(tagId);
-    });
-    
-    // Hover effects to match design
-    btn.addEventListener('mouseenter', () => {
-      btn.style.background = '#f3f4f6';
-    });
-    btn.addEventListener('mouseleave', () => {
-      btn.style.background = 'transparent';
-    });
-  });
-  
-  // Delete buttons with hover effects
-  const deleteButtons = this.sidePanel.querySelectorAll('.delete-tag-btn');
-  deleteButtons.forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const tagId = parseInt(btn.getAttribute('data-tag-id'));
-      this.deleteTag(tagId);
-    });
-    
-    // Hover effects to match design
-    btn.addEventListener('mouseenter', () => {
-      btn.style.background = '#fef2f2';
-    });
-    btn.addEventListener('mouseleave', () => {
-      btn.style.background = 'transparent';
-    });
-  });
-  
-  // Undo buttons (now "Continue in Chat") with hover effects
-  const undoButtons = this.sidePanel.querySelectorAll('.undo-btn');
-  undoButtons.forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const tagId = parseInt(btn.getAttribute('data-tag-id'));
-      console.log('🏷️ ThreadCub: Continue in chat clicked for tag:', tagId);
-      this.continueTagInChat(tagId);
-    });
-    
-    // Hover effects to match design
-    btn.addEventListener('mouseenter', () => {
-      btn.style.background = '#f3f4f6';
-    });
-    btn.addEventListener('mouseleave', () => {
-      btn.style.background = 'transparent';
-    });
-  });
-  
-  // Save Note buttons
-  const saveNoteButtons = this.sidePanel.querySelectorAll('.save-note-btn');
-  saveNoteButtons.forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const tagId = parseInt(btn.getAttribute('data-tag-id'));
-      this.saveNote(tagId);
-    });
-  });
-  
-  // Cancel Note buttons
-  const cancelNoteButtons = this.sidePanel.querySelectorAll('.cancel-note-btn');
-  cancelNoteButtons.forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const tagId = parseInt(btn.getAttribute('data-tag-id'));
-      this.hideNoteInput(tagId);
-    });
-  });
-}
-
-// NEW: Set priority for a tag
-setPriority(tagId, priority) {
+// Helper methods that the side panel UI expects
+saveNoteForCard(tagId, noteText) {
   const tag = this.tags.find(t => t.id === tagId);
   if (tag) {
-    tag.priority = priority;
-    console.log('🏷️ ThreadCub: Priority set for tag:', tagId, priority);
-    this.updateTagsList(); // Refresh to show new priority color
+    tag.note = noteText;
+    console.log('🏷️ ThreadCub: Note saved for tag:', tagId);
+    this.updateTagsList(); // This will call the side panel UI
   }
 }
 
-// Show note input area
-showNoteInput(tagId) {
-  const noteInputArea = this.sidePanel.querySelector(`.note-input-area[data-tag-id="${tagId}"]`);
-  const noteDisplay = this.sidePanel.querySelector(`.note-display[data-tag-id="${tagId}"]`);
-  const addNoteBtn = this.sidePanel.querySelector(`.add-note-btn[data-tag-id="${tagId}"]`);
-  
-  if (noteInputArea) {
-    // Hide note display and add button
-    if (noteDisplay) noteDisplay.style.display = 'none';
-    if (addNoteBtn) addNoteBtn.style.display = 'none';
-    
-    // Show input area
-    noteInputArea.style.display = 'block';
-    
-    // Focus textarea
-    const textarea = noteInputArea.querySelector('.note-textarea');
-    if (textarea) {
-      textarea.focus();
-      textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-    }
-  }
-}
-
-// Hide note input area
-hideNoteInput(tagId) {
-  const noteInputArea = this.sidePanel.querySelector(`.note-input-area[data-tag-id="${tagId}"]`);
-  const noteDisplay = this.sidePanel.querySelector(`.note-display[data-tag-id="${tagId}"]`);
-  const addNoteBtn = this.sidePanel.querySelector(`.add-note-btn[data-tag-id="${tagId}"]`);
-  
-  if (noteInputArea) {
-    // Hide input area
-    noteInputArea.style.display = 'none';
-    
-    // Show appropriate display
-    if (noteDisplay) {
-      noteDisplay.style.display = 'block';
-    } else if (addNoteBtn) {
-      addNoteBtn.style.display = 'block';
-    }
-  }
-}
-
-// Save note
-saveNote(tagId) {
-  const noteInputArea = this.sidePanel.querySelector(`.note-input-area[data-tag-id="${tagId}"]`);
-  const textarea = noteInputArea?.querySelector('.note-textarea');
-  
-  if (textarea) {
-    const noteText = textarea.value.trim();
-    
-    const tag = this.tags.find(t => t.id === tagId);
-    if (tag) {
-      tag.note = noteText;
-      console.log('🏷️ ThreadCub: Note saved for tag:', tagId, noteText);
-      this.updateTagsList();
-    }
-  }
-}
-
-// Remove note
-removeNote(tagId) {
+addPriorityTag(tagId, priority) {
   const tag = this.tags.find(t => t.id === tagId);
   if (tag) {
-    tag.note = '';
-    console.log('🏷️ ThreadCub: Note removed for tag:', tagId);
-    this.updateTagsList();
+    if (!tag.tags) tag.tags = [];
+    
+    // Remove existing priority tags
+    tag.tags = tag.tags.filter(t => !['high', 'medium', 'low'].includes(t.priority));
+    
+    // Add new priority tag
+    tag.tags.push({
+      label: priority.toUpperCase(),
+      priority: priority
+    });
+    
+    console.log('🏷️ ThreadCub: Priority tag added:', priority);
   }
 }
 
-// NEW: Filter tags by priority
-filterTagsByPriority(filterValue) {
-  console.log('🏷️ ThreadCub: Filtering tags by priority:', filterValue);
-  
-  const tagCards = this.sidePanel.querySelectorAll('.threadcub-tag-card');
-  
-  tagCards.forEach(card => {
-    const tagId = parseInt(card.getAttribute('data-tag-id'));
-    const tag = this.tags.find(t => t.id === tagId);
-    
-    if (!tag) {
-      card.style.display = 'none';
-      return;
-    }
-    
-    const tagPriority = tag.priority || 'medium'; // default to medium if no priority set
-    
-    if (filterValue === 'all') {
-      card.style.display = 'block';
-    } else if (filterValue === tagPriority) {
-      card.style.display = 'block';
-    } else {
-      card.style.display = 'none';
-    }
-  });
-  
-  // Update empty state if needed
-  const visibleCards = Array.from(tagCards).filter(card => card.style.display !== 'none');
-  const emptyState = this.sidePanel.querySelector('#threadcub-empty-state');
-  
-  if (visibleCards.length === 0 && this.tags.length > 0) {
-    // Show "no matches" message
-    const tagsContainer = this.sidePanel.querySelector('#threadcub-tags-container');
-    if (tagsContainer && !tagsContainer.querySelector('#no-matches-state')) {
-      const noMatchesDiv = document.createElement('div');
-      noMatchesDiv.id = 'no-matches-state';
-      noMatchesDiv.style.cssText = `
-        text-align: center;
-        padding: 40px 20px;
-        color: #64748b;
-      `;
-      noMatchesDiv.innerHTML = `
-        <div style="
-          width: 60px;
-          height: 60px;
-          margin: 0 auto 16px;
-          background: #f1f5f9;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 24px;
-        ">🔍</div>
-        <h3 style="
-          font-size: 16px;
-          font-weight: 600;
-          margin: 0 0 8px;
-          color: #374151;
-        ">No tags match this filter</h3>
-        <p style="
-          font-size: 14px;
-          line-height: 1.5;
-          margin: 0;
-        ">Try selecting a different priority level</p>
-      `;
-      tagsContainer.appendChild(noMatchesDiv);
-    }
-  } else {
-    // Remove "no matches" message if it exists
-    const noMatchesState = this.sidePanel.querySelector('#no-matches-state');
-    if (noMatchesState) {
-      noMatchesState.remove();
-    }
-  }
+deleteTagWithUndo(tagId) {
+  console.log('🏷️ ThreadCub: Delete with undo for tag:', tagId);
+  this.deleteTag(tagId);
 }
 
-// NEW: Continue tag in chat input field
 continueTagInChat(tagId) {
   const tag = this.tags.find(t => t.id === tagId);
   if (!tag) {
     console.log('🏷️ ThreadCub: Tag not found for continue in chat:', tagId);
-    return;
+    return false;
   }
   
-  // Just use the tagged text content - no priority or notes
-  const promptText = tag.text;
+  console.log('🏷️ ThreadCub: Continue tag in chat:', tagId);
   
-  console.log('🏷️ ThreadCub: Adding tagged text to chat input:', promptText);
-  
-  // Find and populate the chat input field
-  const success = this.populateChatInput(promptText);
+  const success = this.populateChatInputDirectly(tag.text);
   
   if (success) {
-    // Optional: Close the side panel after a delay
-    setTimeout(() => {
-      this.hideSidePanel();
-    }, 1500);
-  }
-}
-
-// NEW: Populate chat input field (platform-specific)
-populateChatInput(text) {
-  console.log('🏷️ ThreadCub: Attempting to populate chat input with text:', text.substring(0, 50) + '...');
-  
-  // Detect current platform
-  const hostname = window.location.hostname;
-  let selectors = [];
-  
-  if (hostname.includes('claude.ai')) {
-    selectors = [
-      'textarea[data-testid="chat-input"]',
-      'div[contenteditable="true"]',
-      'textarea[placeholder*="Talk to Claude"]',
-      'textarea'
-    ];
-  } else if (hostname.includes('chatgpt.com') || hostname.includes('chat.openai.com')) {
-    selectors = [
-      'textarea[data-testid="prompt-textarea"]', 
-      '#prompt-textarea',
-      'textarea[placeholder*="Message"]',
-      'textarea'
-    ];
-  } else if (hostname.includes('gemini.google.com')) {
-    selectors = [
-      'rich-textarea div[contenteditable="true"]',
-      'textarea[placeholder*="Enter a prompt"]',
-      'textarea'
-    ];
+    this.hideSidePanel();
+    console.log('🏷️ ThreadCub: Tag text sent to chat input and panel closed');
   } else {
-    // Generic selectors for other platforms
-    selectors = [
-      'textarea[placeholder*="message"]',
-      'textarea[placeholder*="prompt"]',
-      'div[contenteditable="true"]',
-      'textarea'
-    ];
+    console.log('🏷️ ThreadCub: Could not find chat input field');
   }
   
-  // Try each selector until we find a working input field
-  for (const selector of selectors) {
-    try {
-      const elements = document.querySelectorAll(selector);
-      for (const element of elements) {
-        // Check if element is visible and not disabled
-        if (element.offsetHeight > 0 && !element.disabled && !element.readOnly) {
-          console.log('🏷️ ThreadCub: Found input field:', selector);
-          
-          // Focus the element first
-          element.focus();
-          
-          // Set the text based on element type
-          if (element.tagName === 'TEXTAREA') {
-            element.value = text;
-            // Trigger input events to notify the platform
-            element.dispatchEvent(new Event('input', { bubbles: true }));
-            element.dispatchEvent(new Event('change', { bubbles: true }));
-          } else if (element.contentEditable === 'true') {
-            element.textContent = text;
-            // For contenteditable divs
-            element.dispatchEvent(new Event('input', { bubbles: true }));
-            element.dispatchEvent(new Event('change', { bubbles: true }));
-          }
-          
-          // Move cursor to end
-          if (element.setSelectionRange) {
-            element.setSelectionRange(element.value.length, element.value.length);
-          }
-          
-          console.log('🏷️ ThreadCub: ✅ Successfully populated chat input');
-          return true;
-        }
-      }
-    } catch (error) {
-      console.log('🏷️ ThreadCub: Error with selector:', selector, error);
-      continue;
+  return success;
+}
+
+filterTagsByPriority(priority) {
+  console.log('🏷️ ThreadCub: Filtering tags by priority:', priority);
+  
+  const allCards = this.sidePanel.querySelectorAll('.threadcub-tag-card');
+  
+  allCards.forEach(card => {
+    const tagId = parseInt(card.getAttribute('data-tag-id'));
+    const tag = this.tags.find(t => t.id === tagId);
+    
+    let shouldShow = true;
+    
+    if (priority !== 'all' && tag) {
+      const hasPriority = tag.tags && tag.tags.some(t => t.priority === priority);
+      shouldShow = hasPriority;
     }
-  }
-  
-  console.log('🏷️ ThreadCub: ❌ Could not find suitable input field');
-  return false;
-}
-
-// NEW: Show success toast for continue in chat
-showContinueSuccessToast() {
-  const toast = document.createElement('div');
-  toast.style.cssText = `
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background: linear-gradient(135deg, #10b981, #059669);
-    color: white;
-    padding: 16px 20px;
-    border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(16, 185, 129, 0.3);
-    z-index: 10000000;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    font-size: 14px;
-    font-weight: 600;
-    opacity: 0;
-    transform: translateX(100%);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    max-width: 300px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  `;
-  
-  toast.innerHTML = `
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
-      <path d="m9 12 2 2 4-4"/>
-    </svg>
-    <span>Added to chat input!</span>
-  `;
-  
-  document.body.appendChild(toast);
-  
-  // Animate in
-  setTimeout(() => {
-    toast.style.opacity = '1';
-    toast.style.transform = 'translateX(0)';
-  }, 100);
-  
-  // Animate out and remove
-  setTimeout(() => {
-    toast.style.opacity = '0';
-    toast.style.transform = 'translateX(100%)';
-    setTimeout(() => {
-      if (toast.parentNode) {
-        toast.parentNode.removeChild(toast);
-      }
-    }, 300);
-  }, 3000);
-}
-
-// NEW: Show error toast for continue in chat
-showContinueErrorToast() {
-  const toast = document.createElement('div');
-  toast.style.cssText = `
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background: linear-gradient(135deg, #ef4444, #dc2626);
-    color: white;
-    padding: 16px 20px;
-    border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(239, 68, 68, 0.3);
-    z-index: 10000000;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    font-size: 14px;
-    font-weight: 600;
-    opacity: 0;
-    transform: translateX(100%);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    max-width: 300px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  `;
-  
-  toast.innerHTML = `
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="12" cy="12" r="10"/>
-      <path d="M15 9l-6 6"/>
-      <path d="m9 9 6 6"/>
-    </svg>
-    <span>Could not find chat input</span>
-  `;
-  
-  document.body.appendChild(toast);
-  
-  // Animate in
-  setTimeout(() => {
-    toast.style.opacity = '1';
-    toast.style.transform = 'translateX(0)';
-  }, 100);
-  
-  // Animate out and remove
-  setTimeout(() => {
-    toast.style.opacity = '0';
-    toast.style.transform = 'translateX(100%)';
-    setTimeout(() => {
-      if (toast.parentNode) {
-        toast.parentNode.removeChild(toast);
-      }
-    }, 300);
-  }, 4000);
-}
-
-deleteTag(tagId) {
-  this.tags = this.tags.filter(tag => tag.id !== tagId);
-  this.cleanupSmartHighlight(tagId);
-  this.updateTagsList();
-  console.log('🏷️ ThreadCub: Tag deleted:', tagId);
+    
+    card.style.display = shouldShow ? 'block' : 'none';
+  });
 }
 
 } // END of ThreadCubTagging class
 
-// === END SECTION 1H ===
+// Export the class to window for global access
+window.ThreadCubTagging = ThreadCubTagging;
+
+// === END SECTION 1H REPLACEMENT ===
 
 // === SECTION 2A: Streamlined Continuation System (NO MODAL) ===
 
@@ -2966,70 +2281,6 @@ function attemptGeminiAutoStart() {
   } catch (error) {
     console.log('🔧 Gemini auto-start failed:', error);
   }
-}
-
-// ===== Manual instructions fallback =====
-function showManualInstructions(prompt, continuationData) {
-  console.log('🔧 Showing manual instructions as fallback');
-  
-  const isChatGPTFlow = continuationData.chatGPTFlow === true;
-  
-  const instructionPopup = document.createElement('div');
-  instructionPopup.style.cssText = `
-    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    background: white; border-radius: 16px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    max-width: 520px; width: 90%; z-index: 10000001;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    opacity: 0; transition: all 0.3s ease;
-  `;
-  
-  const platformColor = isChatGPTFlow ? '#10a37f' : '#667eea';
-  const platformIcon = isChatGPTFlow ? '💬' : '🐻';
-  
-  instructionPopup.innerHTML = `
-    <div style="padding: 32px; text-align: center;">
-      <div style="background: ${platformColor}; width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 28px;">${platformIcon}</div>
-      <h2 style="margin: 0 0 8px; color: #1e293b; font-size: 24px;">Manual Setup Required</h2>
-      <p style="margin: 0 0 20px; color: #64748b; font-size: 14px;">Auto-setup didn't work, but we can do this manually!</p>
-      
-      <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin: 20px 0; text-align: left;">
-        <h3 style="margin: 0 0 8px; color: #374151; font-size: 14px;">Copy and paste this message:</h3>
-        <div style="background: white; border: 1px solid #d1d5db; border-radius: 6px; padding: 12px; font-family: monospace; font-size: 12px; white-space: pre-wrap; max-height: 120px; overflow-y: auto;">${prompt}</div>
-      </div>
-      
-      <button id="threadcub-manual-close" style="padding: 12px 24px; background: ${platformColor}; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600;">Got It</button>
-    </div>
-  `;
-  
-  document.body.appendChild(instructionPopup);
-  setTimeout(() => instructionPopup.style.opacity = '1', 50);
-  
-  // FIXED: Proper event listener instead of inline onclick
-  const closeButton = instructionPopup.querySelector('#threadcub-manual-close');
-  if (closeButton) {
-    closeButton.addEventListener('click', () => {
-      console.log('🔧 Manual popup close button clicked');
-      instructionPopup.style.opacity = '0';
-      setTimeout(() => {
-        if (instructionPopup.parentNode) {
-          instructionPopup.parentNode.removeChild(instructionPopup);
-        }
-      }, 300);
-    });
-  }
-  
-  // Also allow clicking outside to close
-  instructionPopup.addEventListener('click', (e) => {
-    if (e.target === instructionPopup) {
-      console.log('🔧 Manual popup overlay clicked');
-      instructionPopup.style.opacity = '0';
-      setTimeout(() => {
-        if (instructionPopup.parentNode) {
-          instructionPopup.parentNode.removeChild(instructionPopup);
-        }
-      }, 300);
-    }
-  });
 }
 
 // ===== Platform detection =====
@@ -6310,408 +5561,9 @@ extractConversation() {
   }
 }
 
-// === END SECTION 4E-11 ===
-
 } // END of ThreadCubFloatingButton class
 
 // Export the class to window for global access
 window.ThreadCubFloatingButton = ThreadCubFloatingButton;
 
-// === SECTION 4F: Initialization & Message Handling with Auto-Recovery (FIXED) ===
-
-// ===== FORCE IMMEDIATE GLOBAL ASSIGNMENT =====
-// This must happen immediately after class definition, not in a function
-console.log('🐻 ThreadCub: Setting up DIRECT global persistence...');
-
-// Force assignment immediately 
-window.ThreadCubFloatingButton = ThreadCubFloatingButton;
-window.ThreadCubTagging = ThreadCubTagging;
-
-console.log('✅ Direct global assignment complete');
-console.log('✅ window.ThreadCubFloatingButton:', typeof window.ThreadCubFloatingButton);
-console.log('✅ window.ThreadCubTagging:', typeof window.ThreadCubTagging);
-
-// Show toast at bottom center of browser window
-function showBrowserToast(message) {
-  const toast = document.createElement('div');
-  toast.style.cssText = `
-    position: fixed;
-    bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%) translateY(100px);
-    background: linear-gradient(135deg, #10b981, #059669);
-    color: white;
-    padding: 16px 24px;
-    border-radius: 12px;
-    font-size: 15px;
-    font-weight: 600;
-    z-index: 10000000;
-    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    backdrop-filter: blur(10px);
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    max-width: 300px;
-    text-align: center;
-  `;
-
-  toast.innerHTML = `
-    <span style="font-size: 18px;">🐻</span>
-    <span>${message}</span>
-  `;
-  
-  document.body.appendChild(toast);
-  
-  // Animate in from bottom
-  setTimeout(() => {
-    toast.style.transform = 'translateX(-50%) translateY(0)';
-  }, 100);
-  
-  // Animate out and remove
-  setTimeout(() => {
-    toast.style.transform = 'translateX(-50%) translateY(100px)';
-    setTimeout(() => {
-      if (toast.parentNode) {
-        toast.parentNode.removeChild(toast);
-      }
-    }, 400);
-  }, 3500);
-}
-
-// Add message listener for popup controls
-if (typeof chrome !== 'undefined' && chrome.runtime) {
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.log('🐻 ThreadCub: Received message:', message);
-    
-    switch (message.action) {
-      case 'ping':
-        sendResponse({ success: true, status: 'Content script is ready' });
-        break;
-        
-      case 'checkButtonStatus':
-        const exists = !!window.threadcubButton && !!document.getElementById('threadcub-edge-btn');
-        const isVisible = exists && window.threadcubButton.isVisible();
-        sendResponse({ 
-          exists: exists,
-          visible: isVisible
-        });
-        break;
-        
-      case 'showButton':
-        if (window.threadcubButton) {
-          window.threadcubButton.show();
-          sendResponse({ success: true });
-        } else {
-          window.threadcubButton = new window.ThreadCubFloatingButton();
-          sendResponse({ success: true });
-        }
-        break;
-        
-      case 'hideButton':
-        if (window.threadcubButton) {
-          window.threadcubButton.hide();
-          sendResponse({ success: true });
-        } else {
-          sendResponse({ success: false, error: 'Button does not exist' });
-        }
-        break;
-        
-      case 'resetPosition':
-        if (window.threadcubButton) {
-          window.threadcubButton.setEdgePosition('right', 0.5);
-          window.threadcubButton.savePosition();
-          sendResponse({ success: true });
-        } else {
-          sendResponse({ success: false, error: 'Button does not exist' });
-        }
-        break;
-        
-      case 'exportChat':
-        if (window.threadcubButton) {
-          const source = message.source || 'popup';
-          window.threadcubButton.saveAndOpenConversation(source);
-          sendResponse({ success: true });
-        } else {
-          sendResponse({ success: false, error: 'Floating button not available' });
-        }
-        break;
-        
-      case 'triggerDownload':
-        if (window.threadcubButton) {
-          window.threadcubButton.downloadConversationJSON();
-          sendResponse({ success: true });
-        } else {
-          sendResponse({ success: false, error: 'Button not available' });
-        }
-        break;
-
-      case 'triggerContinuation':
-        if (window.threadcubButton) {
-          window.threadcubButton.saveAndOpenConversation('popup');
-          sendResponse({ success: true });
-        } else {
-          sendResponse({ success: false, error: 'Button not available' });
-        }
-        break;
-        
-      case 'downloadJSON':
-        if (window.threadcubButton) {
-          window.threadcubButton.downloadConversationJSON();
-          sendResponse({ success: true });
-        } else {
-          sendResponse({ success: false, error: 'Button not available' });
-        }
-        break;
-
-      case 'continueConversation':
-        if (window.threadcubButton) {
-          window.threadcubButton.saveAndOpenConversation('popup');
-          sendResponse({ success: true });
-        } else {
-          sendResponse({ success: false, error: 'Button not available' });
-        }
-        break;
-        
-      case 'showBottomToast':
-        showBrowserToast(message.message);
-        sendResponse({ success: true });
-        break;
-        
-      default:
-        sendResponse({ success: false, error: 'Unknown action: ' + message.action });
-    }
-  });
-}
-
-// Initialize when DOM is ready
-function initThreadCub() {
-  console.log('🐻 ThreadCub: ===== MAIN INITIALIZATION STARTING =====');
-  console.log('🐻 ThreadCub: Document ready state:', document.readyState);
-  console.log('🐻 ThreadCub: Current URL:', window.location.href);
-  
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      setTimeout(() => {
-        createButtonWithTagging();
-        // Call continuation check after button is created
-        setTimeout(() => {
-          initializeContinuationCheck();
-        }, 1000);
-      }, 100);
-    });
-  } else {
-    // Document already loaded
-    setTimeout(() => {
-      createButtonWithTagging();
-      // Call continuation check after button is created
-      setTimeout(() => {
-        initializeContinuationCheck();
-      }, 1000);
-    }, 100);
-  }
-}
-
-function createButtonWithTagging() {
-  console.log('🏷️ ThreadCub: Creating button with DIRECT global persistence...');
-  
-  // Remove any existing buttons first to prevent duplicates
-  try {
-    const existingButtons = document.querySelectorAll('#threadcub-edge-btn, #threadcub-test-btn');
-    console.log('🐻 ThreadCub: Removing existing buttons:', existingButtons.length);
-    existingButtons.forEach(btn => btn.remove());
-  } catch (error) {
-    console.log('🐻 ThreadCub: Error removing existing buttons:', error);
-  }
-  
-  // Verify classes are available and create button
-  try {
-    console.log('🐻 ThreadCub: Pre-creation class check:', typeof window.ThreadCubFloatingButton);
-    
-    if (typeof window.ThreadCubFloatingButton === 'undefined') {
-      console.error('🐻 ThreadCub: ThreadCubFloatingButton class not found!');
-      return;
-    }
-    
-    // Create button instance using window reference
-    window.threadcubButton = new window.ThreadCubFloatingButton();
-    
-    // IMMEDIATELY force multiple persistent references
-    window.threadcubButtonInstance = window.threadcubButton;
-    window.threadcubGlobal = window.threadcubButton;
-    document.threadcubButton = window.threadcubButton;
-    
-    // Store in a way that prevents garbage collection
-    if (!window.threadcubStore) {
-      window.threadcubStore = {};
-    }
-    window.threadcubStore.buttonRef = window.threadcubButton;
-    window.threadcubStore.buttonClass = window.ThreadCubFloatingButton;
-    
-    console.log('🏷️ ThreadCub: Button created with DIRECT persistence');
-    
-    // CRITICAL: Verify all references immediately
-    console.log('🐻 ThreadCub: ✅ window.threadcubButton:', typeof window.threadcubButton);
-    console.log('🐻 ThreadCub: ✅ window.threadcubButtonInstance:', typeof window.threadcubButtonInstance);
-    console.log('🐻 ThreadCub: ✅ window.threadcubGlobal:', typeof window.threadcubGlobal);
-    console.log('🐻 ThreadCub: ✅ document.threadcubButton:', typeof document.threadcubButton);
-    
-    // Verify extraction method exists
-    if (typeof window.threadcubButton.extractChatGPTConversation === 'function') {
-      console.log('🐻 ThreadCub: ✅ ChatGPT Extraction method confirmed');
-    } else {
-      console.error('🐻 ThreadCub: ❌ ChatGPT Extraction method missing!');
-    }
-    
-    if (typeof window.threadcubButton.extractClaudeConversation === 'function') {
-      console.log('🐻 ThreadCub: ✅ Claude Extraction method confirmed');
-    } else {
-      console.error('🐻 ThreadCub: ❌ Claude Extraction method missing!');
-    }
-    
-  } catch (error) {
-    console.error('🐻 ThreadCub: Error creating button:', error);
-  }
-  
-  // DEBUGGING: Check if button was actually created and is visible
-  setTimeout(() => {
-    const buttonElement = document.getElementById('threadcub-edge-btn');
-    if (buttonElement) {
-      console.log('🐻 ThreadCub: ✅ Button element found in DOM');
-      console.log('🐻 ThreadCub: Button display style:', buttonElement.style.display);
-      
-      // Force button to be visible if it's hidden
-      if (buttonElement.style.display === 'none' || buttonElement.style.visibility === 'hidden') {
-        console.log('🐻 ThreadCub: 🔧 Button was hidden, forcing it to be visible');
-        buttonElement.style.display = 'flex';
-        buttonElement.style.visibility = 'visible';
-        buttonElement.style.opacity = '1';
-      }
-    } else {
-      console.error('🐻 ThreadCub: ❌ Button element NOT found in DOM!');
-    }
-    
-    // Final verification with detailed diagnostics
-    console.log('🐻 ThreadCub: ===== FINAL VERIFICATION =====');
-    console.log('🐻 ThreadCub: window.ThreadCubFloatingButton:', typeof window.ThreadCubFloatingButton);
-    console.log('🐻 ThreadCub: window.threadcubButton:', typeof window.threadcubButton);
-    console.log('🐻 ThreadCub: window.threadcubButtonInstance:', typeof window.threadcubButtonInstance);
-    console.log('🐻 ThreadCub: window.threadcubStore.buttonRef:', typeof window.threadcubStore?.buttonRef);
-    
-    if (window.threadcubButton && typeof window.threadcubButton.downloadConversationJSON === 'function') {
-      console.log('🐻 ThreadCub: 🎉 INITIALIZATION SUCCESSFUL - Button ready to use!');
-    } else {
-      console.error('🐻 ThreadCub: 💥 INITIALIZATION FAILED - Button not working');
-    }
-  }, 200);
-  
-  // ✅ Initialize tagging immediately so text selection works globally
-  if (typeof window.ThreadCubTagging !== 'undefined') {
-    try {
-      window.threadcubTagging = new window.ThreadCubTagging(window.threadcubButton);
-      console.log('🏷️ ThreadCub: Global tagging initialized - text selection now active');
-    } catch (error) {
-      console.error('🏷️ ThreadCub: Failed to initialize global tagging:', error);
-    }
-  }
-  
-  // ✅ SAFE: Initialize proactive message monitoring (NO download capability)
-  if (window.threadcubButton && typeof window.threadcubButton.initializeMessageMonitoring === 'function') {
-    try {
-      window.threadcubButton.initializeMessageMonitoring();
-      console.log('🐻 ThreadCub: SAFE Proactive message monitoring initialized - NO downloads possible');
-    } catch (error) {
-      console.error('🐻 ThreadCub: Failed to initialize SAFE message monitoring:', error);
-    }
-  }
-}
-
-// FIXED: Ensure continuation check is always called
-function initializeContinuationCheck() {
-  console.log('🐻 ThreadCub: ===== CALLING CONTINUATION CHECK FROM MAIN INIT =====');
-  
-  // Small delay to ensure everything is set up
-  setTimeout(() => {
-    try {
-      if (typeof window.checkForContinuationData === 'function') {
-        console.log('🐻 ThreadCub: checkForContinuationData function found (window), calling it...');
-        window.checkForContinuationData();
-      } else if (typeof checkForContinuationData === 'function') {
-        console.log('🐻 ThreadCub: checkForContinuationData function found (global), calling it...');
-        checkForContinuationData();
-      } else {
-        console.error('🐻 ThreadCub: checkForContinuationData function NOT found!');
-        console.log('🐻 ThreadCub: Available functions:', Object.getOwnPropertyNames(window).filter(name => name.includes('check') || name.includes('continuation')));
-      }
-    } catch (error) {
-      console.error('🐻 ThreadCub: Error calling checkForContinuationData:', error);
-    }
-  }, 1000); // Increased delay to ensure parsing is complete
-}
-
-// Simple test function that definitely gets defined
-window.threadcubTest = function() {
-  console.log('🧪 ThreadCub Simple Test:');
-  console.log('Classes available:', typeof window.ThreadCubFloatingButton);
-  console.log('Button instance:', typeof window.threadcubButton);
-  console.log('Button instance (alt):', typeof window.threadcubButtonInstance);
-  console.log('Store reference:', typeof window.threadcubStore?.buttonRef);
-  console.log('DOM element:', !!document.getElementById('threadcub-edge-btn'));
-  
-  // Test download
-  if (window.threadcubButton && window.threadcubButton.downloadConversationJSON) {
-    console.log('✅ Ready to download - calling method...');
-    window.threadcubButton.downloadConversationJSON();
-    return true;
-  } else {
-    console.log('❌ Download not available');
-    return false;
-  }
-};
-
-// FIXED: Memory wipe auto-recovery system
-setInterval(() => {
-  const domButton = document.getElementById('threadcub-edge-btn');
-  const hasMemoryRef = !!window.threadcubButton;
-  const hasClass = !!window.ThreadCubFloatingButton;
-  
-  if (domButton && (!hasMemoryRef || !hasClass)) {
-    console.log('🔧 ThreadCub: Memory wipe detected - auto-recovering...');
-    
-    // Remove orphaned DOM
-    domButton.remove();
-    
-    // Clear any old references
-    window.threadcubButton = null;
-    window.ThreadCubFloatingButton = null;
-    window.threadcubButtonInstance = null;
-    window.threadcubGlobal = null;
-    if (window.threadcubStore) {
-      window.threadcubStore.buttonRef = null;
-      window.threadcubStore.buttonClass = null;
-    }
-    
-    // Reinitialize after short delay
-    setTimeout(() => {
-      console.log('🔧 ThreadCub: Re-initializing after memory wipe...');
-      initThreadCub();
-    }, 1000);
-  } else {
-    // Normal reference restoration for minor losses
-    if (!window.threadcubButton && window.threadcubButtonInstance) {
-      console.log('🔧 ThreadCub: Auto-restoring lost reference...');
-      window.threadcubButton = window.threadcubButtonInstance;
-    }
-    if (!window.threadcubButton && window.threadcubStore?.buttonRef) {
-      console.log('🔧 ThreadCub: Auto-restoring from store...');
-      window.threadcubButton = window.threadcubStore.buttonRef;
-    }
-  }
-}, 5000); // Check every 5 seconds
-
-initThreadCub();
-
-// === END SECTION 4F ===
-// === END OF ALL SECTIONS ===
+// === END SECTION 4E-11 ===

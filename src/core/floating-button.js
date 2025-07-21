@@ -1017,6 +1017,8 @@ class ThreadCubFloatingButton {
       // RESTORED: Direct fetch call (same as working main branch)
       let response;
       try {
+        console.log('🔍 API Data being sent:', JSON.stringify(apiData, null, 2));
+        
         response = await fetch('https://threadcub.com/api/conversations/save', {
           method: 'POST',
           headers: {

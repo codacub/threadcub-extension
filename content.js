@@ -2164,6 +2164,7 @@ function fillInputFieldWithPrompt(prompt) {
   let inputField = null;
   for (const selector of platformSelectors) {
     const elements = document.querySelectorAll(selector);
+    console.log('🔍 Checked selector:', selector, 'Found elements:', elements.length);
     for (const element of elements) {
       if (element.offsetHeight > 0 && !element.disabled) {
         inputField = element;
@@ -2416,57 +2417,66 @@ function fillInputFieldWithPrompt(prompt) {
   const platform = detectCurrentPlatform();
   console.log('🐻 ThreadCub: Filling input field with continuation prompt');
   
-  // Platform-specific selectors
-  const selectors = {
-    'claude.ai': [
-      'textarea[data-testid="chat-input"]',
-      'div[contenteditable="true"]',
-      'textarea'
-    ],
-    'chatgpt': [
-      'textarea[data-testid="prompt-textarea"]',
-      '#prompt-textarea',
-      'textarea[placeholder*="Message"]'
-    ],
-    'gemini': [
-      'rich-textarea div[contenteditable="true"]',
-      'textarea'
-    ]
-  };
-  
-  const platformSelectors = selectors[platform] || selectors['chatgpt'];
-  
-  // Find input field
-  let inputField = null;
-  for (const selector of platformSelectors) {
-    const elements = document.querySelectorAll(selector);
-    for (const element of elements) {
-      if (element.offsetHeight > 0 && !element.disabled) {
-        inputField = element;
-        break;
+  setTimeout(() => {
+    // Platform-specific selectors
+    const selectors = {
+      'claude.ai': [
+        'textarea[data-testid="chat-input"]',
+        'div[contenteditable="true"]',
+        'textarea',
+        '*[contenteditable="true"]',
+        '[role="textbox"]',
+        'input[type="text"]'
+      ],
+      'chatgpt': [
+        'textarea[data-testid="prompt-textarea"]',
+        '#prompt-textarea',
+        'textarea[placeholder*="Message"]'
+      ],
+      'gemini': [
+        'rich-textarea div[contenteditable="true"]',
+        'textarea'
+      ]
+    };
+
+    const platformSelectors = selectors[platform] || selectors['chatgpt'];
+    console.log('🔍 Platform detected:', platform, 'Using selectors:', platformSelectors);
+    console.log('🔍 About to loop through selectors. Count:', platformSelectors.length);
+
+    // Find input field
+    let inputField = null;
+    for (const selector of platformSelectors) {
+      const elements = document.querySelectorAll(selector);
+      console.log('🔍 Checked selector:', selector, 'Found elements:', elements.length);
+      for (const element of elements) {
+        if (element.offsetHeight > 0 && !element.disabled) {
+          inputField = element;
+          break;
+        }
       }
+      if (inputField) break;
     }
-    if (inputField) break;
-  }
-  
-  if (inputField) {
-    inputField.focus();
-    
-    // Fill based on input type
-    if (inputField.tagName === 'TEXTAREA') {
-      inputField.value = prompt;
-      inputField.dispatchEvent(new Event('input', { bubbles: true }));
-      inputField.dispatchEvent(new Event('change', { bubbles: true }));
-    } else if (inputField.contentEditable === 'true') {
-      inputField.textContent = prompt;
-      inputField.dispatchEvent(new Event('input', { bubbles: true }));
-      inputField.dispatchEvent(new Event('change', { bubbles: true }));
+
+    if (inputField) {
+      inputField.focus();
+      
+      // Fill based on input type
+      if (inputField.tagName === 'TEXTAREA') {
+        inputField.value = prompt;
+        inputField.dispatchEvent(new Event('input', { bubbles: true }));
+        inputField.dispatchEvent(new Event('change', { bubbles: true }));
+      } else if (inputField.contentEditable === 'true') {
+        inputField.textContent = prompt;
+        inputField.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      
+      console.log('✅ ThreadCub: Input field populated successfully');
+      return true;
+    } else {
+      console.log('❌ ThreadCub: Could not find input field');
+      return false;
     }
-    
-    console.log('✅ ThreadCub: Input field filled with continuation prompt');
-  } else {
-    console.log('❌ ThreadCub: Could not find input field');
-  }
+  }, 2000); // Wait 2 seconds
 }
 
 // ===== Show continuation success message =====
@@ -4270,11 +4280,9 @@ function enhanceFloatingButtonWithConversationFeatures() {
         
         // FIXED: Use DIRECT fetch() call to API (same as working main branch)
         const apiData = {
-          title: conversationData.title || 'Untitled Conversation',
-          url: conversationData.url || window.location.href,
-          platform: conversationData.platform?.toLowerCase() || 'unknown',
-          messages: conversationData.messages,
-          extractionMethod: conversationData.extraction_method || 'unknown'
+        conversationData: conversationData,
+        source: conversationData.platform?.toLowerCase() || 'unknown',
+        title: conversationData.title || 'Untitled Conversation'
         };
         
         console.log('🐻 ThreadCub: Making DIRECT API call to ThreadCub...');
@@ -4282,6 +4290,7 @@ function enhanceFloatingButtonWithConversationFeatures() {
         let response;
         try {
           // RESTORED: Direct fetch call (same as working main branch)
+          console.log('🔍 API Data being sent:', JSON.stringify(apiData, null, 2));
           response = await fetch('https://threadcub.com/api/conversations/save', {
             method: 'POST',
             headers: {

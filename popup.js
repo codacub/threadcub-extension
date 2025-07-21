@@ -356,16 +356,6 @@ function showPopupToast(message) {
 // === SECTION 1E: FIXED Button Event Listeners ===
 
 function setupEventListeners() {
-    // Handle navigation clicks - Updated to handle data-view attributes
-    const dataViewLinks = document.querySelectorAll('[data-view]');
-    dataViewLinks.forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            const targetView = this.getAttribute('data-view');
-            console.log('Navigate to view:', targetView);
-            showView(targetView);
-        });
-    });
 
     // Handle save button (BLUE - Simple JSON download) - FIXED: No duplicate toasts
     const saveButton = document.getElementById('saveButton');
@@ -524,16 +514,6 @@ function setupEventListeners() {
             }
         });
     }
-    
-    // Handle back navigation
-    const backLinks = document.querySelectorAll('[data-back]');
-    backLinks.forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            const targetView = this.getAttribute('data-back');
-            showView(targetView);
-        });
-    });
 
     // Handle settings controls on controls page
     setupControlsPageEventListeners();
@@ -546,24 +526,6 @@ function setupEventListeners() {
 }
 
 // === END SECTION 1E ===
-
-// === SECTION 1F: View Management Functions ===
-
-// View Management Functions
-function showView(viewId) {
-    // Hide all views
-    document.querySelectorAll('.view').forEach(view => {
-        view.classList.remove('active');
-    });
-    
-    // Show target view
-    const targetView = document.getElementById(viewId);
-    if (targetView) {
-        targetView.classList.add('active');
-    }
-}
-
-// === END SECTION 1F ===
 
 // === SECTION 1G: Controls Page Event Listeners ===
 
@@ -955,5 +917,21 @@ function setupQuickLinksEventListeners() {
 }
 
 // === END SECTION 1K ===
+
+// Add this debug function to your popup.js
+function debugViews() {
+    console.log('=== VIEW DEBUG ===');
+    const views = document.querySelectorAll('.view');
+    views.forEach(view => {
+        const rect = view.getBoundingClientRect();
+        console.log(`${view.id}:`, {
+            active: view.classList.contains('active'),
+            display: getComputedStyle(view).display,
+            width: rect.width,
+            height: rect.height,
+            visible: rect.width > 0 && rect.height > 0
+        });
+    });
+}
 
 // === END OF ALL SECTIONS ===

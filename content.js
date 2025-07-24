@@ -2295,14 +2295,6 @@ function detectCurrentPlatform() {
 
 // === END SECTION 2A ===
 
-// === SECTION 2B: Popup Event Setup ===
-// removed since we don't need popup event listeners anymore
-// === END SECTION 2B ===
-
-// === SECTION 2B-4: Support Functions ===
-// removed since we're eliminating the modal system entirely, we don't need any of the popup-related support functions. The new streamlined system handles success messages differently with the subtle notification approach.
-// === END SECTION 2B-4 ===
-
 // === SECTION 3A: Platform Auto-start Functions ===
 
 // ===== Generate intelligent conversation summary =====

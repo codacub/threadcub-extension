@@ -2001,3 +2001,41 @@ Once you've reviewed it, let me know you're ready to continue from where we left
 window.ThreadCubFloatingButton = ThreadCubFloatingButton;
 
 console.log('✅ ThreadCubFloatingButton defined:', typeof window.ThreadCubFloatingButton);
+
+// Add message listener for popup communication
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    console.log('🐻 ThreadCub: Received message:', request);
+    
+    try {
+        if (request.action === 'checkButtonStatus') {
+            sendResponse({ success: true, exists: !!window.threadcubButton });
+            return;
+        }
+        
+        if (request.action === 'hideFloatingButton') {
+            if (window.threadcubButton && window.threadcubButton.button) {
+                window.threadcubButton.button.style.display = 'none';
+                sendResponse({ success: true });
+            } else {
+                sendResponse({ success: false, error: 'Button not found' });
+            }
+            return;
+        }
+        
+        if (request.action === 'showFloatingButton') {
+            if (window.threadcubButton && window.threadcubButton.button) {
+                window.threadcubButton.button.style.display = 'flex';
+                sendResponse({ success: true });
+            } else {
+                sendResponse({ success: false, error: 'Button not found' });
+            }
+            return;
+        }
+        
+        sendResponse({ success: false, error: 'Unknown action' });
+        
+    } catch (error) {
+        console.error('🐻 ThreadCub: Message handler error:', error);
+        sendResponse({ success: false, error: error.message });
+    }
+});

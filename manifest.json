@@ -49,26 +49,30 @@
   },
   
   "content_scripts": [
-    {
-      "matches": [
-        "https://claude.ai/*",
-        "https://chat.openai.com/*",
-        "https://chatgpt.com/*",
-        "https://gemini.google.com/*",
-        "https://copilot.microsoft.com/*"
-      ],
-      "js": [
-        "src/utils/design-tokens.js",
-        "src/ui/side-panel.js",
-        "src/core/floating-button.js",
-        "content.js"
-      ],
-      "run_at": "document_idle"
-    }
-  ],
+  {
+    "matches": [
+      "https://claude.ai/*",
+      "https://chat.openai.com/*",
+      "https://chatgpt.com/*",
+      "https://gemini.google.com/*",
+      "https://copilot.microsoft.com/*"
+    ],
+    "css": [
+      "assets/tokens.css",
+      "assets/floating-button.css",
+      "assets/side-panel.css"
+    ],
+    "js": [
+      "src/ui/side-panel.js",
+      "src/core/floating-button.js",
+      "content.js"
+    ],
+    "run_at": "document_idle"
+  }
+],
   
   "action": {
-    "default_popup": "popup.html",
+    "default_popup": "popup/popup.html",
     "default_title": "ThreadCub Exporter",
     "default_icon": {
       "16": "icons/icon16.png",

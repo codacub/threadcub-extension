@@ -1,0 +1,14 @@
+.threadcub-tag-card {
+  background: var(--color-white);
+  border: var(--border-width-thin) solid var(--color-gray-200);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-4);
+  margin-bottom: var(--spacing-3);
+  position: relative;
+  transition: all var(--transition-base);
+  cursor: pointer;
+}
+
+.threadcub-tag-card:hover {
+  box-shadow: var(--shadow-card);
+}

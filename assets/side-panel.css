@@ -12,3 +12,36 @@
 .threadcub-tag-card:hover {
   box-shadow: var(--shadow-card);
 }
+
+.card-content {
+  /* No styles needed for the container itself */
+}
+
+.tag-text {
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+  color: var(--color-gray-700);
+  margin-bottom: var(--spacing-4);
+  font-family: var(--font-family-primary);
+}
+
+.default-state {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: var(--spacing-2);
+}
+
+.card-icon {
+  color: var(--color-gray-500);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.6;
+}
+
+.action-buttons {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-4);
+}

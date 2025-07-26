@@ -64,34 +64,32 @@ class ThreadCubSidePanel {
   }
 
   // ===== TAG CARD CREATION =====
-  createTagCard(tag) {
-    const tokens = this.tokens;
+ createTagCard(tag) {
     const hasNote = tag.note && tag.note.trim().length > 0;
     const hasTags = tag.tags && tag.tags.length > 0;
     
+    // This function now returns clean HTML with only class names.
+    // All styling is handled by the external CSS file.
     return `
-      <div class="threadcub-tag-card" 
-           data-tag-id="${tag.id}" 
-           data-state="default"
-           style="
-             background: ${tokens.colors.white};
-             border: 1px solid ${tokens.colors.gray[200]};
-             border-radius: 8px;
-             padding: ${tokens.spacing[4]};
-             margin-bottom: ${tokens.spacing[3]};
-             position: relative;
-             transition: all 0.2s ease;
-             cursor: pointer;
-           ">
-        
-        <!-- Card Content -->
+      <div class="threadcub-tag-card" data-tag-id="${tag.id}" data-state="default">
         <div class="card-content">
-          ${this.createTagText(tag, tokens)}
-          ${hasTags ? this.createPriorityTags(tag.tags, tokens) : ''}
-          ${hasNote ? this.createNoteDisplay(tag.note, tag.id, tokens) : ''}
-          ${this.createDefaultState(tag, tokens)}
-          ${this.createNoteEditingState(tag, tokens)}
-          ${this.createTagEditingState(tag, tokens)}
+          <div class="tag-text">${tag.text}</div>
+          
+          ${hasTags ? this.createPriorityTags(tag.tags) : ''}
+          ${hasNote ? this.createNoteDisplay(tag.note, tag.id) : ''}
+          
+          <div class="default-state">
+            <div class="card-icon">${this.tokens.icons.pawPrint}</div>
+            <div class="action-buttons">
+              ${this.createActionButton('continue-chat', this.tokens.icons.cornerDownLeft, tag.id)}
+              ${this.createActionButton('edit-note', this.tokens.icons.squarePen, tag.id)}
+              ${this.createActionButton('add-tag', this.tokens.icons.tag, tag.id)}
+              ${this.createActionButton('delete', this.tokens.icons.trash, tag.id)}
+            </div>
+          </div>
+          
+          ${this.createNoteEditingState(tag)}
+          ${this.createTagEditingState(tag)}
         </div>
       </div>
     `;

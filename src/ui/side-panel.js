@@ -8,42 +8,6 @@ class ThreadCubSidePanel {
     this.taggingSystem = taggingSystem;
     this.sidePanel = null;
     
-    // Use tokens from design system if available, fallback to inline
-    this.tokens = window.ThreadCubTokens || {
-      colors: {
-        primary: '#7C3AED',
-        white: '#FFFFFF',
-        priority: {
-          high: { background: '#EDFBCD', text: '#67A221' },
-          medium: { background: '#FEF3C9', text: '#D77720' },
-          low: { background: '#FFF1F2', text: '#F24261' }
-        },
-        addTag: { background: '#7C3AED', text: '#FFFFFF' },
-        gray: {
-          100: '#F3F4F6',
-          200: '#E5E7EB',
-          300: '#D1D5DB',
-          500: '#6B7280',
-          700: '#374151'
-        }
-      },
-      spacing: {
-        1: '4px', 2: '8px', 3: '12px', 4: '16px', 
-        5: '20px', 6: '24px', 8: '32px'
-      },
-      typography: {
-        fontFamily: { primary: "'Karla', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" },
-        fontSize: { xs: '12px', sm: '14px', base: '16px', lg: '18px' },
-        fontWeight: { normal: '400', semibold: '600', extrabold: '800' }
-      },
-      icons: {
-        pawPrint: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="4" r="2"/><circle cx="18" cy="8" r="2"/><circle cx="20" cy="16" r="2"/><path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z"/></svg>',
-        cornerDownLeft: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4v7a4 4 0 0 1-4 4H4"/><path d="m9 10-5 5 5 5"/></svg>',
-        squarePen: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg>',
-        tag: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></svg>',
-        trash: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>'
-      }
-    };
   }
 
   // ===== MAIN UPDATE METHOD =====

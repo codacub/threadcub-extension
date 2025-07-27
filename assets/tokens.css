@@ -58,6 +58,41 @@
   /* Tooltip */
   --color-tooltip-bg: #475569;
   --color-tooltip-text: #FFFFFF;
+  --color-tooltip-border: rgba(255, 255, 255, 0.1); /* Added from floating-button.js */
+
+  /* Floating Button Specific Colors */
+  --color-floating-btn-bg: rgba(255, 255, 255, 0.95); /* Adjusted from floating-button.js */
+  --color-floating-btn-border: rgba(226, 232, 240, 0.8); /* Adjusted from floating-button.js */
+  --color-floating-btn-text: #94a3b8; /* Adjusted from floating-button.js */
+  --color-floating-btn-hover-bg: rgba(255, 255, 255, 1); /* Adjusted from floating-button.js */
+  --color-floating-btn-hover-border: #4F46E5; /* Primary accent color for hover */
+  --color-floating-btn-grip-icon: #94a3b8; /* Adjusted from floating-button.js */
+
+  --color-action-btn-bg: rgba(255, 255, 255, 0.95); /* Adjusted from floating-button.js */
+  --color-action-btn-border: rgba(255, 255, 255, 0.3); /* Adjusted from floating-button.js */
+  --color-action-btn-text: #64748b; /* Adjusted from floating-button.js */
+
+  /* Specific action button hover colors */
+  --color-action-btn-new-bg-hover: #925FE2; /* From floating-button.js */
+  --color-action-btn-new-text-hover: var(--color-white); /* From floating-button.js */
+  --color-action-btn-download-bg-hover: #99DAFA; /* From floating-button.js */
+  --color-action-btn-download-text-hover: #4C596E; /* From floating-button.js */
+  --color-action-btn-tag-bg-hover: #FFD700; /* From floating-button.js */
+  --color-action-btn-tag-text-hover: #4C596E; /* From floating-button.js */
+  --color-action-btn-close-bg-hover: #ef4444; /* From floating-button.js */
+  --color-action-btn-close-text-hover: var(--color-white); /* From floating-button.js */
+
+  /* Shadow Button */
+  --color-shadow-btn-bg: rgba(79, 70, 229, 0.3); /* From floating-button.js */
+  --color-shadow-btn-border: rgba(79, 70, 229, 0.6); /* From floating-button.js */
+  --color-border-overlay: #4F46E5; /* From floating-button.js */
+
+  /* Toast Notification Colors */
+  --color-toast-success-bg: #DDFCFC; /* From floating-button.js */
+  --color-toast-success-text: #4B84A3; /* From floating-button.js */
+  --color-toast-error-bg: #FAE1E1; /* From floating-button.js */
+  --color-toast-error-text: #E32920; /* From floating-button.js */
+
 
   /* ===== SPACING ===== */
   --spacing-0: 0px;
@@ -72,6 +107,8 @@
   --spacing-9: 36px;
   --spacing-10: 40px;
   --spacing-12: 48px;
+  --spacing-gap-xs: 6px; /* Added for action buttons gap */
+
 
   /* ===== TYPOGRAPHY ===== */
   --font-family-title: 'Averia Sans Libre', cursive;
@@ -90,27 +127,61 @@
   --font-weight-bold: 700;
   --font-weight-extrabold: 800; /* Added this as it was used in JS */
 
+  /* Specific font sizes for floating button components */
+  --font-size-floating-btn-bear-face: 32px; /* From floating-button.js */
+  --font-size-tooltip: 13px; /* From floating-button.js */
+  --font-weight-tooltip: 600; /* From floating-button.js */
+  --font-spacing-tooltip: 0.5px; /* From floating-button.js */
+  --font-weight-toast: 800; /* From floating-button.js */
+  --font-size-toast: 14px; /* From floating-button.js */
+
   /* ===== BORDERS & RADII ===== */
   --border-width-thin: 1px;
   --border-radius-base: 4px;
   --border-radius-lg: 8px;
   --border-radius-full: 50%;
+  --border-width-btn: 2px; /* For the main button */
+  --border-width-action-btn: 1px; /* For action buttons */
+  --border-width-overlay: 4px; /* For border overlay */
 
   /* ===== SHADOWS ===== */
   --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.08);
   --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.1); /* Added for consistent hover effect */
 
+  /* Floating Button Specific Shadows */
+  --shadow-floating-btn-default: 0 2px 8px rgba(0, 0, 0, 0.15); /* From floating-button.js */
+  --shadow-floating-btn-hover: 0 4px 16px rgba(0, 0, 0, 0.2); /* From floating-button.js */
+  --shadow-floating-btn-dragging: 0 8px 24px rgba(0, 0, 0, 0.25); /* From floating-button.js */
+  --shadow-action-btn-default: 0 2px 8px rgba(0, 0, 0, 0.08); /* From floating-button.js */
+  --shadow-action-btn-new-hover: 0 4px 12px rgba(146, 95, 226, 0.4); /* From floating-button.js */
+  --shadow-action-btn-download-hover: 0 4px 12px rgba(153, 218, 250, 0.4); /* From floating-button.js */
+  --shadow-action-btn-tag-hover: 0 4px 12px rgba(254, 239, 144, 0.4); /* From floating-button.js */
+  --shadow-action-btn-close-hover: 0 4px 12px rgba(239, 68, 68, 0.4); /* From floating-button.js */
+  --shadow-tooltip: 0 4px 12px rgba(0, 0, 0, 0.15); /* From floating-button.js */
+  --shadow-toast: 0 4px 12px rgba(0, 0, 0, 0.1); /* From floating-button.js */
+
   /* ===== OTHERS ===== */
   --transition-base: 0.2s ease;
   --transition-slow: 0.3s ease;
+  --transition-action-buttons: 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* From floating-button.js */
+  --transition-drag-snap: 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* For button snap after drag */
+  --transition-tooltip: 0.2s cubic-bezier(0.4, 0, 0.2, 1); /* From floating-button.js */
+  --transition-toast: 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* From floating-button.js */
   
   /* Component Sizes */
   --popup-width: 380px;
   --popup-height: 600px;
   --logo-size: 80px;
-  --icon-size-base: 24px;
+  --icon-size-base: 24px; /* Standard icon size */
+  --icon-size-action-btn: 14px; /* Small icon size for action buttons */
+  --icon-size-grip: 16px; /* Size for grip icon */
   --min-touch-target: 48px;
   --toggle-width: 52px;
   --toggle-height: 28px;
   --toggle-slider-size: 24px;
+  --floating-button-size: 60px; /* From floating-button.js */
+  --floating-button-bear-img-size: 48px; /* From floating-button.js */
+  --action-button-size: 32px; /* From floating-button.js */
+  --shadow-button-size: 48px; /* From floating-button.js */
+  --toast-height: 40px; /* From floating-button.js */
 }

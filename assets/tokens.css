@@ -25,6 +25,7 @@
   /* Semantic & Custom Popup Colors */
   --color-success: #10B981;
   --color-error: #EF4444;
+  --color-error-light: #FEF2F2; /* Added for delete button hover */
   --color-warning: #F59E0B;
   --color-info: #3B82F6;
   --color-text-primary: #333;
@@ -51,6 +52,8 @@
   --color-priority-medium-text: #D77720;
   --color-priority-low-bg: #FFF1F2;
   --color-priority-low-text: #F24261;
+  --color-add-tag-background: #E5E7EB; /* Added for add tag button */
+  --color-add-tag-text: #4B5563; /* Added for add tag button */
 
   /* Tooltip */
   --color-tooltip-bg: #475569;
@@ -85,6 +88,7 @@
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
+  --font-weight-extrabold: 800; /* Added this as it was used in JS */
 
   /* ===== BORDERS & RADII ===== */
   --border-width-thin: 1px;
@@ -94,6 +98,7 @@
 
   /* ===== SHADOWS ===== */
   --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.1); /* Added for consistent hover effect */
 
   /* ===== OTHERS ===== */
   --transition-base: 0.2s ease;

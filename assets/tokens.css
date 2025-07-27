@@ -139,10 +139,12 @@
   --border-width-thin: 1px;
   --border-radius-base: 4px;
   --border-radius-lg: 8px;
+  --border-radius-xl: 12px;
   --border-radius-full: 50%;
   --border-width-btn: 2px; /* For the main button */
   --border-width-action-btn: 1px; /* For action buttons */
   --border-width-overlay: 4px; /* For border overlay */
+  --border-width-medium: 2px;
 
   /* ===== SHADOWS ===== */
   --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.08);

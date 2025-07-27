@@ -213,7 +213,7 @@ class ThreadCubSidePanel {
         this.taggingSystem.continueTagInChat(tagId);
       });
 
-      this.addButtonHoverEffects(continueBtn, 'var(--color-gray-100)', 'var(--color-primary)'); // Use CSS variables
+      /* this.addButtonHoverEffects(continueBtn, 'var(--color-gray-100)', 'var(--color-primary)'); */ // Use CSS variables
     }
 
     // Edit note
@@ -224,7 +224,7 @@ class ThreadCubSidePanel {
         this.enterNoteEditingState(card, tagId);
       });
 
-      this.addButtonHoverEffects(editBtn, 'var(--color-gray-100)', 'var(--color-primary)'); // Use CSS variables
+      /*this.addButtonHoverEffects(editBtn, 'var(--color-gray-100)', 'var(--color-primary)'); */ // Use CSS variables
     }
 
     // Add tag
@@ -235,7 +235,7 @@ class ThreadCubSidePanel {
         this.enterTagEditingState(card, tagId);
       });
 
-      this.addButtonHoverEffects(tagBtn, 'var(--color-gray-100)', 'var(--color-primary)'); // Use CSS variables
+      /*this.addButtonHoverEffects(tagBtn, 'var(--color-gray-100)', 'var(--color-primary)');*/ // Use CSS variables
     }
 
     // Delete
@@ -246,7 +246,7 @@ class ThreadCubSidePanel {
         this.taggingSystem.deleteTagWithUndo(tagId);
       });
 
-      this.addButtonHoverEffects(deleteBtn, 'var(--color-error-light)', 'var(--color-error)'); // Use CSS variables
+     /* this.addButtonHoverEffects(deleteBtn, 'var(--color-error-light)', 'var(--color-error)');*/ // Use CSS variables
     }
 
     // Note editing listeners

@@ -731,17 +731,9 @@ class ThreadCubFloatingButton {
         conversationData = await this.extractClaudeConversation();
       } else if (hostname.includes('chatgpt.com') || hostname.includes('chat.openai.com')) {
         conversationData = this.extractChatGPTConversation();
-      } else if (hostname.includes('gemini.google.com')) { 
-        conversationData = this.extractGeminiConversation();
       } else {
         conversationData = this.extractGenericConversation();
       }
-
-      // ADD THE DEBUG LINES HERE (after extraction, before routing)
-console.log('🔍 DEBUG: Current hostname:', window.location.hostname);
-const targetPlatform = this.getTargetPlatformFromCurrentUrl();
-console.log('🔍 DEBUG: targetPlatform detected as:', targetPlatform);
-console.log('🔍 DEBUG: About to route to platform...');
 
       // CRITICAL FIX: Validate conversation data before proceeding
       if (!conversationData) {
@@ -802,22 +794,17 @@ console.log('🔍 DEBUG: About to route to platform...');
         // FIXED: Detect target platform for smart routing
         const targetPlatform = this.getTargetPlatformFromCurrentUrl();
 
-        // ADD DEBUG LINES HERE
-console.log('🔍 DEBUG LOCATION 1: Current hostname:', window.location.hostname);
-console.log('🔍 DEBUG LOCATION 1: targetPlatform detected as:', targetPlatform);
-console.log('🔍 DEBUG LOCATION 1: About to route to platform...');
-
         if (targetPlatform === 'chatgpt') {
-          console.log('🤖 ThreadCub: Routing to ChatGPT flow (with file download)');
+          // ChatGPT flow: Auto-download + cross-tab continuation
+          console.log('🐻 ThreadCub: Routing to ChatGPT flow (with file download)');
           this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
         } else if (targetPlatform === 'claude') {
-          console.log('🤖 ThreadCub: Routing to Claude flow (no file download)');
+          // Claude flow: API-only + cross-tab continuation (no download)
+          console.log('🐻 ThreadCub: Routing to Claude flow (no file download)');
           this.handleClaudeFlow(minimalPrompt, shareUrl, conversationData);
-        } else if (targetPlatform === 'gemini') {
-          console.log('🤖 ThreadCub: Routing to Gemini flow (with file download)');
-          this.handleGeminiFlow(minimalPrompt, shareUrl, conversationData);
         } else {
-          console.log('🤖 ThreadCub: Unknown platform, defaulting to ChatGPT flow');
+          // Default to ChatGPT flow
+          console.log('🐻 ThreadCub: Unknown platform, defaulting to ChatGPT flow');
           this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
         }
 
@@ -1401,104 +1388,6 @@ console.log('🔍 DEBUG LOCATION 1: About to route to platform...');
     return conversationData;
   }
 
-  extractGeminiConversation() {
-  console.log('🟣 ThreadCub: Extracting Gemini conversation...');
-  
-  const messages = [];
-  let messageIndex = 0;
-  
-  // IMPROVED: Generate better title from first user message
-let title = 'Gemini Conversation';
-
-// After extracting messages, generate a better title
-if (messages.length > 0) {
-  const firstUserMessage = messages.find(msg => msg.role === 'user');
-  if (firstUserMessage && firstUserMessage.content) {
-    const content = firstUserMessage.content.trim();
-    if (content.length > 10) {
-      // Create descriptive title from first user message
-      title = content.substring(0, 50).replace(/\n/g, ' ').trim();
-      if (content.length > 50) title += '...';
-      title = `${title} - Gemini`;
-    }
-  }
-}
-  
-  // Try multiple selectors for Gemini messages
-  const messageSelectors = [
-    '[data-test-id="conversation-turn"]',
-    'div[class*="conversation"]',
-    'div[class*="message"]',
-    'div[class*="turn"]'
-  ];
-  
-  let messageElements = [];
-  for (const selector of messageSelectors) {
-    messageElements = document.querySelectorAll(selector);
-    if (messageElements.length > 0) {
-      console.log(`🟣 ThreadCub: Found ${messageElements.length} messages with selector:`, selector);
-      break;
-    }
-  }
-  
-  // If no specific message elements found, use generic approach
-  if (messageElements.length === 0) {
-    console.log('🟣 ThreadCub: Using generic extraction for Gemini');
-    const textElements = document.querySelectorAll('div, p');
-    const validElements = Array.from(textElements).filter(el => {
-      const text = el.textContent?.trim() || '';
-      return text.length > 20 && 
-             text.length < 5000 && 
-             !text.includes('Copy') && 
-             !text.includes('Share') &&
-             !el.querySelector('button');
-    });
-    
-    validElements.forEach((element, index) => {
-      const text = element.textContent?.trim() || '';
-      const role = index % 2 === 0 ? 'user' : 'assistant';
-      
-      messages.push({
-        id: messageIndex++,
-        role: role,
-        content: text,
-        timestamp: new Date().toISOString(),
-        extractionMethod: 'gemini_fallback'
-      });
-    });
-  } else {
-    // Process found message elements
-    messageElements.forEach((element, index) => {
-      const text = element.textContent?.trim() || '';
-      if (text && text.length > 10) {
-        const role = text.length < 200 && text.includes('?') ? 'user' : 
-                     index % 2 === 0 ? 'user' : 'assistant';
-        
-        messages.push({
-          id: messageIndex++,
-          role: role,
-          content: text.replace(/^(Copy|Share|Regenerate)$/gm, '').trim(),
-          timestamp: new Date().toISOString(),
-          extractionMethod: 'gemini_direct'
-        });
-      }
-    });
-  }
-  
-  const conversationData = {
-    title: title,
-    url: window.location.href,
-    timestamp: new Date().toISOString(),
-    platform: 'Gemini',
-    total_messages: messages.length,
-    messages: messages,
-    extraction_method: 'gemini_extraction'
-  };
-  
-  console.log(`🟣 ThreadCub: ✅ Gemini extraction complete: ${messages.length} messages`);
-  return conversationData;
-}
-
   // ===== CONTINUATION & HELPER METHODS =====
   generateQuickSummary(messages) {
     if (!messages || messages.length === 0) return 'Empty conversation';
@@ -1530,32 +1419,32 @@ if (messages.length > 0) {
 
   generateContinuationPrompt(summary, shareUrl, platform, conversationData) {
     console.log('🐻 ThreadCub: Generating continuation prompt for platform:', platform);
-    
-    // FIXED: Add Gemini support - both ChatGPT and Gemini use file-based prompts
-    if (platform && (platform.toLowerCase().includes('chatgpt') || 
-                    platform.toLowerCase().includes('gemini'))) {
-      // ChatGPT/Gemini-specific prompt (file upload)
-      const prompt = `I'd like to continue our previous conversation. I have our complete conversation history as a file that I'll share now.
 
-  Please read through the attached conversation file and provide your assessment of:
-  - What we were working on
-  - The current status/progress
-  - Any next steps or tasks mentioned
+    // Return platform-specific prompts
+    if (platform && platform.toLowerCase().includes('chatgpt')) {
+      // ChatGPT-specific prompt (acknowledges URL limitations)
+      const chatGPTPrompt = `I'd like to continue our previous conversation. While you can't currently access external URLs, I have our complete conversation history as a file attachment that I'll share now.
 
-  Once you've reviewed it, let me know you're ready to continue from where we left off.`;
-      
-      console.log('🐻 ThreadCub: Generated ChatGPT/Gemini-specific continuation prompt:', prompt.length, 'characters');
-      return prompt;
+Please read through the attached conversation file and provide your assessment of:
+- What we were working on
+- The current status/progress
+- Any next steps or tasks mentioned
+
+Once you've reviewed it, let me know you're ready to continue from where we left off.`;
+
+      console.log('🐻 ThreadCub: Generated ChatGPT-specific continuation prompt:', chatGPTPrompt.length, 'characters');
+      return chatGPTPrompt;
     } else {
-      // Claude-specific prompt (URL access)
+      // Claude-specific prompt (can access URLs)
       const claudePrompt = `I'd like to continue our previous conversation. The complete context is available at: ${shareUrl}
 
-  Please access the conversation history and let me know when you're ready to continue from where we left off.`;
-      
+Please access the conversation history and let me know when you're ready to continue from where we left off.`;
+
       console.log('🐻 ThreadCub: Generated Claude-specific continuation prompt:', claudePrompt.length, 'characters');
       return claudePrompt;
     }
   }
+
   handleChatGPTFlow(continuationPrompt, shareUrl, conversationData) {
     console.log('🤖 ThreadCub: Starting ENHANCED ChatGPT flow with auto-download...');
 
@@ -1637,43 +1526,6 @@ if (messages.length > 0) {
     }
   }
 
-  autoDownloadGeminiFile(conversationData, shareUrl) {
-  try {
-    console.log('🟣 ThreadCub: Auto-downloading conversation file for Gemini...');
-    
-    const conversationJSON = {
-      title: conversationData.title || 'ThreadCub Conversation Continuation',
-      url: conversationData.url || window.location.href,
-      platform: conversationData.platform,
-      exportDate: new Date().toISOString(),
-      totalMessages: conversationData.messages.length,
-      source: 'ThreadCub Browser Extension - Gemini Continuation',
-      shareUrl: shareUrl,
-      instructions: 'This file contains our previous conversation. Please review it and continue from where we left off.',
-      messages: conversationData.messages,
-      summary: this.generateQuickSummary(conversationData.messages)
-    };
-    
-    const filename = `threadcub-gemini-continuation-${new Date().toISOString().split('T')[0]}.json`;
-    
-    const blob = new Blob([JSON.stringify(conversationJSON, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    console.log('🟣 ThreadCub: ✅ Gemini file auto-downloaded:', filename);
-    
-  } catch (error) {
-    console.error('🟣 ThreadCub: Error auto-downloading Gemini file:', error);
-  }
-}
-
   generateChatGPTContinuationPrompt() {
     return `I'd like to continue our previous conversation. While you can't currently access external URLs, I have our complete conversation history as a file attachment that I'll share now.
 
@@ -1684,17 +1536,6 @@ Please read through the attached conversation file and provide your assessment o
 
 Once you've reviewed it, let me know you're ready to continue from where we left off.`;
   }
-
-  generateGeminiContinuationPrompt() {
-  return `I'd like to continue our previous conversation. I have our complete conversation history as a file that I'll upload now.
-
-Please read through the attached conversation file and provide your assessment of:
-- What we were working on
-- The current status/progress
-- Any next steps or tasks mentioned
-
-Once you've reviewed it, let me know you're ready to continue from where we left off.`;
-}
 
   handleClaudeFlow(continuationPrompt, shareUrl, conversationData) {
     console.log('🤖 ThreadCub: Starting Claude flow (API-only, no downloads)...');
@@ -1735,50 +1576,6 @@ Once you've reviewed it, let me know you're ready to continue from where we left
     }
   }
 
-  handleGeminiFlow(continuationPrompt, shareUrl, conversationData) {
-  console.log('🟣 ThreadCub: Starting Gemini flow with auto-download...');
-  
-  // STEP 1: Auto-download the conversation file (same as ChatGPT)
-  this.autoDownloadGeminiFile(conversationData, shareUrl);
-  
-  // STEP 2: Create continuation data for cross-tab modal
-  const continuationData = {
-    prompt: this.generateGeminiContinuationPrompt(),
-    shareUrl: shareUrl,
-    platform: 'Gemini',
-    timestamp: Date.now(),
-    messages: conversationData.messages || [],
-    totalMessages: conversationData.total_messages || conversationData.messages?.length || 0,
-    title: conversationData.title || 'Previous Conversation',
-    conversationData: conversationData,
-    geminiFlow: true,
-    downloadCompleted: true
-  };
-  
-  console.log('🟣 ThreadCub: Gemini continuation data prepared');
-  
-  // STEP 3: Use storage for modal
-  const canUseChrome = this.canUseChromStorage();
-  
-  if (canUseChrome) {
-    console.log('🟣 ThreadCub: Using Chrome storage for Gemini modal...');
-    this.storeWithChrome(continuationData)
-      .then(() => {
-        console.log('🟣 ThreadCub: Gemini data stored successfully');
-        const geminiUrl = 'https://gemini.google.com/app';
-        window.open(geminiUrl, '_blank');
-        this.showSuccessToast('File downloaded! Upload it in your new Gemini tab.');
-      })
-      .catch(error => {
-        console.log('🟣 ThreadCub: Chrome storage failed, using fallback:', error);
-        this.handleGeminiFlowFallback(continuationData);
-      });
-  } else {
-    console.log('🟣 ThreadCub: Using Gemini fallback method directly');
-    this.handleGeminiFlowFallback(continuationData);
-  }
-}
-
   handleDirectContinuation(conversationData) {
     console.log('🐻 ThreadCub: Handling direct continuation without API save...');
 
@@ -1792,23 +1589,15 @@ Once you've reviewed it, let me know you're ready to continue from where we left
     // Route to appropriate platform flow
     const targetPlatform = this.getTargetPlatformFromCurrentUrl();
 
-    // ADD DEBUG LINES HERE
-console.log('🔍 DEBUG LOCATION 1: Current hostname:', window.location.hostname);
-console.log('🔍 DEBUG LOCATION 1: targetPlatform detected as:', targetPlatform);
-console.log('🔍 DEBUG LOCATION 1: About to route to platform...');
-
     if (targetPlatform === 'chatgpt') {
-      console.log('🤖 ThreadCub: Routing to ChatGPT flow (with file download)');
-      this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
+      console.log('🐻 ThreadCub: Direct ChatGPT continuation (no API save)');
+      this.handleChatGPTFlow(minimalPrompt, fallbackShareUrl, conversationData);
     } else if (targetPlatform === 'claude') {
-      console.log('🤖 ThreadCub: Routing to Claude flow (no file download)');
-      this.handleClaudeFlow(minimalPrompt, shareUrl, conversationData);
-    } else if (targetPlatform === 'gemini') {
-      console.log('🤖 ThreadCub: Routing to Gemini flow (with file download)');
-      this.handleGeminiFlow(minimalPrompt, shareUrl, conversationData);
+      console.log('🐻 ThreadCub: Direct Claude continuation (no API save)');
+      this.handleClaudeFlow(minimalPrompt, fallbackShareUrl, conversationData);
     } else {
-      console.log('🤖 ThreadCub: Unknown platform, defaulting to ChatGPT flow');
-      this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
+      console.log('🐻 ThreadCub: Direct continuation - defaulting to ChatGPT flow');
+      this.handleChatGPTFlow(minimalPrompt, fallbackShareUrl, conversationData);
     }
 
     this.showSuccessToast('Continuing conversation (offline mode)');
@@ -1876,22 +1665,6 @@ console.log('🔍 DEBUG LOCATION 1: About to route to platform...');
       console.error('🔧 Claude Fallback: localStorage failed:', error);
     }
   }
-
-  handleGeminiFlowFallback(continuationData) {
-  console.log('🟣 ThreadCub: Using localStorage fallback for Gemini...');
-  
-  try {
-    localStorage.setItem('threadcubContinuationData', JSON.stringify(continuationData));
-    console.log('🔧 Gemini Fallback: Data stored in localStorage');
-    
-    const geminiUrl = 'https://gemini.google.com/app';
-    window.open(geminiUrl, '_blank');
-    this.showSuccessToast('File downloaded! Upload it in your new Gemini tab.');
-    
-  } catch (error) {
-    console.error('🔧 Gemini Fallback: localStorage failed:', error);
-  }
-}
 
   // ===== DOWNLOAD METHODS =====
   createDownloadFromData(conversationData) {

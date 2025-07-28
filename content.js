@@ -1981,6 +1981,8 @@ function checkForContinuationData() {
       chrome.storage.local.get(['threadcubContinuationData'], (result) => {
         if (chrome.runtime.lastError) {
           console.log('🐻 ThreadCub: Chrome storage error:', chrome.runtime.lastError);
+          console.log('🐻 ThreadCub: Falling back to localStorage...');
+          checkLocalStorageFallback(); // ✅ Add this fallback call
           return;
         }
         
@@ -2006,14 +2008,22 @@ function checkForContinuationData() {
             chrome.storage.local.remove(['threadcubContinuationData']);
           }
         } else {
-          console.log('🐻 ThreadCub: No continuation data found');
+          console.log('🐻 ThreadCub: No continuation data found in Chrome storage');
+          console.log('🐻 ThreadCub: Checking localStorage as fallback...');
+          checkLocalStorageFallback(); // ✅ Add this fallback call
         }
       });
     } catch (error) {
       console.log('🐻 ThreadCub: Error checking continuation data:', error);
+      console.log('🐻 ThreadCub: Falling back to localStorage...');
+      checkLocalStorageFallback(); // ✅ Add this fallback call
     }
   } else {
-    // Fallback to localStorage
+    checkLocalStorageFallback(); // This part is already correct
+  }
+
+  // Extract the localStorage logic into a separate function
+  function checkLocalStorageFallback() {
     try {
       const storedData = localStorage.getItem('threadcubContinuationData');
       if (storedData) {
@@ -2072,6 +2082,7 @@ function executeStreamlinedContinuation(fullPrompt, shareUrl, continuationData) 
 // ===== STREAMLINED: Subtle success notification =====
 function showStreamlinedNotification(continuationData) {
   const isChatGPTFlow = continuationData.chatGPTFlow === true;
+  const isGeminiFlow = continuationData.geminiFlow === true;
   const messageCount = continuationData.totalMessages || 'multiple';
   
   // Create small, non-intrusive notification
@@ -3062,18 +3073,17 @@ function handleDirectContinuation(conversationData) {
   const targetPlatform = getTargetPlatformFromCurrentUrl();
   
   if (targetPlatform === 'chatgpt') {
-    console.log('🐻 ThreadCub: Direct ChatGPT continuation (no API save)');
-    handleChatGPTFlow(minimalPrompt, fallbackShareUrl, conversationData);
+    console.log('🐻 ThreadCub: Routing to ChatGPT flow');
+    handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
   } else if (targetPlatform === 'claude') {
-    console.log('🐻 ThreadCub: Direct Claude continuation (no API save)');
-    handleClaudeFlow(minimalPrompt, fallbackShareUrl, conversationData);
+    console.log('🐻 ThreadCub: Routing to Claude flow');
+    handleClaudeFlow(minimalPrompt, shareUrl, conversationData);
+  } else if (targetPlatform === 'gemini') {
+    console.log('🐻 ThreadCub: Routing to Gemini flow');
+    handleGeminiFlow(minimalPrompt, shareUrl, conversationData);
   } else {
-    console.log('🐻 ThreadCub: Direct continuation - defaulting to ChatGPT flow');
-    handleChatGPTFlow(minimalPrompt, fallbackShareUrl, conversationData);
-  }
-  
-  if (window.threadcubButton && window.threadcubButton.showSuccessToast) {
-    window.threadcubButton.showSuccessToast('Continuing conversation (offline mode)');
+    console.log('🐻 ThreadCub: Defaulting to ChatGPT flow');
+    handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
   }
 }
 
@@ -3232,11 +3242,14 @@ function handleClaudeFlow(continuationPrompt, shareUrl, conversationData) {
 
 function canUseChromStorage() {
   try {
-    return typeof chrome !== 'undefined' && 
-           chrome.runtime && 
-           chrome.storage && 
-           chrome.storage.local &&
-           !chrome.runtime.lastError;
+    // Check each condition step by step for better debugging
+    if (typeof chrome === 'undefined') return false;
+    if (!chrome.runtime) return false;
+    if (!chrome.runtime.id) return false;  // This checks if extension context is valid
+    if (!chrome.storage) return false;
+    if (!chrome.storage.local) return false;
+    
+    return true;
   } catch (error) {
     console.log('🔧 Chrome check failed:', error);
     return false;
@@ -3796,6 +3809,102 @@ function extractChatGPTFallback(title) {
   };
 }
 
+function extractGeminiConversation() {
+  console.log('🟣 ThreadCub: Extracting Gemini conversation...');
+  
+  const messages = [];
+  let messageIndex = 0;
+  
+  // IMPROVED: Generate better title from first user message
+  let title = 'Gemini Conversation';
+  
+  // Try multiple selectors for Gemini messages
+  const messageSelectors = [
+    '[data-test-id="conversation-turn"]',
+    'div[class*="conversation"]',
+    'div[class*="message"]',
+    'div[class*="turn"]'
+  ];
+  
+  let messageElements = [];
+  for (const selector of messageSelectors) {
+    messageElements = document.querySelectorAll(selector);
+    if (messageElements.length > 0) {
+      console.log(`🟣 ThreadCub: Found ${messageElements.length} messages with selector:`, selector);
+      break;
+    }
+  }
+  
+  // Process message elements or fallback to generic extraction
+  if (messageElements.length === 0) {
+    console.log('🟣 ThreadCub: Using generic extraction for Gemini');
+    const textElements = document.querySelectorAll('div, p');
+    const validElements = Array.from(textElements).filter(el => {
+      const text = el.textContent?.trim() || '';
+      return text.length > 20 && 
+             text.length < 5000 && 
+             !text.includes('Copy') && 
+             !text.includes('Share') &&
+             !el.querySelector('button');
+    });
+    
+    validElements.forEach((element, index) => {
+      const text = element.textContent?.trim() || '';
+      const role = index % 2 === 0 ? 'user' : 'assistant';
+      
+      messages.push({
+        id: messageIndex++,
+        role: role,
+        content: text,
+        timestamp: new Date().toISOString(),
+        extractionMethod: 'gemini_fallback'
+      });
+    });
+  } else {
+    messageElements.forEach((element, index) => {
+      const text = element.textContent?.trim() || '';
+      if (text && text.length > 10) {
+        const role = text.length < 200 && text.includes('?') ? 'user' : 
+                     index % 2 === 0 ? 'user' : 'assistant';
+        
+        messages.push({
+          id: messageIndex++,
+          role: role,
+          content: text.replace(/^(Copy|Share|Regenerate)$/gm, '').trim(),
+          timestamp: new Date().toISOString(),
+          extractionMethod: 'gemini_direct'
+        });
+      }
+    });
+  }
+  
+  // Generate title from first user message
+  if (messages.length > 0) {
+    const firstUserMessage = messages.find(msg => msg.role === 'user');
+    if (firstUserMessage && firstUserMessage.content) {
+      const content = firstUserMessage.content.trim();
+      if (content.length > 10) {
+        title = content.substring(0, 50).replace(/\n/g, ' ').trim();
+        if (content.length > 50) title += '...';
+        title = `${title} - Gemini`;
+      }
+    }
+  }
+  
+  const conversationData = {
+    title: title,
+    url: window.location.href,
+    timestamp: new Date().toISOString(),
+    platform: 'Gemini',
+    total_messages: messages.length,
+    messages: messages,
+    extraction_method: 'gemini_extraction'
+  };
+  
+  console.log(`🟣 ThreadCub: ✅ Gemini extraction complete: ${messages.length} messages`);
+  return conversationData;
+}
+
 function extractGenericConversation() {
   console.log('🐻 ThreadCub: Attempting generic conversation extraction...');
   
@@ -3944,49 +4053,47 @@ function handleDirectContinuation(conversationData) {
   }
 }
 
-function handleChatGPTFlow(continuationPrompt, shareUrl, conversationData) {
-  console.log('🤖 ThreadCub: Starting ENHANCED ChatGPT flow with auto-download...');
+function handleClaudeFlow(continuationPrompt, shareUrl, conversationData) {
+  console.log('🤖 ThreadCub: Starting Claude flow (API-only, no downloads)...');
   
-  // STEP 1: Auto-download the conversation file in background
-  autoDownloadChatGPTFile(conversationData, shareUrl);
-  
-  // STEP 2: Create continuation data for cross-tab modal
   const continuationData = {
-    prompt: generateChatGPTContinuationPrompt(),
+    prompt: continuationPrompt,
     shareUrl: shareUrl,
-    platform: 'ChatGPT',
+    platform: 'Claude',
     timestamp: Date.now(),
     messages: conversationData.messages || [],
     totalMessages: conversationData.total_messages || conversationData.messages?.length || 0,
     title: conversationData.title || 'Previous Conversation',
     conversationData: conversationData,
-    chatGPTFlow: true,
-    downloadCompleted: true
+    claudeFlow: true,
+    downloadCompleted: false
   };
   
-  console.log('🤖 ThreadCub: ChatGPT continuation data prepared');
+  console.log('🤖 ThreadCub: Claude continuation data with message count:', continuationData.totalMessages);
   
-  // STEP 3: Use storage for modal
+  // ADD THIS LINE HERE:
+  console.log('🔧 DEBUG: About to store data with key "threadcubContinuationData":', continuationData);
+  
   const canUseChrome = canUseChromStorage();
   
   if (canUseChrome) {
-    console.log('🤖 ThreadCub: Using Chrome storage for ChatGPT modal...');
+    console.log('🤖 ThreadCub: Using Chrome storage for Claude...');
     storeWithChrome(continuationData)
       .then(() => {
-        console.log('🐻 ThreadCub: ChatGPT data stored successfully');
-        const chatGPTUrl = 'https://chatgpt.com/';
-        window.open(chatGPTUrl, '_blank');
+        console.log('🐻 ThreadCub: Claude data stored successfully');
+        const claudeUrl = 'https://claude.ai/';
+        window.open(claudeUrl, '_blank');
         if (window.threadcubButton && window.threadcubButton.showSuccessToast) {
-          window.threadcubButton.showSuccessToast('File downloaded! Check your new ChatGPT tab.');
+          window.threadcubButton.showSuccessToast('Opening Claude with conversation context...');
         }
       })
       .catch(error => {
         console.log('🤖 ThreadCub: Chrome storage failed, using fallback:', error);
-        handleChatGPTFlowFallback(continuationData);
+        handleClaudeFlowFallback(continuationData);
       });
   } else {
-    console.log('🤖 ThreadCub: Using ChatGPT fallback method directly');
-    handleChatGPTFlowFallback(continuationData);
+    console.log('🤖 ThreadCub: Using Claude fallback method directly');
+    handleClaudeFlowFallback(continuationData);
   }
 }
 
@@ -4255,10 +4362,12 @@ function enhanceFloatingButtonWithConversationFeatures() {
           conversationData = await extractClaudeConversation();
         } else if (hostname.includes('chatgpt.com') || hostname.includes('chat.openai.com')) {
           conversationData = extractChatGPTConversation();
+        } else if (hostname.includes('gemini.google.com')) {
+          conversationData = await extractGeminiConversation();
         } else {
           conversationData = extractGenericConversation();
         }
-        
+                
         if (!conversationData || !conversationData.messages || conversationData.messages.length === 0) {
           console.error('🐻 ThreadCub: No conversation data found');
           this.showErrorToast('No conversation found to save');
@@ -4302,19 +4411,22 @@ function enhanceFloatingButtonWithConversationFeatures() {
           const summary = data.summary || generateQuickSummary(conversationData.messages);
           const shareUrl = data.shareableUrl || `https://threadcub.com/api/share/${data.conversationId}`;
           
-          const continuationPrompt = generateContinuationPrompt(summary, shareUrl, conversationData.platform, conversationData);
+          const minimalPrompt = generateContinuationPrompt(summary, shareUrl, conversationData.platform, conversationData);
           
           const targetPlatform = getTargetPlatformFromCurrentUrl();
           
           if (targetPlatform === 'chatgpt') {
-            console.log('🐻 ThreadCub: Routing to ChatGPT flow');
-            handleChatGPTFlow(continuationPrompt, shareUrl, conversationData);
+            console.log('🤖 ThreadCub: Routing to ChatGPT flow (with file download)');
+            this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
           } else if (targetPlatform === 'claude') {
-            console.log('🐻 ThreadCub: Routing to Claude flow');
-            handleClaudeFlow(continuationPrompt, shareUrl, conversationData);
+            console.log('🤖 ThreadCub: Routing to Claude flow (no file download)');
+            this.handleClaudeFlow(minimalPrompt, shareUrl, conversationData);
+          } else if (targetPlatform === 'gemini') {
+            console.log('🤖 ThreadCub: Routing to Gemini flow (with file download)');
+            this.handleGeminiFlow(minimalPrompt, shareUrl, conversationData);
           } else {
-            console.log('🐻 ThreadCub: Defaulting to ChatGPT flow');
-            handleChatGPTFlow(continuationPrompt, shareUrl, conversationData);
+            console.log('🤖 ThreadCub: Unknown platform, defaulting to ChatGPT flow');
+            this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
           }
 
           this.setBearExpression('happy');

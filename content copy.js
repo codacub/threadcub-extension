@@ -3074,16 +3074,16 @@ function handleDirectContinuation(conversationData) {
   
   if (targetPlatform === 'chatgpt') {
     console.log('🐻 ThreadCub: Routing to ChatGPT flow');
-    handleChatGPTFlow(minimalPrompt, fallbackShareUrl, conversationData); // ← FIXED: Use fallbackShareUrl
+    handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
   } else if (targetPlatform === 'claude') {
     console.log('🐻 ThreadCub: Routing to Claude flow');
-    handleClaudeFlow(minimalPrompt, fallbackShareUrl, conversationData); // ← FIXED: Use fallbackShareUrl
+    handleClaudeFlow(minimalPrompt, shareUrl, conversationData);
   } else if (targetPlatform === 'gemini') {
     console.log('🐻 ThreadCub: Routing to Gemini flow');
-    handleGeminiFlow(minimalPrompt, fallbackShareUrl, conversationData); // ← FIXED: Use fallbackShareUrl
+    handleGeminiFlow(minimalPrompt, shareUrl, conversationData);
   } else {
     console.log('🐻 ThreadCub: Defaulting to ChatGPT flow');
-    handleChatGPTFlow(minimalPrompt, fallbackShareUrl, conversationData); // ← FIXED: Use fallbackShareUrl
+    handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
   }
 }
 
@@ -4339,27 +4339,10 @@ function enhanceFloatingButtonWithConversationFeatures() {
   if (window.threadcubButton && typeof window.threadcubButton === 'object') {
     console.log('🐻 ThreadCub: Enhancing modular floating button with conversation features...');
     
-    // FIXED: Override with DIRECT API CALLS (like working main branch) + AUTH TOKEN EXTRACTION
+    // FIXED: Override with DIRECT API CALLS (like working main branch)
     window.threadcubButton.saveAndOpenConversation = async function(source = 'floating') {
       console.log('🐻 ThreadCub: saveAndOpenConversation called from:', source);
       
-      // ===== GET USER AUTH TOKEN VIA BACKGROUND SCRIPT =====
-        console.log('🔧 Getting user auth token via background script...');
-        let userAuthToken = null;
-
-        try {
-          const response = await chrome.runtime.sendMessage({ action: 'getAuthToken' });
-          if (response && response.success) {
-            userAuthToken = response.authToken;
-            console.log('🔧 Auth token retrieved from ThreadCub tab:', !!userAuthToken);
-            console.log('🔧 Auth token length:', userAuthToken?.length || 'null');
-          } else {
-            console.log('🔧 Could not get auth token:', response?.error || 'Unknown error');
-          }
-        } catch (error) {
-          console.log('🔧 Background script communication failed:', error);
-        }
-              
       const now = Date.now();
       if (this.isExporting || (now - this.lastExportTime) < 2000) {
         console.log('🐻 ThreadCub: Export already in progress');
@@ -4396,12 +4379,11 @@ function enhanceFloatingButtonWithConversationFeatures() {
         
         this.lastConversationData = conversationData;
         
-        // FIXED: Use DIRECT fetch() call to API (same as working main branch) + AUTH TOKEN
+        // FIXED: Use DIRECT fetch() call to API (same as working main branch)
         const apiData = {
-          conversationData: conversationData,
-          source: conversationData.platform?.toLowerCase() || 'unknown',
-          title: conversationData.title || 'Untitled Conversation',
-          userAuthToken: userAuthToken // ← THIS IS THE KEY ADDITION
+        conversationData: conversationData,
+        source: conversationData.platform?.toLowerCase() || 'unknown',
+        title: conversationData.title || 'Untitled Conversation'
         };
         
         console.log('🐻 ThreadCub: Making DIRECT API call to ThreadCub...');
@@ -4409,10 +4391,7 @@ function enhanceFloatingButtonWithConversationFeatures() {
         let response;
         try {
           // RESTORED: Direct fetch call (same as working main branch)
-          console.log('🔍 userAuthToken before API call:', !!userAuthToken);
-          console.log('🔍 userAuthToken length:', userAuthToken?.length || 'null');
           console.log('🔍 API Data being sent:', JSON.stringify(apiData, null, 2));
-          
           response = await fetch('https://threadcub.com/api/conversations/save', {
             method: 'POST',
             headers: {
@@ -4536,7 +4515,7 @@ function enhanceFloatingButtonWithConversationFeatures() {
       }
     };
     
-    console.log('🐻 ThreadCub: ✅ Floating button enhanced with DIRECT API calls + AUTH TOKEN EXTRACTION (SIMPLIFIED)');
+    console.log('🐻 ThreadCub: ✅ Floating button enhanced with DIRECT API calls (working version restored)');
   }
 }
 

@@ -710,40 +710,21 @@ class ThreadCubFloatingButton {
   async saveAndOpenConversation(source = 'floating') {
   console.log('🐻 ThreadCub: Starting conversation save and open from:', source);
 
-  // ===== GET USER AUTH TOKEN FIRST =====
-  console.log('🔧 Getting user auth token from active tab...');
+  // ===== GET USER AUTH TOKEN VIA BACKGROUND SCRIPT =====
+  console.log('🔧 Getting user auth token via background script...');
   let userAuthToken = null;
+
   try {
-    // Execute script in the current tab to get Supabase session
-    const results = await chrome.scripting.executeScript({
-      target: { tabId: (await chrome.tabs.query({ active: true, currentWindow: true }))[0].id },
-      func: async () => {
-        // This runs in the context of the webpage (where user is logged in)
-        try {
-          if (window.supabase && window.supabase.auth) {
-            const { data: { session } } = await window.supabase.auth.getSession();
-            return session?.access_token || null;
-          }
-          
-          // Try createSupabaseClient as fallback
-          if (window.createSupabaseClient) {
-            const client = window.createSupabaseClient();
-            const { data: { session } } = await client.auth.getSession();
-            return session?.access_token || null;
-          }
-          
-          return null;
-        } catch (error) {
-          console.log('Auth error:', error);
-          return null;
-        }
-      }
-    });
-    
-    userAuthToken = results[0]?.result;
-    console.log('🔧 Auth token retrieved:', !!userAuthToken);
+    const response = await chrome.runtime.sendMessage({ action: 'getAuthToken' });
+    if (response && response.success) {
+      userAuthToken = response.authToken;
+      console.log('🔧 Auth token retrieved from ThreadCub tab:', !!userAuthToken);
+      console.log('🔧 Auth token length:', userAuthToken?.length || 'null');
+    } else {
+      console.log('🔧 Could not get auth token:', response?.error || 'Unknown error');
+    }
   } catch (error) {
-    console.log('🔧 Could not get auth token:', error);
+    console.log('🔧 Background script communication failed:', error);
   }
 
   // Prevent double exports with debounce
@@ -773,11 +754,9 @@ class ThreadCubFloatingButton {
       conversationData = this.extractGenericConversation();
     }
 
-    // ADD THE DEBUG LINES HERE (after extraction, before routing)
     console.log('🔍 DEBUG: Current hostname:', window.location.hostname);
     const targetPlatform = this.getTargetPlatformFromCurrentUrl();
     console.log('🔍 DEBUG: targetPlatform detected as:', targetPlatform);
-    console.log('🔍 DEBUG: About to route to platform...');
 
     // CRITICAL FIX: Validate conversation data before proceeding
     if (!conversationData) {
@@ -796,10 +775,10 @@ class ThreadCubFloatingButton {
 
     console.log(`🐻 ThreadCub: Successfully extracted ${conversationData.messages.length} messages`);
 
-    // FIXED: Store conversation data globally for later use
+    // Store conversation data globally for later use
     this.lastConversationData = conversationData;
 
-    // FIXED: Format data to match your API route expectations (WITH AUTH TOKEN)
+    // Format data to match API route expectations (WITH AUTH TOKEN)
     const apiData = {
       conversationData: conversationData,
       source: conversationData.platform?.toLowerCase() || 'unknown',
@@ -809,10 +788,12 @@ class ThreadCubFloatingButton {
 
     console.log('🐻 ThreadCub: Making DIRECT API call to ThreadCub...');
 
-    // RESTORED: Direct fetch call (same as working main branch)
+    // Direct fetch call
     let response;
     try {
-      console.log('🔍 API Data being sent:', JSON.stringify({...apiData, userAuthToken: !!userAuthToken}, null, 2));
+      console.log('🔍 userAuthToken before API call:', !!userAuthToken);
+      console.log('🔍 userAuthToken length:', userAuthToken?.length || 'null');
+      console.log('🔍 API Data being sent:', JSON.stringify(apiData, null, 2));
 
       response = await fetch('https://threadcub.com/api/conversations/save', {
         method: 'POST',
@@ -836,13 +817,7 @@ class ThreadCubFloatingButton {
       // Generate minimal continuation prompt
       const minimalPrompt = this.generateContinuationPrompt(summary, shareUrl, conversationData.platform, conversationData);
 
-      // FIXED: Detect target platform for smart routing
-      const targetPlatform = this.getTargetPlatformFromCurrentUrl();
-
-      // ADD DEBUG LINES HERE
-      console.log('🔍 DEBUG LOCATION 1: Current hostname:', window.location.hostname);
-      console.log('🔍 DEBUG LOCATION 1: targetPlatform detected as:', targetPlatform);
-      console.log('🔍 DEBUG LOCATION 1: About to route to platform...');
+      console.log('🔍 DEBUG: About to route to platform:', targetPlatform);
 
       if (targetPlatform === 'chatgpt') {
         console.log('🤖 ThreadCub: Routing to ChatGPT flow (with file download)');

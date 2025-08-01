@@ -1830,9 +1830,9 @@ Once you've reviewed it, let me know you're ready to continue from where we left
     const targetPlatform = this.getTargetPlatformFromCurrentUrl();
 
     // ADD DEBUG LINES HERE
-console.log('🔍 DEBUG LOCATION 1: Current hostname:', window.location.hostname);
-console.log('🔍 DEBUG LOCATION 1: targetPlatform detected as:', targetPlatform);
-console.log('🔍 DEBUG LOCATION 1: About to route to platform...');
+    console.log('🔍 DEBUG LOCATION 1: Current hostname:', window.location.hostname);
+    console.log('🔍 DEBUG LOCATION 1: targetPlatform detected as:', targetPlatform);
+    console.log('🔍 DEBUG LOCATION 1: About to route to platform...');
 
     if (targetPlatform === 'chatgpt') {
       console.log('🤖 ThreadCub: Routing to ChatGPT flow (with file download)');

@@ -31,7 +31,11 @@
   "permissions": [
     "activeTab",
     "downloads",
-    "storage"
+    "storage",
+    "activeTab",
+    "downloads", 
+    "storage",
+    "scripting"
   ],
   
   "host_permissions": [

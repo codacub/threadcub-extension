@@ -708,143 +708,180 @@ class ThreadCubFloatingButton {
 
   // ===== REAL WORKING METHODS (MOVED FROM CONTENT.JS) =====
   async saveAndOpenConversation(source = 'floating') {
-    console.log('🐻 ThreadCub: Starting conversation save and open from:', source);
+  console.log('🐻 ThreadCub: Starting conversation save and open from:', source);
 
-    // Prevent double exports with debounce
-    const now = Date.now();
-    if (this.isExporting || (now - this.lastExportTime) < 2000) {
-      console.log('🐻 ThreadCub: Export already in progress or too soon after last export');
+  // ===== GET USER AUTH TOKEN FIRST =====
+  console.log('🔧 Getting user auth token from active tab...');
+  let userAuthToken = null;
+  try {
+    // Execute script in the current tab to get Supabase session
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: (await chrome.tabs.query({ active: true, currentWindow: true }))[0].id },
+      func: async () => {
+        // This runs in the context of the webpage (where user is logged in)
+        try {
+          if (window.supabase && window.supabase.auth) {
+            const { data: { session } } = await window.supabase.auth.getSession();
+            return session?.access_token || null;
+          }
+          
+          // Try createSupabaseClient as fallback
+          if (window.createSupabaseClient) {
+            const client = window.createSupabaseClient();
+            const { data: { session } } = await client.auth.getSession();
+            return session?.access_token || null;
+          }
+          
+          return null;
+        } catch (error) {
+          console.log('Auth error:', error);
+          return null;
+        }
+      }
+    });
+    
+    userAuthToken = results[0]?.result;
+    console.log('🔧 Auth token retrieved:', !!userAuthToken);
+  } catch (error) {
+    console.log('🔧 Could not get auth token:', error);
+  }
+
+  // Prevent double exports with debounce
+  const now = Date.now();
+  if (this.isExporting || (now - this.lastExportTime) < 2000) {
+    console.log('🐻 ThreadCub: Export already in progress or too soon after last export');
+    return;
+  }
+
+  this.isExporting = true;
+  this.lastExportTime = now;
+
+  try {
+    // Extract conversation data from the current AI platform
+    console.log('🐻 ThreadCub: Extracting conversation data...');
+
+    let conversationData;
+    const hostname = window.location.hostname;
+
+    if (hostname.includes('claude.ai')) {
+      conversationData = await this.extractClaudeConversation();
+    } else if (hostname.includes('chatgpt.com') || hostname.includes('chat.openai.com')) {
+      conversationData = this.extractChatGPTConversation();
+    } else if (hostname.includes('gemini.google.com')) { 
+      conversationData = this.extractGeminiConversation();
+    } else {
+      conversationData = this.extractGenericConversation();
+    }
+
+    // ADD THE DEBUG LINES HERE (after extraction, before routing)
+    console.log('🔍 DEBUG: Current hostname:', window.location.hostname);
+    const targetPlatform = this.getTargetPlatformFromCurrentUrl();
+    console.log('🔍 DEBUG: targetPlatform detected as:', targetPlatform);
+    console.log('🔍 DEBUG: About to route to platform...');
+
+    // CRITICAL FIX: Validate conversation data before proceeding
+    if (!conversationData) {
+      console.error('🐻 ThreadCub: No conversation data returned from extraction');
+      this.showErrorToast('No conversation found to save');
+      this.isExporting = false;
       return;
     }
 
-    this.isExporting = true;
-    this.lastExportTime = now;
-
-    try {
-      // Extract conversation data from the current AI platform
-      console.log('🐻 ThreadCub: Extracting conversation data...');
-
-      let conversationData;
-      const hostname = window.location.hostname;
-
-      if (hostname.includes('claude.ai')) {
-        conversationData = await this.extractClaudeConversation();
-      } else if (hostname.includes('chatgpt.com') || hostname.includes('chat.openai.com')) {
-        conversationData = this.extractChatGPTConversation();
-      } else if (hostname.includes('gemini.google.com')) { 
-        conversationData = this.extractGeminiConversation();
-      } else {
-        conversationData = this.extractGenericConversation();
-      }
-
-      // ADD THE DEBUG LINES HERE (after extraction, before routing)
-console.log('🔍 DEBUG: Current hostname:', window.location.hostname);
-const targetPlatform = this.getTargetPlatformFromCurrentUrl();
-console.log('🔍 DEBUG: targetPlatform detected as:', targetPlatform);
-console.log('🔍 DEBUG: About to route to platform...');
-
-      // CRITICAL FIX: Validate conversation data before proceeding
-      if (!conversationData) {
-        console.error('🐻 ThreadCub: No conversation data returned from extraction');
-        this.showErrorToast('No conversation found to save');
-        this.isExporting = false;
-        return;
-      }
-
-      if (!conversationData.messages || conversationData.messages.length === 0) {
-        console.error('🐻 ThreadCub: No messages found in conversation data');
-        this.showErrorToast('No messages found in conversation');
-        this.isExporting = false;
-        return;
-      }
-
-      console.log(`🐻 ThreadCub: Successfully extracted ${conversationData.messages.length} messages`);
-
-      // FIXED: Store conversation data globally for later use
-      this.lastConversationData = conversationData;
-
-      // FIXED: Format data to match your API route expectations
-      const apiData = {
-        conversationData: conversationData,
-        source: conversationData.platform?.toLowerCase() || 'unknown',
-        title: conversationData.title || 'Untitled Conversation'
-      };
-
-      console.log('🐻 ThreadCub: Making DIRECT API call to ThreadCub...');
-
-      // RESTORED: Direct fetch call (same as working main branch)
-      let response;
-      try {
-        console.log('🔍 API Data being sent:', JSON.stringify(apiData, null, 2));
-
-        response = await fetch('https://threadcub.com/api/conversations/save', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(apiData)
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        console.log('✅ ThreadCub: Direct API call successful:', data);
-
-        // Generate continuation prompt and handle platform-specific flow
-        const summary = data.summary || this.generateQuickSummary(conversationData.messages);
-        const shareUrl = data.shareableUrl || `https://threadcub.com/api/share/${data.conversationId}`;
-
-        // Generate minimal continuation prompt
-        const minimalPrompt = this.generateContinuationPrompt(summary, shareUrl, conversationData.platform, conversationData);
-
-        // FIXED: Detect target platform for smart routing
-        const targetPlatform = this.getTargetPlatformFromCurrentUrl();
-
-        // ADD DEBUG LINES HERE
-console.log('🔍 DEBUG LOCATION 1: Current hostname:', window.location.hostname);
-console.log('🔍 DEBUG LOCATION 1: targetPlatform detected as:', targetPlatform);
-console.log('🔍 DEBUG LOCATION 1: About to route to platform...');
-
-        if (targetPlatform === 'chatgpt') {
-          console.log('🤖 ThreadCub: Routing to ChatGPT flow (with file download)');
-          this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
-        } else if (targetPlatform === 'claude') {
-          console.log('🤖 ThreadCub: Routing to Claude flow (no file download)');
-          this.handleClaudeFlow(minimalPrompt, shareUrl, conversationData);
-        } else if (targetPlatform === 'gemini') {
-          console.log('🤖 ThreadCub: Routing to Gemini flow (with file download)');
-          this.handleGeminiFlow(minimalPrompt, shareUrl, conversationData);
-        } else {
-          console.log('🤖 ThreadCub: Unknown platform, defaulting to ChatGPT flow');
-          this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
-        }
-
-        this.setBearExpression('happy');
-        setTimeout(() => {
-          if (this.currentBearState !== 'default') {
-            this.setBearExpression('default');
-          }
-        }, 2000);
-
-        this.isExporting = false;
-
-      } catch (apiError) {
-        console.error('🐻 ThreadCub: Direct API call failed:', apiError);
-        console.log('🐻 ThreadCub: Falling back to direct continuation without API save...');
-
-        // FALLBACK: Skip API save and go straight to continuation
-        this.handleDirectContinuation(conversationData);
-        this.isExporting = false;
-        return;
-      }
-
-    } catch (error) {
-      console.error('🐻 ThreadCub: Export error:', error);
-      this.showErrorToast('Export failed: ' + error.message);
+    if (!conversationData.messages || conversationData.messages.length === 0) {
+      console.error('🐻 ThreadCub: No messages found in conversation data');
+      this.showErrorToast('No messages found in conversation');
       this.isExporting = false;
+      return;
     }
+
+    console.log(`🐻 ThreadCub: Successfully extracted ${conversationData.messages.length} messages`);
+
+    // FIXED: Store conversation data globally for later use
+    this.lastConversationData = conversationData;
+
+    // FIXED: Format data to match your API route expectations (WITH AUTH TOKEN)
+    const apiData = {
+      conversationData: conversationData,
+      source: conversationData.platform?.toLowerCase() || 'unknown',
+      title: conversationData.title || 'Untitled Conversation',
+      userAuthToken: userAuthToken // ← THIS IS THE KEY ADDITION
+    };
+
+    console.log('🐻 ThreadCub: Making DIRECT API call to ThreadCub...');
+
+    // RESTORED: Direct fetch call (same as working main branch)
+    let response;
+    try {
+      console.log('🔍 API Data being sent:', JSON.stringify({...apiData, userAuthToken: !!userAuthToken}, null, 2));
+
+      response = await fetch('https://threadcub.com/api/conversations/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(apiData)
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ ThreadCub: Direct API call successful:', data);
+
+      // Generate continuation prompt and handle platform-specific flow
+      const summary = data.summary || this.generateQuickSummary(conversationData.messages);
+      const shareUrl = data.shareableUrl || `https://threadcub.com/api/share/${data.conversationId}`;
+
+      // Generate minimal continuation prompt
+      const minimalPrompt = this.generateContinuationPrompt(summary, shareUrl, conversationData.platform, conversationData);
+
+      // FIXED: Detect target platform for smart routing
+      const targetPlatform = this.getTargetPlatformFromCurrentUrl();
+
+      // ADD DEBUG LINES HERE
+      console.log('🔍 DEBUG LOCATION 1: Current hostname:', window.location.hostname);
+      console.log('🔍 DEBUG LOCATION 1: targetPlatform detected as:', targetPlatform);
+      console.log('🔍 DEBUG LOCATION 1: About to route to platform...');
+
+      if (targetPlatform === 'chatgpt') {
+        console.log('🤖 ThreadCub: Routing to ChatGPT flow (with file download)');
+        this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
+      } else if (targetPlatform === 'claude') {
+        console.log('🤖 ThreadCub: Routing to Claude flow (no file download)');
+        this.handleClaudeFlow(minimalPrompt, shareUrl, conversationData);
+      } else if (targetPlatform === 'gemini') {
+        console.log('🤖 ThreadCub: Routing to Gemini flow (with file download)');
+        this.handleGeminiFlow(minimalPrompt, shareUrl, conversationData);
+      } else {
+        console.log('🤖 ThreadCub: Unknown platform, defaulting to ChatGPT flow');
+        this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
+      }
+
+      this.setBearExpression('happy');
+      setTimeout(() => {
+        if (this.currentBearState !== 'default') {
+          this.setBearExpression('default');
+        }
+      }, 2000);
+
+      this.isExporting = false;
+
+    } catch (apiError) {
+      console.error('🐻 ThreadCub: Direct API call failed:', apiError);
+      console.log('🐻 ThreadCub: Falling back to direct continuation without API save...');
+
+      // FALLBACK: Skip API save and go straight to continuation
+      this.handleDirectContinuation(conversationData);
+      this.isExporting = false;
+      return;
+    }
+
+  } catch (error) {
+    console.error('🐻 ThreadCub: Export error:', error);
+    this.showErrorToast('Export failed: ' + error.message);
+    this.isExporting = false;
+  }
   }
 
   async downloadConversationJSON() {

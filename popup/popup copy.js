@@ -162,57 +162,32 @@ function setupPromptsPageEventListeners() {
             copyButton.addEventListener('click', async function() {
                 console.log('🐻 Copy Ways of Working clicked!');
                 
+                const shareUrl = this.getAttribute('data-link');
+                
                 try {
-                    // Fetch from prompts API
-                    const response = await fetch('https://threadcub.com/api/prompts');
-                    const prompts = await response.json();
+                    // Fetch the guidelines content
+                    const response = await fetch(shareUrl);
+                    const data = await response.json();
                     
-                    // Find the "Ways of Working" prompt
-                    const waysOfWorkingPrompt = prompts.find(p => p.title === 'Ways of Working');
+                    // Get the content from the first message
+                    const content = data.messages[0].content;
                     
-                    if (waysOfWorkingPrompt) {
-                        // DEBUG: Let's see the raw content first
-                        console.log('🔍 Raw content from database:');
-                        console.log(waysOfWorkingPrompt.content);
-                        
-                        // Convert \n to actual line breaks
-                        let formattedContent = waysOfWorkingPrompt.content.replace(/\\n/g, '\n');
-                        
-                        // DEBUG: Let's see what it looks like after basic conversion
-                        console.log('🔍 After \\n conversion:');
-                        console.log(formattedContent);
-                        
-                        // Add better spacing manually
-                        formattedContent = formattedContent
-                            .replace(/### 1\. USER CONTEXT/g, '\n### 1. USER CONTEXT')
-                            .replace(/### 2\. INFORMATION MANAGEMENT/g, '\n### 2. INFORMATION MANAGEMENT')
-                            .replace(/### 3\. TECHNICAL PROBLEM SOLVING/g, '\n### 3. TECHNICAL PROBLEM SOLVING')
-                            .replace(/### 4\. RESPONSE REQUIREMENTS/g, '\n### 4. RESPONSE REQUIREMENTS')
-                            .replace(/### 5\. COMMUNICATION PROTOCOL/g, '\n### 5. COMMUNICATION PROTOCOL')
-                            .replace(/### 6\. SECTION-BASED CODE WORK/g, '\n### 6. SECTION-BASED CODE WORK')
-                            .replace(/### 7\. FORBIDDEN BEHAVIORS/g, '\n### 7. FORBIDDEN BEHAVIORS')
-                            .replace(/### 8\. EMERGENCY PROTOCOL/g, '\n### 8. EMERGENCY PROTOCOL')
-                            .replace(/### 9\. SUCCESS CRITERIA/g, '\n### 9. SUCCESS CRITERIA')
-                            .replace(/### 10\. VALIDATION CHECKLIST/g, '\n### 10. VALIDATION CHECKLIST');
-                        
-                        // Copy to clipboard
-                        await navigator.clipboard.writeText(formattedContent);
-                        
-                        // Show success notification
-                        showNotification('Ways of Working copied with debug formatting! 🎉');
-                        console.log('✅ Guidelines copied with debug info');
-                    } else {
-                        throw new Error('Ways of Working prompt not found');
-                    }
+                    // Copy to clipboard
+                    await navigator.clipboard.writeText(content);
+                    
+                    // Show success notification
+                    showNotification('Ways of Working copied to clipboard! 🎉');
+                    console.log('✅ Guidelines copied successfully');
                     
                 } catch (error) {
-                    console.error('❌ Error copying guidelines from prompts:', error);
+                    console.error('❌ Error copying guidelines:', error);
                     showNotification('Failed to copy guidelines');
                 }
             });
         }
     }, 100);
 }
+
 async function loadFloatingButtonState() {
     try {
         const result = await chrome.storage.local.get(['showFloatingButton']);

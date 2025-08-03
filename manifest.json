@@ -56,7 +56,9 @@
       "https://chat.openai.com/*",
       "https://chatgpt.com/*",
       "https://gemini.google.com/*",
-      "https://copilot.microsoft.com/*"
+      "https://copilot.microsoft.com/*",
+      "https://threadcub.com/*",
+      "https://*.threadcub.com/*"
     ],
     "css": [
       "assets/tokens.css",

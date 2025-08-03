@@ -4540,6 +4540,20 @@ function enhanceFloatingButtonWithConversationFeatures() {
   }
 }
 
+window.addEventListener('message', (event) => {
+  if (event.data.type === 'THREADCUB_DASHBOARD_MESSAGE' && event.data.action === 'storeContinuationData') {
+    console.log('🔗 Content script received dashboard message:', event.data.data)
+    
+    // Send to background script using chrome.runtime
+    chrome.runtime.sendMessage({
+      action: 'storeContinuationData',
+      ...event.data.data
+    }, (response) => {
+      console.log('📤 Background script response:', response)
+    })
+  }
+})
+
 // === END SECTION 4A-4E ===
 
 // === SECTION 5A: Main Application Initialization ===

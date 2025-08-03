@@ -485,21 +485,30 @@ window.ThreadCubTagging = class ThreadCubTagging {
     }
   }
 
-  // NEW: Improved highlight restoration with multiple fallback strategies
+  // NEW: Improved highlight restoration with multiple fallback strategies + retry mechanism
   async restoreHighlightsImproved() {
     console.log('🏷️ ThreadCub: Restoring highlights with improved matching...');
     
+    // Wait for DOM to be fully loaded and stable
+    await this.waitForDOMStability();
+    
+    let restoredCount = 0;
+    const totalTags = this.tags.length;
+    
     for (const tag of this.tags) {
       try {
-        if (tag.rangeInfo) {
+        if (tag.rangeInfo || tag.text) {
           let range = null;
           
           // Strategy 1: Try XPath restoration
-          range = this.recreateRangeFromInfo(tag.rangeInfo);
+          if (tag.rangeInfo) {
+            range = this.recreateRangeFromInfo(tag.rangeInfo);
+          }
           
-          // Strategy 2: If XPath fails, try text-based matching
-          if (!range && tag.rangeInfo.selectedText) {
-            range = this.findRangeByTextContent(tag.rangeInfo);
+          // Strategy 2: If XPath fails, try text-based matching with enhanced search
+          if (!range && (tag.rangeInfo?.selectedText || tag.text)) {
+            const targetText = tag.rangeInfo?.selectedText || tag.text;
+            range = this.findRangeByEnhancedTextSearch(targetText);
           }
           
           // Strategy 3: If both fail, try fuzzy text matching
@@ -507,17 +516,255 @@ window.ThreadCubTagging = class ThreadCubTagging {
             range = this.findRangeByFuzzyMatch(tag.text);
           }
           
+          // Strategy 4: Last resort - simple text search with partial matching
+          if (!range && tag.text) {
+            range = this.findRangeByPartialText(tag.text);
+          }
+          
           if (range) {
             this.applySmartHighlight(range, tag.id);
-            console.log(`🏷️ ThreadCub: ✅ Restored highlight for tag ${tag.id} using improved matching`);
+            restoredCount++;
+            console.log(`🏷️ ThreadCub: ✅ Restored highlight ${restoredCount}/${totalTags} for tag ${tag.id}`);
           } else {
-            console.log(`🏷️ ThreadCub: ❌ Could not restore highlight for tag ${tag.id} - no suitable range found`);
+            console.log(`🏷️ ThreadCub: ❌ Could not restore highlight for tag ${tag.id}: "${tag.text?.substring(0, 50)}..."`);
+            
+            // Create a visual indicator in the side panel that this tag couldn't be highlighted
+            this.markTagAsUnhighlighted(tag.id);
           }
         }
       } catch (error) {
         console.log(`🏷️ ThreadCub: Error restoring highlight for tag ${tag.id}:`, error);
       }
     }
+    
+    console.log(`🏷️ ThreadCub: Highlight restoration complete: ${restoredCount}/${totalTags} highlights restored`);
+    
+    // If we restored less than 50% of highlights, try again after a delay
+    if (restoredCount < totalTags * 0.5 && totalTags > 0) {
+      console.log('🏷️ ThreadCub: Low success rate, retrying highlight restoration in 2 seconds...');
+      setTimeout(() => {
+        this.retryFailedHighlights();
+      }, 2000);
+    }
+  }
+
+  // NEW: Wait for DOM to be stable before attempting highlight restoration
+  async waitForDOMStability() {
+    return new Promise((resolve) => {
+      let stabilityCounter = 0;
+      const requiredStability = 3; // Need 3 consecutive checks with no changes
+      
+      const checkStability = () => {
+        const currentNodeCount = document.querySelectorAll('*').length;
+        
+        if (this.lastNodeCount === currentNodeCount) {
+          stabilityCounter++;
+          if (stabilityCounter >= requiredStability) {
+            console.log('🏷️ ThreadCub: DOM appears stable, proceeding with highlight restoration');
+            resolve();
+            return;
+          }
+        } else {
+          stabilityCounter = 0;
+        }
+        
+        this.lastNodeCount = currentNodeCount;
+        setTimeout(checkStability, 200);
+      };
+      
+      this.lastNodeCount = document.querySelectorAll('*').length;
+      setTimeout(checkStability, 500); // Initial delay
+    });
+  }
+
+  // NEW: Enhanced text search that works better with Claude's dynamic content
+  findRangeByEnhancedTextSearch(targetText) {
+    if (!targetText || targetText.length < 3) return null;
+    
+    console.log('🏷️ ThreadCub: Enhanced text search for:', targetText.substring(0, 50) + '...');
+    
+    // Clean the target text
+    const cleanTarget = targetText.trim();
+    
+    // Try different text node search strategies
+    const searchStrategies = [
+      () => this.searchInConversationContainer(cleanTarget),
+      () => this.searchInMessageElements(cleanTarget),
+      () => this.searchInAllTextNodes(cleanTarget)
+    ];
+    
+    for (const strategy of searchStrategies) {
+      try {
+        const range = strategy();
+        if (range) {
+          console.log('🏷️ ThreadCub: ✅ Enhanced search found match');
+          return range;
+        }
+      } catch (error) {
+        console.log('🏷️ ThreadCub: Search strategy failed:', error);
+        continue;
+      }
+    }
+    
+    console.log('🏷️ ThreadCub: Enhanced text search failed');
+    return null;
+  }
+
+  // NEW: Search specifically in conversation containers (Claude.ai structure)
+  searchInConversationContainer(targetText) {
+    // Look for Claude's conversation structure
+    const conversationSelectors = [
+      '[data-testid*="conversation"]',
+      '[data-testid*="message"]',
+      'div[class*="conversation"]',
+      'div[class*="message"]',
+      'div[class*="prose"]',
+      'main'
+    ];
+    
+    for (const selector of conversationSelectors) {
+      const containers = document.querySelectorAll(selector);
+      console.log(`🔍 Searching in ${containers.length} ${selector} containers`);
+      
+      for (const container of containers) {
+        const range = this.searchTextInElement(container, targetText);
+        if (range) return range;
+      }
+    }
+    
+    return null;
+  }
+
+  // NEW: Search in message-like elements
+  searchInMessageElements(targetText) {
+    // Get all elements that might contain message content
+    const messageElements = document.querySelectorAll('div, p, span');
+    const candidates = [];
+    
+    // Filter for elements with substantial text content
+    for (const element of messageElements) {
+      const text = element.textContent?.trim() || '';
+      if (text.length > 20 && text.includes(targetText.substring(0, 20))) {
+        candidates.push(element);
+      }
+    }
+    
+    console.log(`🔍 Found ${candidates.length} candidate message elements`);
+    
+    // Search in candidates, starting with the most promising
+    candidates.sort((a, b) => {
+      const aText = a.textContent?.trim() || '';
+      const bText = b.textContent?.trim() || '';
+      return Math.abs(aText.length - targetText.length) - Math.abs(bText.length - targetText.length);
+    });
+    
+    for (const element of candidates) {
+      const range = this.searchTextInElement(element, targetText);
+      if (range) return range;
+    }
+    
+    return null;
+  }
+
+  // NEW: Search for partial text matches (for when exact match fails)
+  findRangeByPartialText(targetText) {
+    if (!targetText || targetText.length < 10) return null;
+    
+    console.log('🏷️ ThreadCub: Partial text search for:', targetText.substring(0, 30) + '...');
+    
+    // Try to find a significant portion of the text
+    const minMatchLength = Math.min(50, Math.floor(targetText.length * 0.6));
+    const searchText = targetText.substring(0, minMatchLength);
+    
+    const walker = document.createTreeWalker(
+      document.body,
+      NodeFilter.SHOW_TEXT,
+      null,
+      false
+    );
+    
+    let textNode;
+    while (textNode = walker.nextNode()) {
+      const nodeText = textNode.textContent;
+      if (nodeText && nodeText.includes(searchText)) {
+        try {
+          const startIndex = nodeText.indexOf(searchText);
+          const range = document.createRange();
+          range.setStart(textNode, startIndex);
+          range.setEnd(textNode, Math.min(startIndex + targetText.length, nodeText.length));
+          
+          console.log('🏷️ ThreadCub: ✅ Found partial text match');
+          return range;
+        } catch (error) {
+          continue;
+        }
+      }
+    }
+    
+    return null;
+  }
+
+  // NEW: Helper to search text within a specific element
+  searchTextInElement(element, targetText) {
+    const walker = document.createTreeWalker(
+      element,
+      NodeFilter.SHOW_TEXT,
+      null,
+      false
+    );
+    
+    let textNode;
+    while (textNode = walker.nextNode()) {
+      const nodeText = textNode.textContent;
+      if (nodeText && nodeText.includes(targetText)) {
+        try {
+          const startIndex = nodeText.indexOf(targetText);
+          const range = document.createRange();
+          range.setStart(textNode, startIndex);
+          range.setEnd(textNode, startIndex + targetText.length);
+          
+          // Verify the range text matches
+          if (range.toString().trim() === targetText.trim()) {
+            return range;
+          }
+        } catch (error) {
+          continue;
+        }
+      }
+    }
+    
+    return null;
+  }
+
+  // NEW: Retry failed highlights with different timing
+  async retryFailedHighlights() {
+    console.log('🏷️ ThreadCub: Retrying failed highlight restorations...');
+    
+    const unhighlightedTags = this.tags.filter(tag => {
+      // Check if tag doesn't have a highlight element
+      return !this.highlightElements?.has(tag.id);
+    });
+    
+    console.log(`🏷️ ThreadCub: Retrying ${unhighlightedTags.length} failed highlights`);
+    
+    for (const tag of unhighlightedTags) {
+      if (tag.text) {
+        const range = this.findRangeByEnhancedTextSearch(tag.text);
+        if (range) {
+          this.applySmartHighlight(range, tag.id);
+          console.log(`🏷️ ThreadCub: ✅ Retry successful for tag ${tag.id}`);
+        }
+      }
+    }
+  }
+
+  // NEW: Mark tags that couldn't be highlighted in the UI
+  markTagAsUnhighlighted(tagId) {
+    // This will be used by the side panel to show that highlight couldn't be restored
+    if (!this.unhighlightedTags) {
+      this.unhighlightedTags = new Set();
+    }
+    this.unhighlightedTags.add(tagId);
   }
 
   // NEW: Find range by text content matching

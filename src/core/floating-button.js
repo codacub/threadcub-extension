@@ -706,6 +706,47 @@ class ThreadCubFloatingButton {
     console.log('🐻 ThreadCub: Button destroyed');
   }
 
+  // Session ID management for anonymous conversation tracking
+  async getOrCreateSessionId() {
+    let sessionId = null;
+    
+    try {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        const result = await new Promise((resolve) => {
+          chrome.storage.local.get(['threadcubSessionId'], resolve);
+        });
+        
+        sessionId = result.threadcubSessionId;
+        
+        if (!sessionId) {
+          sessionId = 'tc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+          await new Promise((resolve) => {
+            chrome.storage.local.set({ threadcubSessionId: sessionId }, resolve);
+          });
+          console.log('🔑 Generated new ThreadCub session ID:', sessionId);
+        } else {
+          console.log('🔑 Using existing ThreadCub session ID:', sessionId);
+        }
+      } else {
+        sessionId = localStorage.getItem('threadcubSessionId');
+        if (!sessionId) {
+          sessionId = 'tc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+          localStorage.setItem('threadcubSessionId', sessionId);
+          console.log('🔑 Generated new ThreadCub session ID (localStorage):', sessionId);
+        } else {
+          console.log('🔑 Using existing ThreadCub session ID (localStorage):', sessionId);
+        }
+      }
+      
+      return sessionId;
+    } catch (error) {
+      console.error('Error managing session ID:', error);
+      const fallbackId = 'tc_fallback_' + Date.now();
+      console.log('🔑 Using fallback session ID:', fallbackId);
+      return fallbackId;
+    }
+  }
+
   // ===== REAL WORKING METHODS (MOVED FROM CONTENT.JS) =====
   async saveAndOpenConversation(source = 'floating') {
   console.log('🐻 ThreadCub: Starting conversation save and open from:', source);
@@ -779,14 +820,19 @@ class ThreadCubFloatingButton {
     this.lastConversationData = conversationData;
 
     // Format data to match API route expectations (WITH AUTH TOKEN)
+    // Get session ID for anonymous conversation tracking
+    const sessionId = await this.getOrCreateSessionId();
+    console.log('🔍 Session ID for API call:', sessionId);
+
     const apiData = {
       conversationData: conversationData,
       source: conversationData.platform?.toLowerCase() || 'unknown',
       title: conversationData.title || 'Untitled Conversation',
-      userAuthToken: userAuthToken // ← THIS IS THE KEY ADDITION
+      userAuthToken: userAuthToken,
+      sessionId: sessionId
     };
 
-    console.log('🐻 ThreadCub: Making DIRECT API call to ThreadCub...');
+    console.log('🔍 API Data includes sessionId:', !!apiData.sessionId);
 
     // Direct fetch call
     let response;

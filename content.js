@@ -5451,13 +5451,17 @@ function enhanceFloatingButtonWithConversationFeatures() {
         console.log(`🐻 ThreadCub: Successfully extracted ${conversationData.messages.length} messages`);
         
         this.lastConversationData = conversationData;
+
+        // Get session ID for anonymous conversation tracking
+        const sessionId = await getOrCreateSessionId();
         
         // FIXED: Use DIRECT fetch() call to API (same as working main branch) + AUTH TOKEN
         const apiData = {
-          conversationData: conversationData,
-          source: conversationData.platform?.toLowerCase() || 'unknown',
-          title: conversationData.title || 'Untitled Conversation',
-          userAuthToken: userAuthToken // ← THIS IS THE KEY ADDITION
+            conversationData: conversationData,
+            source: conversationData.platform?.toLowerCase() || 'unknown',
+            title: conversationData.title || 'Untitled Conversation',
+            userAuthToken: userAuthToken,
+            sessionId: sessionId
         };
         
         console.log('🐻 ThreadCub: Making DIRECT API call to ThreadCub...');
@@ -5708,3 +5712,37 @@ console.log('🐻 ThreadCub: Starting initialization...');
 initializeThreadCub();
 
 // === END SECTION 5A ===
+
+// Session ID management for anonymous conversation tracking
+async function getOrCreateSessionId() {
+  let sessionId = null;
+  
+  try {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      const result = await new Promise((resolve) => {
+        chrome.storage.local.get(['threadcubSessionId'], resolve);
+      });
+      
+      sessionId = result.threadcubSessionId;
+      
+      if (!sessionId) {
+        sessionId = 'tc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        await new Promise((resolve) => {
+          chrome.storage.local.set({ threadcubSessionId: sessionId }, resolve);
+        });
+        console.log('🔑 Generated new ThreadCub session ID:', sessionId);
+      }
+    } else {
+      sessionId = localStorage.getItem('threadcubSessionId');
+      if (!sessionId) {
+        sessionId = 'tc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('threadcubSessionId', sessionId);
+      }
+    }
+    
+    return sessionId;
+  } catch (error) {
+    console.error('Error managing session ID:', error);
+    return 'tc_fallback_' + Date.now();
+  }
+}

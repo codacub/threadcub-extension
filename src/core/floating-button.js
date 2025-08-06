@@ -708,111 +708,103 @@ class ThreadCubFloatingButton {
 
   // Session ID management for anonymous conversation tracking
   async getOrCreateSessionId() {
-    let sessionId = null;
-    
+  let sessionId = null;
+  
+  try {
     try {
-      // FIXED: Try localStorage FIRST (most reliable for dashboard sync)
+      sessionId = localStorage.getItem('threadcubSessionId');
+      if (sessionId) {
+        console.log('🔑 Using existing ThreadCub session ID (localStorage):', sessionId);
+        
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+          try {
+            chrome.storage.local.set({ threadcubSessionId: sessionId }, () => {
+              if (!chrome.runtime.lastError) {
+                console.log('🔑 Synced session ID to Chrome storage');
+              }
+            });
+          } catch (chromeError) {
+            console.log('🔑 Chrome storage sync failed (non-critical):', chromeError);
+          }
+        }
+        
+        return sessionId;
+      }
+    } catch (localError) {
+      console.log('🔑 localStorage access failed:', localError);
+    }
+    
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local && chrome.runtime && chrome.runtime.id) {
       try {
-        sessionId = localStorage.getItem('threadcubSessionId');
-        if (sessionId) {
-          console.log('🔑 Using existing ThreadCub session ID (localStorage):', sessionId);
-          
-          // Try to sync to Chrome storage if available (non-critical)
-          if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-            try {
-              chrome.storage.local.set({ threadcubSessionId: sessionId }, () => {
-                if (!chrome.runtime.lastError) {
-                  console.log('🔑 Synced session ID to Chrome storage');
-                }
-              });
-            } catch (chromeError) {
-              console.log('🔑 Chrome storage sync failed (non-critical):', chromeError);
+        const result = await new Promise((resolve, reject) => {
+          chrome.storage.local.get(['threadcubSessionId'], (result) => {
+            if (chrome.runtime.lastError) {
+              reject(new Error(chrome.runtime.lastError.message));
+            } else {
+              resolve(result);
             }
+          });
+        });
+        
+        sessionId = result.threadcubSessionId;
+        if (sessionId) {
+          console.log('🔑 Using existing ThreadCub session ID (Chrome storage):', sessionId);
+          
+          try {
+            localStorage.setItem('threadcubSessionId', sessionId);
+            console.log('🔑 Synced session ID to localStorage for dashboard access');
+          } catch (localError) {
+            console.log('🔑 Could not sync to localStorage (non-critical):', localError);
           }
           
           return sessionId;
         }
-      } catch (localError) {
-        console.log('🔑 localStorage access failed:', localError);
-      }
-      
-      // FIXED: Try Chrome storage as secondary option
-      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local && chrome.runtime.id) {
-        try {
-          const result = await new Promise((resolve, reject) => {
-            chrome.storage.local.get(['threadcubSessionId'], (result) => {
-              if (chrome.runtime.lastError) {
-                reject(new Error(chrome.runtime.lastError.message));
-              } else {
-                resolve(result);
-              }
-            });
-          });
-          
-          sessionId = result.threadcubSessionId;
-          if (sessionId) {
-            console.log('🔑 Using existing ThreadCub session ID (Chrome storage):', sessionId);
-            
-            // Sync back to localStorage for dashboard
-            try {
-              localStorage.setItem('threadcubSessionId', sessionId);
-              console.log('🔑 Synced session ID to localStorage for dashboard access');
-            } catch (localError) {
-              console.log('🔑 Could not sync to localStorage (non-critical):', localError);
-            }
-            
-            return sessionId;
-          }
-        } catch (chromeError) {
-          console.log('🔑 Chrome storage access failed:', chromeError);
-        }
-      }
-      
-      // FIXED: Generate new session ID and save to BOTH storages
-      sessionId = 'tc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-      console.log('🔑 Generated new ThreadCub session ID:', sessionId);
-      
-      // Save to localStorage (primary for dashboard)
-      try {
-        localStorage.setItem('threadcubSessionId', sessionId);
-        console.log('🔑 Saved new session ID to localStorage');
-      } catch (localError) {
-        console.log('🔑 Could not save to localStorage:', localError);
-      }
-      
-      // Save to Chrome storage (secondary)
-      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        try {
-          chrome.storage.local.set({ threadcubSessionId: sessionId }, () => {
-            if (!chrome.runtime.lastError) {
-              console.log('🔑 Saved new session ID to Chrome storage');
-            }
-          });
-        } catch (chromeError) {
-          console.log('🔑 Could not save to Chrome storage (non-critical):', chromeError);
-        }
-      }
-      
-      return sessionId;
-      
-    } catch (error) {
-      console.error('🔑 Session ID management failed:', error);
-      
-      // ABSOLUTE FALLBACK: Use existing localStorage or create new one
-      try {
-        sessionId = localStorage.getItem('threadcubSessionId');
-        if (!sessionId) {
-          sessionId = 'tc_emergency_' + Date.now();
-          localStorage.setItem('threadcubSessionId', sessionId);
-        }
-        console.log('🔑 Using emergency session ID:', sessionId);
-        return sessionId;
-      } catch (emergencyError) {
-        console.error('🔑 Emergency session ID failed:', emergencyError);
-        return 'tc_critical_' + Date.now();
+      } catch (chromeError) {
+        console.log('🔑 Chrome storage access failed:', chromeError);
       }
     }
+    
+    ssessionId = 'tc_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
+    console.log('🔑 Generated new ThreadCub session ID:', sessionId);
+    
+    try {
+      localStorage.setItem('threadcubSessionId', sessionId);
+      console.log('🔑 Saved new session ID to localStorage');
+    } catch (localError) {
+      console.log('🔑 Could not save to localStorage:', localError);
+    }
+    
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      try {
+        chrome.storage.local.set({ threadcubSessionId: sessionId }, () => {
+          if (!chrome.runtime.lastError) {
+            console.log('🔑 Saved new session ID to Chrome storage');
+          }
+        });
+      } catch (chromeError) {
+        console.log('🔑 Could not save to Chrome storage (non-critical):', chromeError);
+      }
+    }
+    
+    return sessionId;
+    
+  } catch (error) {
+    console.error('🔑 Session ID management failed:', error);
+    
+    try {
+      sessionId = localStorage.getItem('threadcubSessionId');
+      if (!sessionId) {
+        sessionId = 'tc_emergency_' + Date.now();
+        localStorage.setItem('threadcubSessionId', sessionId);
+      }
+      console.log('🔑 Using emergency session ID:', sessionId);
+      return sessionId;
+    } catch (emergencyError) {
+      console.error('🔑 Emergency session ID failed:', emergencyError);
+      return 'tc_critical_' + Date.now();
+    }
   }
+}
 
   // ===== REAL WORKING METHODS (MOVED FROM CONTENT.JS) =====
   async saveAndOpenConversation(source = 'floating') {

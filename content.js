@@ -5718,13 +5718,11 @@ async function getOrCreateSessionId() {
   let sessionId = null;
   
   try {
-    // FIXED: Try localStorage FIRST (most reliable for dashboard sync)
     try {
       sessionId = localStorage.getItem('threadcubSessionId');
       if (sessionId) {
         console.log('🔑 Using existing ThreadCub session ID (localStorage):', sessionId);
         
-        // Try to sync to Chrome storage if available (non-critical)
         if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
           try {
             chrome.storage.local.set({ threadcubSessionId: sessionId }, () => {
@@ -5743,8 +5741,7 @@ async function getOrCreateSessionId() {
       console.log('🔑 localStorage access failed:', localError);
     }
     
-    // FIXED: Try Chrome storage as secondary option
-    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local && chrome.runtime.id) {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local && chrome.runtime && chrome.runtime.id) {
       try {
         const result = await new Promise((resolve, reject) => {
           chrome.storage.local.get(['threadcubSessionId'], (result) => {
@@ -5760,7 +5757,6 @@ async function getOrCreateSessionId() {
         if (sessionId) {
           console.log('🔑 Using existing ThreadCub session ID (Chrome storage):', sessionId);
           
-          // Sync back to localStorage for dashboard
           try {
             localStorage.setItem('threadcubSessionId', sessionId);
             console.log('🔑 Synced session ID to localStorage for dashboard access');
@@ -5775,11 +5771,9 @@ async function getOrCreateSessionId() {
       }
     }
     
-    // FIXED: Generate new session ID and save to BOTH storages
-    sessionId = 'tc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    sessionId = 'tc_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
     console.log('🔑 Generated new ThreadCub session ID:', sessionId);
     
-    // Save to localStorage (primary for dashboard)
     try {
       localStorage.setItem('threadcubSessionId', sessionId);
       console.log('🔑 Saved new session ID to localStorage');
@@ -5787,7 +5781,6 @@ async function getOrCreateSessionId() {
       console.log('🔑 Could not save to localStorage:', localError);
     }
     
-    // Save to Chrome storage (secondary)
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
       try {
         chrome.storage.local.set({ threadcubSessionId: sessionId }, () => {
@@ -5805,7 +5798,6 @@ async function getOrCreateSessionId() {
   } catch (error) {
     console.error('🔑 Session ID management failed:', error);
     
-    // ABSOLUTE FALLBACK: Use existing localStorage or create new one
     try {
       sessionId = localStorage.getItem('threadcubSessionId');
       if (!sessionId) {

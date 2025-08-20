@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Threadcub",
+  "name": "ThreadCub",
   "version": "1.0.1",
   "description": "Export AI conversations from Claude, ChatGPT, Copilot, and other platforms as JSON",
   
@@ -32,7 +32,8 @@
     "activeTab",
     "downloads",
     "storage",
-    "scripting"
+    "scripting",
+    "cookies"
   ],
   
   "host_permissions": [
@@ -56,9 +57,7 @@
       "https://chat.openai.com/*",
       "https://chatgpt.com/*",
       "https://gemini.google.com/*",
-      "https://copilot.microsoft.com/*",
-      "https://threadcub.com/*",
-      "https://*.threadcub.com/*"
+      "https://copilot.microsoft.com/*"
     ],
     "css": [
       "assets/tokens.css",

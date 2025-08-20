@@ -364,92 +364,71 @@ async function handleGetAuthToken(sendResponse) {
     
     console.log('🔧 Background: Found ThreadCub tab, extracting auth token from cookies...');
     
-    // Execute script in ThreadCub tab to read cookies and extract auth token
-    const results = await chrome.scripting.executeScript({
-      target: { tabId: tabs[0].id },
-      func: () => {
-        try {
-          console.log('🔧 ThreadCub Tab: Reading document cookies...');
+    // FIXED: Use chrome.cookies API instead of injecting scripts
+    try {
+      // Get all cookies for threadcub.com (try multiple domain formats)
+      let cookies = await chrome.cookies.getAll({ domain: 'threadcub.com' });
+      console.log('🔧 Background: Found', cookies.length, 'cookies for threadcub.com');
+
+      // If no cookies found, try with dot prefix
+      if (cookies.length === 0) {
+        cookies = await chrome.cookies.getAll({ domain: '.threadcub.com' });
+        console.log('🔧 Background: Found', cookies.length, 'cookies for .threadcub.com');
+      }
+
+      // If still no cookies, try getting by URL
+      if (cookies.length === 0) {
+        cookies = await chrome.cookies.getAll({ url: 'https://threadcub.com' });
+        console.log('🔧 Background: Found', cookies.length, 'cookies for https://threadcub.com');
+      }
+            
+      // Look for Supabase auth token cookie
+      let authToken = null;
+      
+      for (const cookie of cookies) {
+        console.log('🔧 Background: Checking cookie:', cookie.name);
+        
+        // Look for Supabase auth token pattern
+        if (cookie.name.includes('sb-') && cookie.name.includes('-auth-token')) {
+          console.log('🔧 Background: Found Supabase auth token cookie!');
+          console.log('🔧 Background: Cookie value length:', cookie.value.length);
           
-          // Get all cookies as a string
-          const cookieString = document.cookie;
-          console.log('🔧 ThreadCub Tab: Cookie string length:', cookieString.length);
-          
-          // Parse cookies into an object
-          const cookies = {};
-          cookieString.split(';').forEach(cookie => {
-            const [name, value] = cookie.trim().split('=');
-            if (name && value) {
-              cookies[name] = value;
+          try {
+            // Decode and parse the cookie value
+            const decodedValue = decodeURIComponent(cookie.value);
+            console.log('🔧 Background: Decoded cookie length:', decodedValue.length);
+            
+            // Parse as JSON array [access_token, refresh_token]
+            const authArray = JSON.parse(decodedValue);
+            
+            if (Array.isArray(authArray) && authArray.length >= 1) {
+              authToken = authArray[0]; // First element is access token
+              console.log('🔧 Background: Extracted access token length:', authToken?.length);
+              break;
             }
-          });
-          
-          // Look for Supabase auth token cookie
-          let authToken = null;
-          
-          // Check for sb-[project-id]-auth-token pattern
-          for (const [cookieName, cookieValue] of Object.entries(cookies)) {
-            if (cookieName.includes('sb-') && cookieName.includes('-auth-token')) {
-              console.log('🔧 ThreadCub Tab: Found Supabase auth token cookie!');
-              
-              try {
-                // URL decode the cookie value
-                const decodedValue = decodeURIComponent(cookieValue);
-                console.log('🔧 ThreadCub Tab: Decoded cookie value length:', decodedValue.length);
-                
-                // Parse the JSON array (Supabase stores auth as [access_token, refresh_token])
-                const authArray = JSON.parse(decodedValue);
-                
-                if (Array.isArray(authArray) && authArray.length >= 2) {
-                  // The access token is typically the first element
-                  authToken = authArray[0];
-                  console.log('🔧 ThreadCub Tab: Extracted access token length:', authToken?.length || 'null');
-                } else {
-                  console.log('🔧 ThreadCub Tab: Auth array format unexpected:', authArray);
-                }
-              } catch (parseError) {
-                console.log('🔧 ThreadCub Tab: Error parsing auth cookie:', parseError);
-                
-                // Try direct cookie value as backup
-                try {
-                  const directParse = JSON.parse(cookieValue);
-                  if (directParse && typeof directParse === 'string') {
-                    authToken = directParse;
-                  }
-                } catch (directError) {
-                  console.log('🔧 ThreadCub Tab: Direct parse also failed');
-                }
-              }
-              
-              break; // Found the auth cookie, stop looking
-            }
+          } catch (parseError) {
+            console.log('🔧 Background: Error parsing cookie:', parseError.message);
+            continue;
           }
-          
-          if (authToken) {
-            console.log('🔧 ThreadCub Tab: Successfully extracted auth token!');
-            return authToken;
-          } else {
-            console.log('🔧 ThreadCub Tab: No auth token found in cookies');
-            return null;
-          }
-          
-        } catch (error) {
-          console.log('🔧 ThreadCub Tab: Error extracting auth token:', error);
-          return null;
         }
       }
-    });
-    
-    const authToken = results[0]?.result;
-    
-    if (authToken && typeof authToken === 'string' && authToken.length > 10) {
-      console.log('🔧 Background: Auth token extracted successfully from cookies!');
-      sendResponse({ success: true, authToken: authToken });
-    } else {
-      console.log('🔧 Background: Could not extract valid auth token from cookies');
+      
+      if (authToken && typeof authToken === 'string' && authToken.length > 10) {
+        console.log('🔧 Background: ✅ Auth token extracted successfully!');
+        sendResponse({ success: true, authToken: authToken });
+      } else {
+        console.log('🔧 Background: ❌ No valid auth token found in cookies');
+        sendResponse({ 
+          success: false, 
+          error: 'No valid auth token found - make sure you are logged in to ThreadCub' 
+        });
+      }
+      
+    } catch (cookieError) {
+      console.log('🔧 Background: Cookie API error:', cookieError);
       sendResponse({ 
         success: false, 
-        error: 'Could not extract auth token from cookies - make sure you are logged in to ThreadCub' 
+        error: `Cookie access failed: ${cookieError.message}` 
       });
     }
     

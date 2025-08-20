@@ -764,7 +764,7 @@ class ThreadCubFloatingButton {
       }
     }
     
-    sessionId = 'tc_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
+    ssessionId = 'tc_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
     console.log('🔑 Generated new ThreadCub session ID:', sessionId);
     
     try {
@@ -1919,16 +1919,16 @@ Once you've reviewed it, let me know you're ready to continue from where we left
 
     if (targetPlatform === 'chatgpt') {
       console.log('🤖 ThreadCub: Routing to ChatGPT flow (with file download)');
-      this.handleChatGPTFlow(minimalPrompt, fallbackShareUrl, conversationData);
+      this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
     } else if (targetPlatform === 'claude') {
       console.log('🤖 ThreadCub: Routing to Claude flow (no file download)');
-      this.handleClaudeFlow(minimalPrompt, fallbackShareUrl, conversationData);
+      this.handleClaudeFlow(minimalPrompt, shareUrl, conversationData);
     } else if (targetPlatform === 'gemini') {
       console.log('🤖 ThreadCub: Routing to Gemini flow (with file download)');
-      this.handleGeminiFlow(minimalPrompt, fallbackShareUrl, conversationData);
+      this.handleGeminiFlow(minimalPrompt, shareUrl, conversationData);
     } else {
       console.log('🤖 ThreadCub: Unknown platform, defaulting to ChatGPT flow');
-      this.handleChatGPTFlow(minimalPrompt, fallbackShareUrl, conversationData);
+      this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
     }
 
     this.showSuccessToast('Continuing conversation (offline mode)');

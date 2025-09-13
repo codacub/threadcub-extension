@@ -2,7 +2,8 @@
   "manifest_version": 3,
   "name": "ThreadCub",
   "version": "1.0.1",
-  "description": "Export AI conversations from Claude, ChatGPT, Copilot, and other platforms as JSON",
+  "description": "Save, tag, and resume AI chats across platforms. ThreadCub makes long conversations organised, searchable, and stress-free.",
+
   
   "icons": {
     "16": "icons/icon16.png",
@@ -82,5 +83,8 @@
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
     }
-  }
+  },
+
+  "homepage_url": "https://threadcub.com",
+  "options_page": "https://threadcub.com/privacy"
 }

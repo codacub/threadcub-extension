@@ -350,7 +350,7 @@ console.log('🐻 ThreadCub background script loaded and ready');
 // === SECTION 7: Auth Token Handler (FIXED - Proper Cookie Parsing) ===
 
 async function handleGetAuthToken(sendResponse) {
-  console.log('🔧 Background: Getting auth token from ThreadCub tab via localStorage...');
+  console.log('🔧 Background: Getting auth token from ThreadCub tab via cookies...');
   
   try {
     // Find ThreadCub tab
@@ -362,27 +362,74 @@ async function handleGetAuthToken(sendResponse) {
       return;
     }
     
-    console.log('🔧 Background: Found ThreadCub tab, extracting auth token from localStorage...');
+    console.log('🔧 Background: Found ThreadCub tab, extracting auth token from cookies...');
     
-    // Execute script in ThreadCub tab to get auth token from localStorage
-    const results = await chrome.scripting.executeScript({
-      target: { tabId: tabs[0].id },
-      func: extractSupabaseAuthToken
-    });
-    
-    if (results && results[0] && results[0].result) {
-      const { success, authToken, error } = results[0].result;
+    // FIXED: Use chrome.cookies API instead of injecting scripts
+    try {
+      // Get all cookies for threadcub.com (try multiple domain formats)
+      let cookies = await chrome.cookies.getAll({ domain: 'threadcub.com' });
+      console.log('🔧 Background: Found', cookies.length, 'cookies for threadcub.com');
+
+      // If no cookies found, try with dot prefix
+      if (cookies.length === 0) {
+        cookies = await chrome.cookies.getAll({ domain: '.threadcub.com' });
+        console.log('🔧 Background: Found', cookies.length, 'cookies for .threadcub.com');
+      }
+
+      // If still no cookies, try getting by URL
+      if (cookies.length === 0) {
+        cookies = await chrome.cookies.getAll({ url: 'https://threadcub.com' });
+        console.log('🔧 Background: Found', cookies.length, 'cookies for https://threadcub.com');
+      }
+            
+      // Look for Supabase auth token cookie
+      let authToken = null;
       
-      if (success && authToken) {
+      for (const cookie of cookies) {
+        console.log('🔧 Background: Checking cookie:', cookie.name);
+        
+        // Look for Supabase auth token pattern
+        if (cookie.name.includes('sb-') && cookie.name.includes('-auth-token')) {
+          console.log('🔧 Background: Found Supabase auth token cookie!');
+          console.log('🔧 Background: Cookie value length:', cookie.value.length);
+          
+          try {
+            // Decode and parse the cookie value
+            const decodedValue = decodeURIComponent(cookie.value);
+            console.log('🔧 Background: Decoded cookie length:', decodedValue.length);
+            
+            // Parse as JSON array [access_token, refresh_token]
+            const authArray = JSON.parse(decodedValue);
+            
+            if (Array.isArray(authArray) && authArray.length >= 1) {
+              authToken = authArray[0]; // First element is access token
+              console.log('🔧 Background: Extracted access token length:', authToken?.length);
+              break;
+            }
+          } catch (parseError) {
+            console.log('🔧 Background: Error parsing cookie:', parseError.message);
+            continue;
+          }
+        }
+      }
+      
+      if (authToken && typeof authToken === 'string' && authToken.length > 10) {
         console.log('🔧 Background: ✅ Auth token extracted successfully!');
         sendResponse({ success: true, authToken: authToken });
       } else {
-        console.log('🔧 Background: ❌ Failed to extract auth token:', error);
-        sendResponse({ success: false, error: error || 'No auth token found' });
+        console.log('🔧 Background: ❌ No valid auth token found in cookies');
+        sendResponse({ 
+          success: false, 
+          error: 'No valid auth token found - make sure you are logged in to ThreadCub' 
+        });
       }
-    } else {
-      console.log('🔧 Background: ❌ Script execution failed');
-      sendResponse({ success: false, error: 'Failed to execute auth extraction script' });
+      
+    } catch (cookieError) {
+      console.log('🔧 Background: Cookie API error:', cookieError);
+      sendResponse({ 
+        success: false, 
+        error: `Cookie access failed: ${cookieError.message}` 
+      });
     }
     
   } catch (error) {
@@ -391,99 +438,5 @@ async function handleGetAuthToken(sendResponse) {
       success: false, 
       error: `Error extracting auth token: ${error.message}` 
     });
-  }
-}
-
-// This function runs in the context of the ThreadCub dashboard tab
-function extractSupabaseAuthToken() {
-  try {
-    console.log('🔧 Dashboard: Extracting Supabase auth token...');
-    
-    // Method 1: Try to get session from Supabase client directly
-    if (typeof window !== 'undefined') {
-      // Check if Supabase client is available globally
-      if (window.supabase && window.supabase.auth) {
-        try {
-          // Try to get the current session
-          window.supabase.auth.getSession().then(({ data, error }) => {
-            if (data.session && data.session.access_token) {
-              console.log('🔧 Dashboard: Found token via Supabase client');
-              return { success: true, authToken: data.session.access_token };
-            }
-          });
-        } catch (e) {
-          console.log('🔧 Dashboard: Supabase client method failed:', e);
-        }
-      }
-    }
-    
-    // Method 2: Search localStorage for Supabase auth data
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      
-      // Look for Supabase auth keys (common patterns)
-      if (key && (key.includes('supabase.auth.token') || key.startsWith('sb-') || key.includes('-auth-token'))) {
-        console.log('🔧 Dashboard: Found potential auth key:', key);
-        
-        try {
-          const authData = localStorage.getItem(key);
-          if (authData) {
-            // Try to parse as JSON
-            const parsed = JSON.parse(authData);
-            
-            // Check for access_token in various formats
-            if (parsed.access_token) {
-              console.log('🔧 Dashboard: Found access_token in localStorage');
-              return { success: true, authToken: parsed.access_token };
-            }
-            
-            // Check if it's an array with access token as first element
-            if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'string') {
-              console.log('🔧 Dashboard: Found token in array format');
-              return { success: true, authToken: parsed[0] };
-            }
-            
-            // Check for nested session data
-            if (parsed.session && parsed.session.access_token) {
-              console.log('🔧 Dashboard: Found token in session object');
-              return { success: true, authToken: parsed.session.access_token };
-            }
-          }
-        } catch (parseError) {
-          console.log('🔧 Dashboard: Failed to parse auth data for key:', key, parseError);
-          continue;
-        }
-      }
-    }
-    
-    // Method 3: Try common Supabase localStorage key patterns
-    const commonKeys = [
-      'supabase.auth.token',
-      'sb-localhost-auth-token',
-      'sb-threadcub-auth-token',
-      'sb-auth-token'
-    ];
-    
-    for (const key of commonKeys) {
-      const authData = localStorage.getItem(key);
-      if (authData) {
-        try {
-          const parsed = JSON.parse(authData);
-          if (parsed.access_token) {
-            console.log('🔧 Dashboard: Found token with common key pattern:', key);
-            return { success: true, authToken: parsed.access_token };
-          }
-        } catch (e) {
-          continue;
-        }
-      }
-    }
-    
-    console.log('🔧 Dashboard: No auth token found in localStorage');
-    return { success: false, error: 'No auth token found - make sure you are logged in to ThreadCub' };
-    
-  } catch (error) {
-    console.error('🔧 Dashboard: Error extracting auth token:', error);
-    return { success: false, error: `Error: ${error.message}` };
   }
 }

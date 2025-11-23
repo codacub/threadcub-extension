@@ -1016,15 +1016,15 @@ window.ThreadCubTagging = class ThreadCubTagging {
 
   async createTagFromSelection() {
     console.log('🏷️ ThreadCub: createTagFromSelection called');
-    
+
     const categoryId = this.selectedCategoryId || 'dont-forget';
     const category = this.tagCategories.find(cat => cat.id === categoryId);
-    
+
     if (!this.selectedText || !this.selectedRange || !category) {
       console.log('🏷️ ThreadCub: Missing required data for tag creation');
       return;
     }
-    
+
     const tag = {
       id: Date.now(),
       text: this.selectedText,
@@ -1033,25 +1033,46 @@ window.ThreadCubTagging = class ThreadCubTagging {
       timestamp: new Date().toISOString(),
       rangeInfo: this.captureEnhancedRangeInfo(this.selectedRange)
     };
-    
+
     this.tags.push(tag);
 
     this.removeTemporaryHighlight();
-    
+
     this.applySmartHighlight(this.selectedRange, tag.id);
-    
+
     await this.saveTagsToPersistentStorage();
-    
+
+    // ✨ NEW: Sync highlight to Supabase
+    try {
+      const selection = window.getSelection();
+      if (selection && !selection.isCollapsed) {
+        const { highlightSyncService } = await import(chrome.runtime.getURL('src/services/highlight-sync-service.js'));
+        const result = await highlightSyncService.saveHighlight(selection, {
+          tags: [categoryId],
+          tag_label: category.label
+        });
+
+        if (result.success && result.synced) {
+          console.log('✅ Highlight synced to ThreadCub');
+        } else if (result.success && result.reason === 'not_authenticated') {
+          console.log('💾 Highlight saved locally (not authenticated)');
+        }
+      }
+    } catch (error) {
+      console.error('Failed to sync highlight:', error);
+      // Don't block the tagging flow if sync fails
+    }
+
     if (this.tags.length === 1) {
       this.showSidePanel();
     } else {
       this.updateTagsList();
     }
-    
+
     this.hideContextMenu();
-    
+
     this.isAddingMore = false;
-    
+
     console.log('🏷️ ThreadCub: Tag created and persisted successfully:', tag);
   }
 

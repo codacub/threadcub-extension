@@ -23,7 +23,11 @@
         "icons/icon-happy.png",
         "icons/icon-sad.png",
         "icons/icon-happier.png",
-        "icons/threadcub-logo.png"
+        "icons/threadcub-logo.png",
+        "src/auth/supabase-client.js",
+        "src/auth/auth-manager.js",
+        "src/services/highlight-sync-service.js",
+        "src/utils/metadata-scraper.js"
       ],
       "matches": ["<all_urls>"]
     }

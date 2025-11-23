@@ -1433,7 +1433,7 @@ async handleSaveForLater() {
     text: this.selectedText,
     category: null,
     categoryLabel: 'Saved',
-    note: '',
+    notes: '',
     priority: 'medium', // default priority
     timestamp: new Date().toISOString(),
     rangeInfo: this.captureEnhancedRangeInfo(this.selectedRange) // FIXED: Use enhanced capture
@@ -2935,7 +2935,7 @@ updateTagsListFallback() {
 saveNoteForCard(tagId, noteText) {
   const tag = this.tags.find(t => t.id === tagId);
   if (tag) {
-    tag.note = noteText;
+    tag.notes = noteText;
     console.log('🏷️ ThreadCub: Note saved for tag:', tagId);
     this.updateTagsList(); // This will call the side panel UI
   }
@@ -4651,7 +4651,7 @@ function enhanceFloatingButtonWithConversationFeatures() {
             exportDate: new Date().toISOString(),
             totalMessages: 0,
             messages: [],
-            note: 'No conversation messages could be extracted from this page'
+            notes: 'No conversation messages could be extracted from this page'
           };
           
           createDownloadFromData(fallbackData);
@@ -4675,7 +4675,7 @@ function enhanceFloatingButtonWithConversationFeatures() {
           totalMessages: 0,
           messages: [],
           error: error.message,
-          note: 'An error occurred during conversation extraction'
+          notes: 'An error occurred during conversation extraction'
         };
         
         createDownloadFromData(emergencyData);

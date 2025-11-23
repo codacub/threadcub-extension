@@ -994,7 +994,7 @@ class ThreadCubFloatingButton {
           exportDate: new Date().toISOString(),
           totalMessages: 0,
           messages: [],
-          note: 'No conversation messages could be extracted from this page'
+          notes: 'No conversation messages could be extracted from this page'
         };
 
         this.createDownloadFromData(fallbackData);
@@ -1020,7 +1020,7 @@ class ThreadCubFloatingButton {
         totalMessages: 0,
         messages: [],
         error: error.message,
-        note: 'An error occurred during conversation extraction'
+        notes: 'An error occurred during conversation extraction'
       };
 
       this.createDownloadFromData(emergencyData);

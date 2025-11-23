@@ -6,6 +6,9 @@ console.log('🏷️ ThreadCub: tagging.js file is executing...');
 // ThreadCub Tagging Module
 // Handles text selection, tagging, and side panel management
 
+// Import highlight sync service for syncing highlights to Supabase
+import { highlightSyncService } from './src/services/highlight-sync-service.js';
+
 console.log('🏷️ ThreadCub: Loading tagging module...');
 
 class ThreadCubTagging {
@@ -594,15 +597,15 @@ setupEventListeners() {
     }
   }
 
-  createTagFromSelection() {
+  async createTagFromSelection() {
     const dropdown = document.getElementById('threadcub-tag-select');
     if (!dropdown || !this.selectedText || !this.selectedRange) return;
-    
+
     const categoryId = dropdown.value;
     const category = this.tagCategories.find(cat => cat.id === categoryId);
-    
+
     if (!category) return;
-    
+
     // Create the tag object
     const tag = {
       id: Date.now(),
@@ -612,30 +615,58 @@ setupEventListeners() {
       timestamp: new Date().toISOString(),
       position: this.getSelectionPosition()
     };
-    
+
     // Add to tags array
     this.tags.push(tag);
-    
+
     // Apply highlighting
     this.applyHighlight(this.selectedRange, categoryId, tag.id);
-    
+
     // Update side panel
     this.updateTagsList();
-    
+
     // Show side panel if it's the first tag
     if (this.tags.length === 1) {
       this.showSidePanel();
     }
-    
+
     // Hide context menu
     this.hideContextMenu();
-    
+
     // Save to session storage
     this.saveSessionTags();
-    
+
+    // ✨ NEW: Save highlight to Supabase via sync service
+    try {
+      // Create a new selection object from the saved range
+      const selection = window.getSelection();
+      if (selection && this.selectedRange) {
+        const result = await highlightSyncService.saveHighlight(selection, {
+          tags: [categoryId],
+          tag_label: category.label
+        });
+
+        if (result.success) {
+          if (result.synced) {
+            console.log('✅ Highlight synced to ThreadCub');
+            this.showNotification('Highlight saved to ThreadCub ✓');
+          } else if (result.reason === 'not_authenticated') {
+            console.log('💾 Highlight saved locally');
+            this.showNotification('Highlight saved locally. Connect to ThreadCub to sync.');
+          } else {
+            console.log('💾 Highlight saved locally (will sync later)');
+            this.showNotification('Highlight saved locally (will sync later)');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to save highlight:', error);
+      // Don't block the tagging flow if highlight save fails
+    }
+
     // Clear selection
     window.getSelection().removeAllRanges();
-    
+
     console.log('🏷️ ThreadCub: Tag created:', tag);
   }
 

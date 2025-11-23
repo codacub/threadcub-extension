@@ -44,8 +44,13 @@
     "https://gemini.google.com/*",
     "https://copilot.microsoft.com/*",
     "https://threadcub.com/*",
-    "https://*.threadcub.com/*"
+    "https://*.threadcub.com/*",
+    "https://evbkoulaaityzztyutox.supabase.co/*"
   ],
+
+  "externally_connectable": {
+    "matches": ["https://threadcub.com/*", "https://*.threadcub.com/*"]
+  },
   
   "background": {
     "service_worker": "background.js"

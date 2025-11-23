@@ -2,6 +2,11 @@
 // ThreadCub Popup - Built from Scratch with Working Features
 // =============================================================================
 
+// Import auth modules
+import { supabaseAuth } from '../src/auth/supabase-client.js';
+import { authManager } from '../src/auth/auth-manager.js';
+import { highlightSyncService } from '../src/services/highlight-sync-service.js';
+
 // State management
 let currentTab = null;
 let isSupported = false;
@@ -13,15 +18,16 @@ let exportStats = { total: 0, today: 0 };
 
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('🐻 ThreadCub Popup: Starting initialization...');
-    
+
     try {
         await initializeLogo();
         await initializePopup();
         setupControlsPageEventListeners();
         setupPromptsPageEventListeners();
-        
+        await setupAuthSection(); // NEW: Initialize auth UI
+
         console.log('🎉 ThreadCub Popup: Initialization complete!');
-        
+
     } catch (error) {
         console.error('❌ ThreadCub Popup: Initialization error:', error);
     }
@@ -460,3 +466,125 @@ function showPopupToast(message) {
 }
 
 console.log('🐻 ThreadCub Popup: Clean JavaScript loaded');
+// =============================================================================
+// AUTH SECTION MANAGEMENT
+// =============================================================================
+
+/**
+ * Set up the authentication section UI
+ */
+async function setupAuthSection() {
+    console.log('🔐 Setting up auth section...');
+
+    // Set up event listeners
+    const connectBtn = document.getElementById('connectBtn');
+    const disconnectBtn = document.getElementById('disconnectBtn');
+
+    if (connectBtn) {
+        connectBtn.addEventListener('click', handleConnect);
+    }
+
+    if (disconnectBtn) {
+        disconnectBtn.addEventListener('click', handleDisconnect);
+    }
+
+    // Listen for auth changes
+    window.addEventListener('threadcub-auth-changed', updateAuthUI);
+
+    // Also listen for runtime messages (for auth changes from other parts of extension)
+    chrome.runtime.onMessage.addListener((message) => {
+        if (message.type === 'THREADCUB_AUTH_CHANGED') {
+            updateAuthUI();
+        }
+    });
+
+    // Initial UI update
+    await updateAuthUI();
+}
+
+/**
+ * Update the auth UI based on current auth state
+ */
+async function updateAuthUI() {
+    console.log('🔄 Updating auth UI...');
+
+    try {
+        const user = await authManager.getCurrentUser();
+        const authConnected = document.getElementById('authConnected');
+        const authDisconnected = document.getElementById('authDisconnected');
+        const userEmail = document.getElementById('userEmail');
+        const syncStatus = document.getElementById('syncStatus');
+
+        if (user) {
+            // User is connected
+            authConnected.style.display = 'block';
+            authDisconnected.style.display = 'none';
+
+            if (userEmail) {
+                userEmail.textContent = user.email;
+            }
+
+            // Update sync status
+            if (syncStatus) {
+                const pendingCount = await highlightSyncService.getPendingSyncCount();
+                const syncText = syncStatus.querySelector('.sync-text');
+
+                if (pendingCount > 0) {
+                    syncText.textContent = `${pendingCount} pending sync`;
+                    syncStatus.style.background = '#fef3c7';
+                    syncStatus.style.borderColor = '#fde68a';
+                    syncText.style.color = '#d97706';
+                } else {
+                    syncText.textContent = 'All synced ✓';
+                    syncStatus.style.background = '#f0fdf4';
+                    syncStatus.style.borderColor = '#d1fae5';
+                    syncText.style.color = '#059669';
+                }
+            }
+
+            console.log('✅ User is connected:', user.email);
+        } else {
+            // User is not connected
+            authConnected.style.display = 'none';
+            authDisconnected.style.display = 'block';
+
+            console.log('❌ User is not connected');
+        }
+    } catch (error) {
+        console.error('Failed to update auth UI:', error);
+    }
+}
+
+/**
+ * Handle connect button click
+ */
+function handleConnect() {
+    console.log('🔗 Opening login popup...');
+
+    try {
+        authManager.openLoginPopup();
+    } catch (error) {
+        console.error('Failed to open login popup:', error);
+        alert('Failed to open login window. Please check your popup blocker settings.');
+    }
+}
+
+/**
+ * Handle disconnect button click
+ */
+async function handleDisconnect() {
+    console.log('🔌 Disconnecting...');
+
+    const confirmed = confirm('Are you sure you want to disconnect from ThreadCub? Your local highlights will remain on this device.');
+
+    if (confirmed) {
+        try {
+            await authManager.disconnect();
+            await updateAuthUI();
+            console.log('✅ Disconnected successfully');
+        } catch (error) {
+            console.error('Failed to disconnect:', error);
+            alert('Failed to disconnect. Please try again.');
+        }
+    }
+}

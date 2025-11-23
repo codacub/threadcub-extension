@@ -10,25 +10,55 @@ import { metadataScraper } from '../utils/metadata-scraper.js';
 export const highlightSyncService = {
   /**
    * Save a highlight (to Supabase if authenticated, always to local storage)
-   * @param {Selection} selection - Browser selection object
+   * @param {Selection|Object} selectionOrTag - Browser selection object OR tag object with text
    * @param {Object} additionalData - Additional data to save with highlight (e.g., tags)
    * @returns {Promise<Object>} Result object with success, synced status, and data
    */
-  async saveHighlight(selection, additionalData = {}) {
+  async saveHighlight(selectionOrTag, additionalData = {}) {
     console.log('📝 [HighlightSync] saveHighlight called');
-    console.log('📝 [HighlightSync] Selection:', selection);
+    console.log('📝 [HighlightSync] Input data:', selectionOrTag);
     console.log('📝 [HighlightSync] Additional data:', additionalData);
 
-    if (!selection || selection.isCollapsed) {
-      console.log('❌ [HighlightSync] No text selected or selection is collapsed');
-      return { success: false, error: 'No text selected' };
+    // Check if this is a tag object or a Selection object
+    const isTagObject = selectionOrTag && typeof selectionOrTag === 'object' && 'text' in selectionOrTag;
+    console.log('📝 [HighlightSync] Input type:', isTagObject ? 'Tag object' : 'Selection object');
+
+    if (isTagObject) {
+      // Handle tag object
+      if (!selectionOrTag.text || selectionOrTag.text.trim() === '') {
+        console.log('❌ [HighlightSync] No text in tag object');
+        return { success: false, error: 'No text in tag' };
+      }
+    } else {
+      // Handle Selection object
+      if (!selectionOrTag || selectionOrTag.isCollapsed) {
+        console.log('❌ [HighlightSync] No text selected or selection is collapsed');
+        return { success: false, error: 'No text selected' };
+      }
     }
 
     try {
-      // Gather metadata from the page
-      console.log('📊 [HighlightSync] Gathering metadata from page...');
-      const metadata = metadataScraper.gatherHighlightMetadata(selection);
-      console.log('📊 [HighlightSync] Metadata gathered:', metadata);
+      let metadata;
+
+      if (isTagObject) {
+        // Extract metadata from tag object and page
+        console.log('📊 [HighlightSync] Extracting metadata from tag and page...');
+        metadata = {
+          highlighted_text: selectionOrTag.text,
+          source_url: window.location.href,
+          source_chat_id: metadataScraper.getChatId(),
+          source_title: metadataScraper.getChatTitle(),
+          source_platform: metadataScraper.getPlatform(),
+          message_role: null, // Can't determine from tag alone
+          surrounding_context: null // Not available from tag
+        };
+        console.log('📊 [HighlightSync] Metadata extracted:', metadata);
+      } else {
+        // Gather metadata from selection
+        console.log('📊 [HighlightSync] Gathering metadata from page...');
+        metadata = metadataScraper.gatherHighlightMetadata(selectionOrTag);
+        console.log('📊 [HighlightSync] Metadata gathered:', metadata);
+      }
 
       // Merge with any additional data
       const highlightData = {

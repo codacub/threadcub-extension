@@ -1045,30 +1045,27 @@ window.ThreadCubTagging = class ThreadCubTagging {
     // ✨ SYNC TO SUPABASE: Save highlight to database if authenticated
     console.log('🔄 ThreadCub: Attempting to sync highlight to Supabase (createTagFromSelection)...');
     try {
-      const selection = window.getSelection();
-      if (selection && !selection.isCollapsed) {
-        console.log('🔄 ThreadCub: Loading highlight sync service...');
-        const { highlightSyncService } = await import(chrome.runtime.getURL('src/services/highlight-sync-service.js'));
-        console.log('✅ ThreadCub: Highlight sync service loaded');
+      console.log('🔄 ThreadCub: Using tag data for sync (selection already cleared)');
+      console.log('🔄 ThreadCub: Loading highlight sync service...');
+      const { highlightSyncService } = await import(chrome.runtime.getURL('src/services/highlight-sync-service.js'));
+      console.log('✅ ThreadCub: Highlight sync service loaded');
 
-        const result = await highlightSyncService.saveHighlight(selection, {
-          tags: [categoryId],
-          tag_label: category.label
-        });
+      // Use the tag data instead of window.getSelection() which is already cleared
+      const result = await highlightSyncService.saveHighlight(tag, {
+        tags: [categoryId],
+        tag_label: category.label
+      });
 
-        console.log('🔄 ThreadCub: Sync result:', result);
+      console.log('🔄 ThreadCub: Sync result:', result);
 
-        if (result.success && result.synced) {
-          console.log('✅ ThreadCub: Highlight successfully synced to Supabase!');
-        } else if (result.success && result.reason === 'not_authenticated') {
-          console.log('💾 ThreadCub: Highlight saved locally only (user not authenticated)');
-        } else if (result.success && result.reason === 'sync_failed') {
-          console.log('⚠️ ThreadCub: Highlight saved locally, sync failed:', result.error);
-        } else {
-          console.log('❌ ThreadCub: Failed to save highlight:', result.error);
-        }
+      if (result.success && result.synced) {
+        console.log('✅ ThreadCub: Highlight successfully synced to Supabase!');
+      } else if (result.success && result.reason === 'not_authenticated') {
+        console.log('💾 ThreadCub: Highlight saved locally only (user not authenticated)');
+      } else if (result.success && result.reason === 'sync_failed') {
+        console.log('⚠️ ThreadCub: Highlight saved locally, sync failed:', result.error);
       } else {
-        console.log('⚠️ ThreadCub: No valid selection for sync');
+        console.log('❌ ThreadCub: Failed to save highlight:', result.error);
       }
     } catch (error) {
       console.error('❌ ThreadCub: Error syncing highlight to Supabase:', error);
@@ -1487,32 +1484,29 @@ async handleSaveForLater() {
   // ✨ SYNC TO SUPABASE: Save highlight to database if authenticated
   console.log('🔄 ThreadCub: Attempting to sync highlight to Supabase...');
   try {
-    const selection = window.getSelection();
-    if (selection && !selection.isCollapsed) {
-      console.log('🔄 ThreadCub: Loading highlight sync service...');
-      const { highlightSyncService } = await import(chrome.runtime.getURL('src/services/highlight-sync-service.js'));
-      console.log('✅ ThreadCub: Highlight sync service loaded');
+    console.log('🔄 ThreadCub: Using tag data for sync (selection already cleared)');
+    console.log('🔄 ThreadCub: Loading highlight sync service...');
+    const { highlightSyncService } = await import(chrome.runtime.getURL('src/services/highlight-sync-service.js'));
+    console.log('✅ ThreadCub: Highlight sync service loaded');
 
-      const result = await highlightSyncService.saveHighlight(selection, {
-        tags: ['saved'],
-        tag_label: 'Saved',
-        note: '',
-        priority: 'medium'
-      });
+    // Use the tag data instead of window.getSelection() which is already cleared
+    const result = await highlightSyncService.saveHighlight(tag, {
+      tags: ['saved'],
+      tag_label: 'Saved',
+      note: '',
+      priority: 'medium'
+    });
 
-      console.log('🔄 ThreadCub: Sync result:', result);
+    console.log('🔄 ThreadCub: Sync result:', result);
 
-      if (result.success && result.synced) {
-        console.log('✅ ThreadCub: Highlight successfully synced to Supabase!');
-      } else if (result.success && result.reason === 'not_authenticated') {
-        console.log('💾 ThreadCub: Highlight saved locally only (user not authenticated)');
-      } else if (result.success && result.reason === 'sync_failed') {
-        console.log('⚠️ ThreadCub: Highlight saved locally, sync failed:', result.error);
-      } else {
-        console.log('❌ ThreadCub: Failed to save highlight:', result.error);
-      }
+    if (result.success && result.synced) {
+      console.log('✅ ThreadCub: Highlight successfully synced to Supabase!');
+    } else if (result.success && result.reason === 'not_authenticated') {
+      console.log('💾 ThreadCub: Highlight saved locally only (user not authenticated)');
+    } else if (result.success && result.reason === 'sync_failed') {
+      console.log('⚠️ ThreadCub: Highlight saved locally, sync failed:', result.error);
     } else {
-      console.log('⚠️ ThreadCub: No valid selection for sync');
+      console.log('❌ ThreadCub: Failed to save highlight:', result.error);
     }
   } catch (error) {
     console.error('❌ ThreadCub: Error syncing highlight to Supabase:', error);

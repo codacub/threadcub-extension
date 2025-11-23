@@ -1042,24 +1042,37 @@ window.ThreadCubTagging = class ThreadCubTagging {
 
     await this.saveTagsToPersistentStorage();
 
-    // ✨ NEW: Sync highlight to Supabase
+    // ✨ SYNC TO SUPABASE: Save highlight to database if authenticated
+    console.log('🔄 ThreadCub: Attempting to sync highlight to Supabase (createTagFromSelection)...');
     try {
       const selection = window.getSelection();
       if (selection && !selection.isCollapsed) {
+        console.log('🔄 ThreadCub: Loading highlight sync service...');
         const { highlightSyncService } = await import(chrome.runtime.getURL('src/services/highlight-sync-service.js'));
+        console.log('✅ ThreadCub: Highlight sync service loaded');
+
         const result = await highlightSyncService.saveHighlight(selection, {
           tags: [categoryId],
           tag_label: category.label
         });
 
+        console.log('🔄 ThreadCub: Sync result:', result);
+
         if (result.success && result.synced) {
-          console.log('✅ Highlight synced to ThreadCub');
+          console.log('✅ ThreadCub: Highlight successfully synced to Supabase!');
         } else if (result.success && result.reason === 'not_authenticated') {
-          console.log('💾 Highlight saved locally (not authenticated)');
+          console.log('💾 ThreadCub: Highlight saved locally only (user not authenticated)');
+        } else if (result.success && result.reason === 'sync_failed') {
+          console.log('⚠️ ThreadCub: Highlight saved locally, sync failed:', result.error);
+        } else {
+          console.log('❌ ThreadCub: Failed to save highlight:', result.error);
         }
+      } else {
+        console.log('⚠️ ThreadCub: No valid selection for sync');
       }
     } catch (error) {
-      console.error('Failed to sync highlight:', error);
+      console.error('❌ ThreadCub: Error syncing highlight to Supabase:', error);
+      console.error('Error details:', error.message, error.stack);
       // Don't block the tagging flow if sync fails
     }
 
@@ -1470,7 +1483,43 @@ async handleSaveForLater() {
   
   // NEW: Save to persistent storage
   await this.saveTagsToPersistentStorage();
-  
+
+  // ✨ SYNC TO SUPABASE: Save highlight to database if authenticated
+  console.log('🔄 ThreadCub: Attempting to sync highlight to Supabase...');
+  try {
+    const selection = window.getSelection();
+    if (selection && !selection.isCollapsed) {
+      console.log('🔄 ThreadCub: Loading highlight sync service...');
+      const { highlightSyncService } = await import(chrome.runtime.getURL('src/services/highlight-sync-service.js'));
+      console.log('✅ ThreadCub: Highlight sync service loaded');
+
+      const result = await highlightSyncService.saveHighlight(selection, {
+        tags: ['saved'],
+        tag_label: 'Saved',
+        note: '',
+        priority: 'medium'
+      });
+
+      console.log('🔄 ThreadCub: Sync result:', result);
+
+      if (result.success && result.synced) {
+        console.log('✅ ThreadCub: Highlight successfully synced to Supabase!');
+      } else if (result.success && result.reason === 'not_authenticated') {
+        console.log('💾 ThreadCub: Highlight saved locally only (user not authenticated)');
+      } else if (result.success && result.reason === 'sync_failed') {
+        console.log('⚠️ ThreadCub: Highlight saved locally, sync failed:', result.error);
+      } else {
+        console.log('❌ ThreadCub: Failed to save highlight:', result.error);
+      }
+    } else {
+      console.log('⚠️ ThreadCub: No valid selection for sync');
+    }
+  } catch (error) {
+    console.error('❌ ThreadCub: Error syncing highlight to Supabase:', error);
+    console.error('Error details:', error.message, error.stack);
+    // Don't block the tagging flow if sync fails
+  }
+
   // Open side panel (first time) or update (subsequent)
   if (this.tags.length === 1) {
     this.showSidePanel();

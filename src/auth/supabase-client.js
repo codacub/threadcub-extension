@@ -46,8 +46,27 @@ export const supabaseAuth = {
    * @returns {Promise<boolean>}
    */
   async isAuthenticated() {
+    console.log('🔐 [SupabaseAuth] Checking authentication...');
     const session = await this.getSession();
-    return session && session.access_token && !this.isExpired(session);
+    console.log('🔐 [SupabaseAuth] Session retrieved:', session ? 'exists' : 'null');
+
+    if (!session) {
+      console.log('❌ [SupabaseAuth] No session found');
+      return false;
+    }
+
+    if (!session.access_token) {
+      console.log('❌ [SupabaseAuth] No access token in session');
+      return false;
+    }
+
+    const expired = this.isExpired(session);
+    console.log('🔐 [SupabaseAuth] Token expired:', expired);
+
+    const authenticated = session && session.access_token && !expired;
+    console.log('🔐 [SupabaseAuth] Is authenticated:', authenticated);
+
+    return authenticated;
   },
 
   /**
@@ -104,16 +123,36 @@ export const supabaseApi = {
    * @returns {Promise<Object>} Inserted highlight record
    */
   async insertHighlight(highlightData) {
+    console.log('🚀 [SupabaseAPI] insertHighlight called with data:', highlightData);
+
     const session = await supabaseAuth.getSession();
-    if (!session) throw new Error('Not authenticated');
+    if (!session) {
+      console.log('❌ [SupabaseAPI] No session found');
+      throw new Error('Not authenticated');
+    }
+
+    console.log('🔐 [SupabaseAPI] Session found, user:', session.user?.email);
 
     // Refresh token if expired
     if (supabaseAuth.isExpired(session)) {
+      console.log('⚠️ [SupabaseAPI] Token expired, refreshing...');
       const refreshed = await supabaseAuth.refreshSession();
-      if (!refreshed) throw new Error('Session expired');
+      if (!refreshed) {
+        console.log('❌ [SupabaseAPI] Failed to refresh token');
+        throw new Error('Session expired');
+      }
+      console.log('✅ [SupabaseAPI] Token refreshed successfully');
     }
 
     const currentSession = await supabaseAuth.getSession();
+
+    const payload = {
+      user_id: currentSession.user.id,
+      ...highlightData
+    };
+
+    console.log('📦 [SupabaseAPI] Request payload:', payload);
+    console.log('🌐 [SupabaseAPI] Sending POST to:', `${SUPABASE_URL}/rest/v1/highlights`);
 
     const response = await fetch(`${SUPABASE_URL}/rest/v1/highlights`, {
       method: 'POST',
@@ -123,18 +162,20 @@ export const supabaseApi = {
         'Authorization': `Bearer ${currentSession.access_token}`,
         'Prefer': 'return=representation'
       },
-      body: JSON.stringify({
-        user_id: currentSession.user.id,
-        ...highlightData
-      })
+      body: JSON.stringify(payload)
     });
+
+    console.log('📡 [SupabaseAPI] Response status:', response.status);
 
     if (!response.ok) {
       const error = await response.text();
+      console.log('❌ [SupabaseAPI] Error response:', error);
       throw new Error(`Failed to save highlight: ${response.status} - ${error}`);
     }
 
-    return response.json();
+    const result = await response.json();
+    console.log('✅ [SupabaseAPI] Successfully saved highlight:', result);
+    return result;
   },
 
   /**

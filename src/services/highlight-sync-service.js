@@ -15,31 +15,48 @@ export const highlightSyncService = {
    * @returns {Promise<Object>} Result object with success, synced status, and data
    */
   async saveHighlight(selection, additionalData = {}) {
+    console.log('📝 [HighlightSync] saveHighlight called');
+    console.log('📝 [HighlightSync] Selection:', selection);
+    console.log('📝 [HighlightSync] Additional data:', additionalData);
+
     if (!selection || selection.isCollapsed) {
+      console.log('❌ [HighlightSync] No text selected or selection is collapsed');
       return { success: false, error: 'No text selected' };
     }
 
     try {
       // Gather metadata from the page
+      console.log('📊 [HighlightSync] Gathering metadata from page...');
       const metadata = metadataScraper.gatherHighlightMetadata(selection);
+      console.log('📊 [HighlightSync] Metadata gathered:', metadata);
 
       // Merge with any additional data
       const highlightData = {
         ...metadata,
         ...additionalData
       };
+      console.log('📦 [HighlightSync] Final highlight data:', highlightData);
 
       // Always save locally first (backup/offline support)
+      console.log('💾 [HighlightSync] Saving to local storage...');
       const localId = await this.saveToLocal(highlightData);
+      console.log('✅ [HighlightSync] Saved to local storage with ID:', localId);
 
       // Try to sync to Supabase if authenticated
+      console.log('🔐 [HighlightSync] Checking authentication status...');
       const isAuthenticated = await supabaseAuth.isAuthenticated();
+      console.log('🔐 [HighlightSync] Is authenticated:', isAuthenticated);
 
       if (isAuthenticated) {
         try {
+          console.log('🚀 [HighlightSync] Authenticated! Syncing to Supabase...');
           const result = await supabaseApi.insertHighlight(highlightData);
+          console.log('✅ [HighlightSync] Successfully synced to Supabase:', result);
+
           // Update local record with Supabase ID
           await this.markAsSynced(localId, result[0].id);
+          console.log('✅ [HighlightSync] Marked local record as synced');
+
           return {
             success: true,
             synced: true,
@@ -47,9 +64,13 @@ export const highlightSyncService = {
             localId
           };
         } catch (error) {
-          console.error('Failed to sync highlight to Supabase:', error);
+          console.error('❌ [HighlightSync] Failed to sync highlight to Supabase:', error);
+          console.error('❌ [HighlightSync] Error details:', error.message, error.stack);
+
           // Mark as pending sync for retry later
-          await this.markAsPendingSync(localId);
+          await this.markAsPendingSync(localId, error.message);
+          console.log('⚠️ [HighlightSync] Marked as pending sync for retry');
+
           return {
             success: true,
             synced: false,
@@ -60,6 +81,7 @@ export const highlightSyncService = {
         }
       }
 
+      console.log('💾 [HighlightSync] User not authenticated, saved locally only');
       return {
         success: true,
         synced: false,
@@ -67,7 +89,8 @@ export const highlightSyncService = {
         reason: 'not_authenticated'
       };
     } catch (error) {
-      console.error('Failed to save highlight:', error);
+      console.error('❌ [HighlightSync] Failed to save highlight:', error);
+      console.error('❌ [HighlightSync] Error details:', error.message, error.stack);
       return {
         success: false,
         error: error.message

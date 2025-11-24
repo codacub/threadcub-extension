@@ -1465,7 +1465,7 @@ async handleSaveForLater() {
     category: null,
     categoryLabel: 'Saved',
     notes: '',
-    priority: 'medium', // default priority
+    // priority: 'medium', // default priority
     timestamp: new Date().toISOString(),
     rangeInfo: this.captureEnhancedRangeInfo(this.selectedRange) // FIXED: Use enhanced capture
   };
@@ -1493,8 +1493,8 @@ async handleSaveForLater() {
     const result = await highlightSyncService.saveHighlight(tag, {
       tags: ['saved'],
       tag_label: 'Saved',
-      note: '',
-      priority: 'medium'
+      notes: '',
+      // priority: 'medium'
     });
 
     console.log('🔄 ThreadCub: Sync result:', result);

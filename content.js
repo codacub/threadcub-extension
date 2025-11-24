@@ -1053,7 +1053,7 @@ window.ThreadCubTagging = class ThreadCubTagging {
       // Use the tag data instead of window.getSelection() which is already cleared
       const result = await highlightSyncService.saveHighlight(tag, {
         tags: [categoryId],
-        tag_label: category.label
+        // tag_label: category.label
       });
 
       console.log('🔄 ThreadCub: Sync result:', result);
@@ -1492,7 +1492,7 @@ async handleSaveForLater() {
     // Use the tag data instead of window.getSelection() which is already cleared
     const result = await highlightSyncService.saveHighlight(tag, {
       tags: ['saved'],
-      tag_label: 'Saved',
+      // tag_label: 'Saved',
       notes: '',
       // priority: 'medium'
     });

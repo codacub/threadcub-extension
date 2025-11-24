@@ -2420,14 +2420,16 @@ showSidePanel() {
     // Show overlay first
     this.panelOverlay.style.opacity = '1';
     this.panelOverlay.style.visibility = 'visible';
-    
+
     // Then slide in panel
-    setTimeout(() => {
+    setTimeout(async () => {
       this.sidePanel.style.right = '0px';
       this.isPanelOpen = true;
-      this.updateTagsList();
+
+      // Check if we should show pending highlights or regular tags
+      await this.renderAppropriateView();
     }, 50);
-    
+
     console.log('🏷️ ThreadCub: Side panel opened');
   }
 }
@@ -3135,6 +3137,28 @@ filterTagsByPriority(priority) {
   });
 }
 
+// Decide which view to render in side panel
+async renderAppropriateView() {
+  // Check if there are pending highlights
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['pending_highlights'], async (result) => {
+      const pendingHighlights = result.pending_highlights || [];
+
+      if (pendingHighlights.length > 0) {
+        // Show pending highlights staging area
+        console.log('📝 ThreadCub: Showing pending highlights view');
+        await this.renderPendingHighlights();
+      } else {
+        // Show regular tags list
+        console.log('🏷️ ThreadCub: Showing regular tags view');
+        this.updateTagsList();
+      }
+
+      resolve();
+    });
+  });
+}
+
 // Render pending highlights in side panel with editable fields
 async renderPendingHighlights() {
   console.log('📝 ThreadCub: Rendering pending highlights');
@@ -3518,8 +3542,8 @@ async handleSaveIndividual(highlightId) {
       // Update badge count
       await this.updateBadgeCount();
 
-      // Re-render the list
-      await this.renderPendingHighlights();
+      // Re-render appropriate view (switches to tags if no more pending)
+      await this.renderAppropriateView();
 
       console.log('✅ Highlight saved successfully:', highlightId);
     } else {
@@ -3559,8 +3583,8 @@ async handleDeleteIndividual(highlightId) {
     // Update badge count
     await this.updateBadgeCount();
 
-    // Re-render the list
-    await this.renderPendingHighlights();
+    // Re-render appropriate view (switches to tags if no more pending)
+    await this.renderAppropriateView();
 
     console.log('✅ Highlight deleted:', highlightId);
   } catch (error) {
@@ -3640,8 +3664,8 @@ async handleSaveAll() {
   // Update badge count
   await this.updateBadgeCount();
 
-  // Re-render the list
-  await this.renderPendingHighlights();
+  // Re-render appropriate view (switches to tags if no more pending)
+  await this.renderAppropriateView();
 
   // Show result
   if (failCount === 0) {
@@ -3691,8 +3715,8 @@ async handleClearAll() {
     // Update badge count
     await this.updateBadgeCount();
 
-    // Re-render the list
-    await this.renderPendingHighlights();
+    // Re-render appropriate view (switches to tags if no more pending)
+    await this.renderAppropriateView();
 
     console.log('✅ All pending highlights cleared');
   } catch (error) {

@@ -3011,7 +3011,20 @@ updateTagsList() {
 updateTagsListFallback() {
   const tagsList = this.sidePanel.querySelector('#threadcub-tags-container');
   if (!tagsList) return;
-  
+
+  // SHOW old tagging UI elements - we're back to regular tags view
+  // Show the "Swiping like a pro!" header section
+  const oldHeader = this.sidePanel.querySelector('div[style*="padding: 32px"]');
+  if (oldHeader) {
+    oldHeader.style.display = 'block';
+  }
+
+  // Show the priority filter dropdown
+  const priorityFilter = this.sidePanel.querySelector('#threadcub-priority-filter');
+  if (priorityFilter && priorityFilter.parentElement) {
+    priorityFilter.parentElement.parentElement.style.display = 'block';
+  }
+
   if (this.tags.length === 0) {
     tagsList.innerHTML = `
       <div id="threadcub-empty-state" style="
@@ -3172,6 +3185,19 @@ async renderPendingHighlights() {
         console.warn('📝 ThreadCub: Tags container not found');
         resolve();
         return;
+      }
+
+      // HIDE old tagging UI elements - we're showing pending highlights now
+      // Hide the "Swiping like a pro!" header section
+      const oldHeader = this.sidePanel.querySelector('div[style*="padding: 32px"]');
+      if (oldHeader) {
+        oldHeader.style.display = 'none';
+      }
+
+      // Hide the priority filter dropdown
+      const priorityFilter = this.sidePanel.querySelector('#threadcub-priority-filter');
+      if (priorityFilter && priorityFilter.parentElement) {
+        priorityFilter.parentElement.parentElement.style.display = 'none';
       }
 
       if (pendingHighlights.length === 0) {
@@ -3750,21 +3776,18 @@ async removePendingHighlight(highlightId) {
   });
 }
 
-// Sync highlight to Supabase
+// Sync highlight to Supabase using EXISTING working auth system
 async syncHighlightToSupabase(highlight) {
   console.log('📤 ThreadCub: Syncing highlight to Supabase:', highlight.id);
 
   try {
-    // Dynamically import the highlight sync service
-    const highlightSyncServiceModule = await import(
-      chrome.runtime.getURL('src/services/highlight-sync-service.js')
-    );
-
-    // Check authentication
-    const supabaseModule = await import(
+    // Dynamically import the EXISTING auth and API modules
+    const { supabaseAuth, supabaseApi } = await import(
       chrome.runtime.getURL('src/auth/supabase-client.js')
     );
-    const isAuth = await supabaseModule.isAuthenticated();
+
+    // Check authentication using EXISTING working method
+    const isAuth = await supabaseAuth.isAuthenticated();
 
     if (!isAuth) {
       console.warn('⚠️ Not authenticated - highlight will not sync to Supabase');
@@ -3772,30 +3795,29 @@ async syncHighlightToSupabase(highlight) {
       return false;
     }
 
-    // Prepare highlight data for Supabase
+    // Map pending highlight data to Supabase schema
     const highlightData = {
-      text: highlight.text,
-      notes: highlight.user_note || '',
-      tags: highlight.tags || [],
-      source_url: highlight.source_url,
-      source_platform: highlight.source_platform,
-      source_chat_id: highlight.source_chat_id,
-      chat_title: highlight.chat_title,
-      created_at: highlight.timestamp
+      highlighted_text: highlight.text,                    // Required: the actual highlighted text
+      notes: highlight.user_note || '',                    // User's notes (plural in DB)
+      tags: highlight.tags || [],                          // Array of topic tags
+      source_url: highlight.source_url,                    // Current page URL
+      source_platform: highlight.source_platform,          // claude/chatgpt/etc
+      source_chat_id: highlight.source_chat_id,            // Chat ID from URL
+      source_title: highlight.chat_title || 'Untitled',    // Chat title (editable by user)
+      created_at: highlight.timestamp                      // When highlight was created
     };
 
-    // Save to Supabase
-    const result = await highlightSyncServiceModule.saveHighlight(highlightData);
+    console.log('📦 ThreadCub: Prepared data for Supabase:', highlightData);
 
-    if (result.success) {
-      console.log('✅ Highlight synced to Supabase successfully');
-      return true;
-    } else {
-      console.error('❌ Failed to sync to Supabase:', result.error);
-      return false;
-    }
+    // Use EXISTING working insertHighlight method
+    const result = await supabaseApi.insertHighlight(highlightData);
+
+    console.log('✅ Highlight synced to Supabase successfully:', result);
+    return true;
+
   } catch (error) {
     console.error('❌ Error syncing to Supabase:', error);
+    console.error('❌ Error details:', error.message);
     return false;
   }
 }

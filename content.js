@@ -48,6 +48,101 @@ window.ThreadCubTagging = class ThreadCubTagging {
     return 'unknown';
   }
 
+  // Auto-detect chat title from page
+  detectChatTitle() {
+    const platform = this.detectPlatform();
+
+    if (platform === 'claude') {
+      // Try multiple selectors for Claude.ai
+      const selectors = [
+        '[data-testid="chat-title"]',
+        'h1'
+      ];
+
+      for (const selector of selectors) {
+        const element = document.querySelector(selector);
+        if (element && element.textContent.trim()) {
+          const text = element.textContent.trim();
+          // Filter out generic titles
+          if (text !== 'Claude' && !text.includes('Anthropic')) {
+            return text;
+          }
+        }
+      }
+
+      // Fallback to document title
+      const docTitle = document.title;
+      if (docTitle && docTitle !== 'Claude') {
+        return docTitle.replace(' | Claude', '').trim();
+      }
+
+      return 'New Conversation';
+    }
+
+    if (platform === 'chatgpt') {
+      // Try ChatGPT selectors
+      const titleElement = document.querySelector('nav [class*="active"]') ||
+                          document.querySelector('h1');
+      if (titleElement && titleElement.textContent.trim()) {
+        return titleElement.textContent.trim();
+      }
+      return document.title.replace(' - ChatGPT', '').trim() || 'New Chat';
+    }
+
+    // Generic fallback
+    return document.title || 'Untitled';
+  }
+
+  // Extract chat ID from URL
+  extractChatIdFromUrl() {
+    const url = window.location.href;
+    const platform = this.detectPlatform();
+
+    if (platform === 'claude') {
+      // https://claude.ai/chat/[UUID]
+      const match = url.match(/claude\.ai\/chat\/([a-f0-9-]+)/i);
+      return match ? match[1] : null;
+    }
+
+    if (platform === 'chatgpt') {
+      // https://chatgpt.com/c/[ID]
+      const match = url.match(/\/c\/([a-zA-Z0-9-]+)/);
+      return match ? match[1] : null;
+    }
+
+    return null;
+  }
+
+  // Add highlight to pending list in chrome.storage
+  async addToPendingHighlights(highlight) {
+    return new Promise((resolve) => {
+      chrome.storage.local.get(['pending_highlights'], (result) => {
+        const pendingHighlights = result.pending_highlights || [];
+        pendingHighlights.unshift(highlight); // Add to beginning (most recent first)
+        chrome.storage.local.set({ pending_highlights: pendingHighlights }, () => {
+          console.log('📝 Added to pending highlights:', highlight.id);
+          resolve();
+        });
+      });
+    });
+  }
+
+  // Update extension badge with pending count
+  async updateBadgeCount() {
+    return new Promise((resolve) => {
+      chrome.storage.local.get(['pending_highlights'], (result) => {
+        const count = (result.pending_highlights || []).length;
+        chrome.runtime.sendMessage({
+          type: 'UPDATE_BADGE',
+          count: count
+        }).catch(() => {
+          // Ignore if background script isn't ready
+        });
+        resolve();
+      });
+    });
+  }
+
   async init() {
     this.addTaggingStyles();
     this.createContextMenu();
@@ -1458,74 +1553,45 @@ async handleSaveForLater() {
     return;
   }
   
-  // Create tag immediately
-  const tag = {
-    id: Date.now(),
+  // Create pending highlight (NOT saved to Supabase yet - user will review/edit first)
+  const pendingHighlight = {
+    id: `pending_${Date.now()}`,
     text: this.selectedText,
-    category: null,
-    categoryLabel: 'Saved',
-    notes: '',
-    // priority: 'medium', // default priority
+    // Auto-detect chat title from page (user can edit)
+    chat_title: this.detectChatTitle(),
+    user_note: '', // User will add in side panel
+    tags: [], // User will add topic tags in side panel
+    source_url: window.location.href,
+    source_platform: this.detectPlatform(),
+    source_chat_id: this.extractChatIdFromUrl(),
     timestamp: new Date().toISOString(),
-    rangeInfo: this.captureEnhancedRangeInfo(this.selectedRange) // FIXED: Use enhanced capture
+    rangeInfo: this.captureEnhancedRangeInfo(this.selectedRange),
+    status: 'pending' // Mark as pending review
   };
+
+  console.log('📝 ThreadCub: Created pending highlight:', pendingHighlight);
+
+  // Add to pending list in chrome.storage
+  await this.addToPendingHighlights(pendingHighlight);
   
-  this.tags.push(tag);
-  
-  // Remove temporary highlight before creating permanent one
+  // Remove temporary highlight
   this.removeTemporaryHighlight();
-  
-  // Apply smart highlight
-  this.applySmartHighlight(this.selectedRange, tag.id);
-  
-  // NEW: Save to persistent storage
-  await this.saveTagsToPersistentStorage();
 
-  // ✨ SYNC TO SUPABASE: Save highlight to database if authenticated
-  console.log('🔄 ThreadCub: Attempting to sync highlight to Supabase...');
-  try {
-    console.log('🔄 ThreadCub: Using tag data for sync (selection already cleared)');
-    console.log('🔄 ThreadCub: Loading highlight sync service...');
-    const { highlightSyncService } = await import(chrome.runtime.getURL('src/services/highlight-sync-service.js'));
-    console.log('✅ ThreadCub: Highlight sync service loaded');
+  // Apply visual highlight on page
+  this.applySmartHighlight(this.selectedRange, pendingHighlight.id);
 
-    // Use the tag data instead of window.getSelection() which is already cleared
-    const result = await highlightSyncService.saveHighlight(tag, {
-      tags: ['saved'],
-      // tag_label: 'Saved',
-      notes: '',
-      // priority: 'medium'
-    });
+  // Update badge count to show number of pending highlights
+  await this.updateBadgeCount();
 
-    console.log('🔄 ThreadCub: Sync result:', result);
+  // Open side panel to show pending highlight for review
+  this.showSidePanel();
 
-    if (result.success && result.synced) {
-      console.log('✅ ThreadCub: Highlight successfully synced to Supabase!');
-    } else if (result.success && result.reason === 'not_authenticated') {
-      console.log('💾 ThreadCub: Highlight saved locally only (user not authenticated)');
-    } else if (result.success && result.reason === 'sync_failed') {
-      console.log('⚠️ ThreadCub: Highlight saved locally, sync failed:', result.error);
-    } else {
-      console.log('❌ ThreadCub: Failed to save highlight:', result.error);
-    }
-  } catch (error) {
-    console.error('❌ ThreadCub: Error syncing highlight to Supabase:', error);
-    console.error('Error details:', error.message, error.stack);
-    // Don't block the tagging flow if sync fails
-  }
+  // Render pending highlights in side panel
+  await this.renderPendingHighlights();
 
-  // Open side panel (first time) or update (subsequent)
-  if (this.tags.length === 1) {
-    this.showSidePanel();
-  } else {
-    if (this.isPanelOpen) {
-      this.updateTagsList();
-    }
-  }
-  
   this.hideContextMenu();
-  
-  console.log('🏷️ ThreadCub: Tag saved for later and persisted:', tag);
+
+  console.log('✅ ThreadCub: Pending highlight added (ready for user review)');
 }
 
 // Handle "Find Out More" - sends selection to chat input
@@ -3067,6 +3133,647 @@ filterTagsByPriority(priority) {
     
     card.style.display = shouldShow ? 'block' : 'none';
   });
+}
+
+// Render pending highlights in side panel with editable fields
+async renderPendingHighlights() {
+  console.log('📝 ThreadCub: Rendering pending highlights');
+
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['pending_highlights'], (result) => {
+      const pendingHighlights = result.pending_highlights || [];
+      const tagsList = this.sidePanel.querySelector('#threadcub-tags-container');
+
+      if (!tagsList) {
+        console.warn('📝 ThreadCub: Tags container not found');
+        resolve();
+        return;
+      }
+
+      if (pendingHighlights.length === 0) {
+        // Show empty state
+        tagsList.innerHTML = `
+          <div style="
+            text-align: center;
+            padding: 40px 20px;
+            color: #64748b;
+          ">
+            <div style="
+              width: 80px;
+              height: 80px;
+              margin: 0 auto 20px;
+              background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+              border-radius: 50%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 32px;
+            ">💾</div>
+
+            <h3 style="
+              font-size: 18px;
+              font-weight: 600;
+              margin: 0 0 8px;
+              color: #374151;
+            ">No pending highlights</h3>
+
+            <p style="
+              font-size: 14px;
+              line-height: 1.5;
+              margin: 0;
+              max-width: 240px;
+              margin: 0 auto;
+            ">Highlight text and click "Save for Later" to add items here for review</p>
+          </div>
+        `;
+        resolve();
+        return;
+      }
+
+      // Build pending highlights UI with bulk actions
+      let html = `
+        <!-- Bulk Actions Header -->
+        <div style="
+          margin-bottom: 20px;
+          padding-bottom: 16px;
+          border-bottom: 2px solid #e2e8f0;
+        ">
+          <h3 style="
+            font-size: 16px;
+            font-weight: 600;
+            color: #374151;
+            margin: 0 0 12px 0;
+          ">Pending Highlights (${pendingHighlights.length})</h3>
+
+          <div style="display: flex; gap: 8px;">
+            <button id="threadcub-save-all-btn" style="
+              flex: 1;
+              padding: 10px 16px;
+              background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+              color: white;
+              border: none;
+              border-radius: 8px;
+              font-size: 13px;
+              font-weight: 600;
+              cursor: pointer;
+              transition: all 0.2s ease;
+              box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+            " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(59, 130, 246, 0.4)'"
+               onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(59, 130, 246, 0.3)'">
+              💾 Save All to ThreadCub
+            </button>
+
+            <button id="threadcub-clear-all-btn" style="
+              flex: 1;
+              padding: 10px 16px;
+              background: white;
+              color: #ef4444;
+              border: 1px solid #fee2e2;
+              border-radius: 8px;
+              font-size: 13px;
+              font-weight: 600;
+              cursor: pointer;
+              transition: all 0.2s ease;
+            " onmouseover="this.style.background='#fef2f2'; this.style.borderColor='#fecaca'"
+               onmouseout="this.style.background='white'; this.style.borderColor='#fee2e2'">
+              🗑️ Clear All
+            </button>
+          </div>
+        </div>
+      `;
+
+      // Add each pending highlight card
+      pendingHighlights.forEach((highlight, index) => {
+        const tagsValue = highlight.tags ? highlight.tags.join(', ') : '';
+
+        html += `
+          <div class="threadcub-pending-card" data-highlight-id="${highlight.id}" style="
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+          ">
+            <!-- Highlighted Text (Read-only) -->
+            <div style="
+              background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+              border-left: 4px solid #f59e0b;
+              padding: 12px;
+              border-radius: 6px;
+              margin-bottom: 12px;
+              font-size: 14px;
+              line-height: 1.6;
+              color: #78350f;
+              max-height: 120px;
+              overflow-y: auto;
+            ">${this.escapeHtml(highlight.text)}</div>
+
+            <!-- Chat Title Field -->
+            <div style="margin-bottom: 12px;">
+              <label style="
+                display: block;
+                font-size: 12px;
+                font-weight: 600;
+                color: #6b7280;
+                margin-bottom: 6px;
+              ">Chat Title</label>
+              <input
+                type="text"
+                class="highlight-chat-title"
+                data-highlight-id="${highlight.id}"
+                value="${this.escapeHtml(highlight.chat_title || '')}"
+                placeholder="Enter chat title..."
+                style="
+                  width: 100%;
+                  padding: 10px 12px;
+                  border: 1px solid #d1d5db;
+                  border-radius: 6px;
+                  font-size: 14px;
+                  color: #374151;
+                  transition: all 0.2s ease;
+                  outline: none;
+                "
+                onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.1)'"
+                onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none'"
+              />
+            </div>
+
+            <!-- User Notes Field -->
+            <div style="margin-bottom: 12px;">
+              <label style="
+                display: block;
+                font-size: 12px;
+                font-weight: 600;
+                color: #6b7280;
+                margin-bottom: 6px;
+              ">Your Notes</label>
+              <textarea
+                class="highlight-user-note"
+                data-highlight-id="${highlight.id}"
+                placeholder="Add your thoughts..."
+                rows="3"
+                style="
+                  width: 100%;
+                  padding: 10px 12px;
+                  border: 1px solid #d1d5db;
+                  border-radius: 6px;
+                  font-size: 14px;
+                  color: #374151;
+                  resize: vertical;
+                  font-family: inherit;
+                  transition: all 0.2s ease;
+                  outline: none;
+                "
+                onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.1)'"
+                onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none'"
+              >${this.escapeHtml(highlight.user_note || '')}</textarea>
+            </div>
+
+            <!-- Topic Tags Field -->
+            <div style="margin-bottom: 16px;">
+              <label style="
+                display: block;
+                font-size: 12px;
+                font-weight: 600;
+                color: #6b7280;
+                margin-bottom: 6px;
+              ">Topic Tags <span style="color: #9ca3af; font-weight: 400;">(comma-separated)</span></label>
+              <input
+                type="text"
+                class="highlight-tags"
+                data-highlight-id="${highlight.id}"
+                value="${this.escapeHtml(tagsValue)}"
+                placeholder="e.g., debugging, features, research"
+                style="
+                  width: 100%;
+                  padding: 10px 12px;
+                  border: 1px solid #d1d5db;
+                  border-radius: 6px;
+                  font-size: 14px;
+                  color: #374151;
+                  transition: all 0.2s ease;
+                  outline: none;
+                "
+                onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.1)'"
+                onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none'"
+              />
+            </div>
+
+            <!-- Metadata Info -->
+            <div style="
+              font-size: 11px;
+              color: #9ca3af;
+              margin-bottom: 12px;
+              padding: 8px;
+              background: #f9fafb;
+              border-radius: 4px;
+            ">
+              <div>🌐 ${this.escapeHtml(highlight.source_platform || 'unknown')}</div>
+              <div>📅 ${new Date(highlight.timestamp).toLocaleString()}</div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div style="display: flex; gap: 8px;">
+              <button
+                class="save-highlight-btn"
+                data-highlight-id="${highlight.id}"
+                style="
+                  flex: 1;
+                  padding: 10px 16px;
+                  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                  color: white;
+                  border: none;
+                  border-radius: 6px;
+                  font-size: 13px;
+                  font-weight: 600;
+                  cursor: pointer;
+                  transition: all 0.2s ease;
+                  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+                "
+                onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 10px rgba(16, 185, 129, 0.4)'"
+                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 6px rgba(16, 185, 129, 0.3)'">
+                ✓ Save
+              </button>
+
+              <button
+                class="delete-highlight-btn"
+                data-highlight-id="${highlight.id}"
+                style="
+                  padding: 10px 16px;
+                  background: white;
+                  color: #ef4444;
+                  border: 1px solid #fee2e2;
+                  border-radius: 6px;
+                  font-size: 13px;
+                  font-weight: 600;
+                  cursor: pointer;
+                  transition: all 0.2s ease;
+                "
+                onmouseover="this.style.background='#fef2f2'; this.style.borderColor='#fecaca'"
+                onmouseout="this.style.background='white'; this.style.borderColor='#fee2e2'">
+                ✕
+              </button>
+            </div>
+          </div>
+        `;
+      });
+
+      tagsList.innerHTML = html;
+
+      // Attach event listeners
+      this.attachPendingHighlightListeners();
+
+      console.log(`📝 ThreadCub: Rendered ${pendingHighlights.length} pending highlights`);
+      resolve();
+    });
+  });
+}
+
+// Helper: Escape HTML to prevent XSS
+escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// Attach event listeners for pending highlight actions
+attachPendingHighlightListeners() {
+  // Save All button
+  const saveAllBtn = this.sidePanel.querySelector('#threadcub-save-all-btn');
+  if (saveAllBtn) {
+    saveAllBtn.addEventListener('click', () => this.handleSaveAll());
+  }
+
+  // Clear All button
+  const clearAllBtn = this.sidePanel.querySelector('#threadcub-clear-all-btn');
+  if (clearAllBtn) {
+    clearAllBtn.addEventListener('click', () => this.handleClearAll());
+  }
+
+  // Individual Save buttons
+  const saveButtons = this.sidePanel.querySelectorAll('.save-highlight-btn');
+  saveButtons.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const highlightId = e.target.getAttribute('data-highlight-id');
+      this.handleSaveIndividual(highlightId);
+    });
+  });
+
+  // Individual Delete buttons
+  const deleteButtons = this.sidePanel.querySelectorAll('.delete-highlight-btn');
+  deleteButtons.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const highlightId = e.target.getAttribute('data-highlight-id');
+      this.handleDeleteIndividual(highlightId);
+    });
+  });
+
+  console.log('📝 ThreadCub: Event listeners attached for pending highlights');
+}
+
+// Handle individual highlight save
+async handleSaveIndividual(highlightId) {
+  console.log('💾 ThreadCub: Saving individual highlight:', highlightId);
+
+  try {
+    // Get the highlight from storage
+    const highlight = await this.getPendingHighlight(highlightId);
+    if (!highlight) {
+      console.error('❌ Highlight not found:', highlightId);
+      return;
+    }
+
+    // Get updated values from input fields
+    const card = this.sidePanel.querySelector(`[data-highlight-id="${highlightId}"]`);
+    if (card) {
+      const chatTitleInput = card.querySelector('.highlight-chat-title');
+      const userNoteInput = card.querySelector('.highlight-user-note');
+      const tagsInput = card.querySelector('.highlight-tags');
+
+      if (chatTitleInput) highlight.chat_title = chatTitleInput.value.trim();
+      if (userNoteInput) highlight.user_note = userNoteInput.value.trim();
+      if (tagsInput) {
+        const tagsStr = tagsInput.value.trim();
+        highlight.tags = tagsStr ? tagsStr.split(',').map(t => t.trim()).filter(t => t) : [];
+      }
+    }
+
+    // Show loading state on button
+    const saveBtn = card?.querySelector('.save-highlight-btn');
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = '⏳ Saving...';
+    }
+
+    // Sync to Supabase using highlight sync service
+    const success = await this.syncHighlightToSupabase(highlight);
+
+    if (success) {
+      // Remove from pending list
+      await this.removePendingHighlight(highlightId);
+
+      // Update badge count
+      await this.updateBadgeCount();
+
+      // Re-render the list
+      await this.renderPendingHighlights();
+
+      console.log('✅ Highlight saved successfully:', highlightId);
+    } else {
+      // Restore button state on failure
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = '✓ Save';
+      }
+      console.error('❌ Failed to save highlight to Supabase');
+      alert('Failed to save highlight. Please check your connection and try again.');
+    }
+  } catch (error) {
+    console.error('❌ Error saving highlight:', error);
+    alert('Error saving highlight: ' + error.message);
+  }
+}
+
+// Handle individual highlight delete
+async handleDeleteIndividual(highlightId) {
+  console.log('🗑️ ThreadCub: Deleting individual highlight:', highlightId);
+
+  // Confirm deletion
+  if (!confirm('Are you sure you want to delete this highlight?')) {
+    return;
+  }
+
+  try {
+    // Remove from pending list
+    await this.removePendingHighlight(highlightId);
+
+    // Remove visual highlight from page if it exists
+    const highlightElement = document.querySelector(`[data-highlight-id="${highlightId}"]`);
+    if (highlightElement && highlightElement.classList.contains('threadcub-highlight')) {
+      highlightElement.outerHTML = highlightElement.innerHTML;
+    }
+
+    // Update badge count
+    await this.updateBadgeCount();
+
+    // Re-render the list
+    await this.renderPendingHighlights();
+
+    console.log('✅ Highlight deleted:', highlightId);
+  } catch (error) {
+    console.error('❌ Error deleting highlight:', error);
+    alert('Error deleting highlight: ' + error.message);
+  }
+}
+
+// Handle Save All
+async handleSaveAll() {
+  console.log('💾 ThreadCub: Saving all pending highlights');
+
+  // Get all pending highlights
+  const pendingHighlights = await new Promise((resolve) => {
+    chrome.storage.local.get(['pending_highlights'], (result) => {
+      resolve(result.pending_highlights || []);
+    });
+  });
+
+  if (pendingHighlights.length === 0) {
+    alert('No pending highlights to save.');
+    return;
+  }
+
+  // Confirm bulk save
+  if (!confirm(`Save all ${pendingHighlights.length} highlights to ThreadCub?`)) {
+    return;
+  }
+
+  // Disable Save All button
+  const saveAllBtn = this.sidePanel.querySelector('#threadcub-save-all-btn');
+  if (saveAllBtn) {
+    saveAllBtn.disabled = true;
+    saveAllBtn.textContent = '⏳ Saving all...';
+  }
+
+  let successCount = 0;
+  let failCount = 0;
+
+  // Save each highlight
+  for (const highlight of pendingHighlights) {
+    try {
+      // Get updated values from input fields
+      const card = this.sidePanel.querySelector(`[data-highlight-id="${highlight.id}"]`);
+      if (card) {
+        const chatTitleInput = card.querySelector('.highlight-chat-title');
+        const userNoteInput = card.querySelector('.highlight-user-note');
+        const tagsInput = card.querySelector('.highlight-tags');
+
+        if (chatTitleInput) highlight.chat_title = chatTitleInput.value.trim();
+        if (userNoteInput) highlight.user_note = userNoteInput.value.trim();
+        if (tagsInput) {
+          const tagsStr = tagsInput.value.trim();
+          highlight.tags = tagsStr ? tagsStr.split(',').map(t => t.trim()).filter(t => t) : [];
+        }
+      }
+
+      const success = await this.syncHighlightToSupabase(highlight);
+      if (success) {
+        successCount++;
+      } else {
+        failCount++;
+      }
+    } catch (error) {
+      console.error('❌ Error saving highlight:', highlight.id, error);
+      failCount++;
+    }
+  }
+
+  // Clear all pending highlights if at least one succeeded
+  if (successCount > 0) {
+    await new Promise((resolve) => {
+      chrome.storage.local.set({ pending_highlights: [] }, resolve);
+    });
+  }
+
+  // Update badge count
+  await this.updateBadgeCount();
+
+  // Re-render the list
+  await this.renderPendingHighlights();
+
+  // Show result
+  if (failCount === 0) {
+    alert(`✅ Successfully saved all ${successCount} highlights!`);
+  } else {
+    alert(`Saved ${successCount} highlights. ${failCount} failed.`);
+  }
+
+  console.log(`✅ Bulk save complete: ${successCount} saved, ${failCount} failed`);
+}
+
+// Handle Clear All
+async handleClearAll() {
+  console.log('🗑️ ThreadCub: Clearing all pending highlights');
+
+  // Get count
+  const pendingHighlights = await new Promise((resolve) => {
+    chrome.storage.local.get(['pending_highlights'], (result) => {
+      resolve(result.pending_highlights || []);
+    });
+  });
+
+  if (pendingHighlights.length === 0) {
+    alert('No pending highlights to clear.');
+    return;
+  }
+
+  // Confirm deletion
+  if (!confirm(`Are you sure you want to delete all ${pendingHighlights.length} pending highlights? This cannot be undone.`)) {
+    return;
+  }
+
+  try {
+    // Remove all visual highlights from page
+    pendingHighlights.forEach(highlight => {
+      const highlightElement = document.querySelector(`[data-highlight-id="${highlight.id}"]`);
+      if (highlightElement && highlightElement.classList.contains('threadcub-highlight')) {
+        highlightElement.outerHTML = highlightElement.innerHTML;
+      }
+    });
+
+    // Clear storage
+    await new Promise((resolve) => {
+      chrome.storage.local.set({ pending_highlights: [] }, resolve);
+    });
+
+    // Update badge count
+    await this.updateBadgeCount();
+
+    // Re-render the list
+    await this.renderPendingHighlights();
+
+    console.log('✅ All pending highlights cleared');
+  } catch (error) {
+    console.error('❌ Error clearing highlights:', error);
+    alert('Error clearing highlights: ' + error.message);
+  }
+}
+
+// Helper: Get a specific pending highlight
+async getPendingHighlight(highlightId) {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['pending_highlights'], (result) => {
+      const pendingHighlights = result.pending_highlights || [];
+      const highlight = pendingHighlights.find(h => h.id === highlightId);
+      resolve(highlight);
+    });
+  });
+}
+
+// Helper: Remove a specific pending highlight
+async removePendingHighlight(highlightId) {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['pending_highlights'], (result) => {
+      let pendingHighlights = result.pending_highlights || [];
+      pendingHighlights = pendingHighlights.filter(h => h.id !== highlightId);
+      chrome.storage.local.set({ pending_highlights: pendingHighlights }, () => {
+        console.log('📝 Removed pending highlight:', highlightId);
+        resolve();
+      });
+    });
+  });
+}
+
+// Sync highlight to Supabase
+async syncHighlightToSupabase(highlight) {
+  console.log('📤 ThreadCub: Syncing highlight to Supabase:', highlight.id);
+
+  try {
+    // Dynamically import the highlight sync service
+    const highlightSyncServiceModule = await import(
+      chrome.runtime.getURL('src/services/highlight-sync-service.js')
+    );
+
+    // Check authentication
+    const supabaseModule = await import(
+      chrome.runtime.getURL('src/auth/supabase-client.js')
+    );
+    const isAuth = await supabaseModule.isAuthenticated();
+
+    if (!isAuth) {
+      console.warn('⚠️ Not authenticated - highlight will not sync to Supabase');
+      alert('Please sign in to ThreadCub to save highlights.');
+      return false;
+    }
+
+    // Prepare highlight data for Supabase
+    const highlightData = {
+      text: highlight.text,
+      notes: highlight.user_note || '',
+      tags: highlight.tags || [],
+      source_url: highlight.source_url,
+      source_platform: highlight.source_platform,
+      source_chat_id: highlight.source_chat_id,
+      chat_title: highlight.chat_title,
+      created_at: highlight.timestamp
+    };
+
+    // Save to Supabase
+    const result = await highlightSyncServiceModule.saveHighlight(highlightData);
+
+    if (result.success) {
+      console.log('✅ Highlight synced to Supabase successfully');
+      return true;
+    } else {
+      console.error('❌ Failed to sync to Supabase:', result.error);
+      return false;
+    }
+  } catch (error) {
+    console.error('❌ Error syncing to Supabase:', error);
+    return false;
+  }
 }
 
 } // END of ThreadCubTagging class

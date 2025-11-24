@@ -1,9 +1,10 @@
 // === SECTION 1: Core Message Handler ===
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.log('🐻 Background: Received message:', request.action);
+  const messageType = request.action || request.type;
+  console.log('🐻 Background: Received message:', messageType);
 
-  switch (request.action) {
+  switch (messageType) {
     case 'download':
       handleDownload(request, sendResponse);
       return true;
@@ -39,12 +40,32 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     case 'buttonStatusChanged':
       console.log('🐻 Background: Button status changed:', request.visible);
       break;
-    
+
+    case 'UPDATE_BADGE':
+      handleUpdateBadge(request.count);
+      break;
+
     default:
       console.log('🐻 Background: Unknown action:', request.action);
       sendResponse({ success: false, error: 'Unknown action' });
   }
 });
+
+// === SECTION 1.5: Badge Update Handler ===
+
+function handleUpdateBadge(count) {
+  console.log('🔔 Background: Updating badge count:', count);
+
+  if (count > 0) {
+    // Show badge with count
+    chrome.action.setBadgeText({ text: count.toString() });
+    chrome.action.setBadgeBackgroundColor({ color: '#3b82f6' }); // Blue color
+    chrome.action.setBadgeTextColor({ color: '#ffffff' }); // White text
+  } else {
+    // Clear badge when count is 0
+    chrome.action.setBadgeText({ text: '' });
+  }
+}
 
 // === SECTION 2: Download Handler ===
 

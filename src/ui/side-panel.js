@@ -37,7 +37,7 @@ class ThreadCubSidePanel {
 
   // ===== TAG CARD CREATION =====
   createTagCard(tag) {
-    const hasNote = tag.note && tag.note.trim().length > 0;
+    const hasNote = tag.notes && tag.notes.trim().length > 0;
     const hasTags = tag.tags && tag.tags.length > 0;
 
     // This version includes SVG icons directly, as they are not style tokens.
@@ -47,7 +47,7 @@ class ThreadCubSidePanel {
           <div class="tag-text">${tag.text}</div>
 
           ${hasTags ? this.createPriorityTags(tag.tags) : ''}
-          ${hasNote ? this.createNoteDisplay(tag.note, tag.id) : ''}
+          ${hasNote ? this.createNoteDisplay(tag.notes, tag.id) : ''}
 
           <div class="default-state">
             <div class="card-icon">
@@ -103,7 +103,7 @@ class ThreadCubSidePanel {
   createNoteEditingState(tag) { // Removed 'tokens' parameter
     return `
       <div class="note-editing" style="display: none;" data-tag-id="${tag.id}">
-        <textarea class="note-textarea" placeholder="Add your note...">${tag.note || ''}</textarea>
+        <textarea class="note-textarea" placeholder="Add your note...">${tag.notes || ''}</textarea>
 
         <div class="note-actions">
           ${this.createSaveButton(tag.id)}

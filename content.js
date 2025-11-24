@@ -1434,7 +1434,7 @@ async handleSaveForLater() {
     category: null,
     categoryLabel: 'Saved',
     notes: '',
-    priority: 'medium', // default priority
+    // priority: 'medium', // TODO: Add priority column to Supabase before enabling
     timestamp: new Date().toISOString(),
     rangeInfo: this.captureEnhancedRangeInfo(this.selectedRange) // FIXED: Use enhanced capture
   };

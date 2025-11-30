@@ -3621,86 +3621,81 @@ async handleDeleteIndividual(highlightId) {
 
 // Handle Save All
 async handleSaveAll() {
-  console.log('💾 ThreadCub: Saving all pending highlights');
-
+  console.log('📦 ThreadCub: Saving all pending highlights');
+  
   // Get all pending highlights
   const pendingHighlights = await new Promise((resolve) => {
     chrome.storage.local.get(['pending_highlights'], (result) => {
       resolve(result.pending_highlights || []);
     });
   });
-
+  
   if (pendingHighlights.length === 0) {
     alert('No pending highlights to save.');
     return;
   }
-
+  
   // Confirm bulk save
   if (!confirm(`Save all ${pendingHighlights.length} highlights to ThreadCub?`)) {
     return;
   }
 
-  // Disable Save All button
-  const saveAllBtn = this.sidePanel.querySelector('#threadcub-save-all-btn');
-  if (saveAllBtn) {
-    saveAllBtn.disabled = true;
-    saveAllBtn.textContent = '⏳ Saving all...';
-  }
+  // ✨ NEW: Load conversation capture service
+  console.log('📝 Loading conversation capture service...');
+  const { conversationCaptureService } = await import(
+    chrome.runtime.getURL('src/services/conversation-capture-service.js')
+  );
 
-  let successCount = 0;
-  let failCount = 0;
+  // ✨ NEW: Group highlights by conversation
+  const conversationGroups = {};
+  pendingHighlights.forEach(h => {
+    const chatId = h.source_chat_id || 'uncategorized';
+    if (!conversationGroups[chatId]) {
+      conversationGroups[chatId] = [];
+    }
+    conversationGroups[chatId].push(h);
+  });
 
-  // Save each highlight
-  for (const highlight of pendingHighlights) {
-    try {
-      // Get updated values from input fields
-      const card = this.sidePanel.querySelector(`[data-highlight-id="${highlight.id}"]`);
-      if (card) {
-        const chatTitleInput = card.querySelector('.highlight-chat-title');
-        const userNoteInput = card.querySelector('.highlight-user-note');
-        const tagsInput = card.querySelector('.highlight-tags');
-
-        if (chatTitleInput) highlight.chat_title = chatTitleInput.value.trim();
-        if (userNoteInput) highlight.user_note = userNoteInput.value.trim();
-        if (tagsInput) {
-          const tagsStr = tagsInput.value.trim();
-          highlight.tags = tagsStr ? tagsStr.split(',').map(t => t.trim()).filter(t => t) : [];
-        }
-      }
-
-      const success = await this.syncHighlightToSupabase(highlight);
-      if (success) {
-        successCount++;
+  // ✨ NEW: Capture each conversation FIRST (before saving highlights)
+  console.log('📝 Capturing conversations for', Object.keys(conversationGroups).length, 'chats');
+  
+  for (const chatId of Object.keys(conversationGroups)) {
+    if (chatId !== 'uncategorized') {
+      console.log('📝 Capturing conversation:', chatId);
+      const result = await conversationCaptureService.captureFullConversation(chatId);
+      
+      if (result.success) {
+        console.log('✅ Conversation captured:', chatId, '(' + result.messageCount + ' messages)');
       } else {
-        failCount++;
+        console.warn('⚠️ Failed to capture conversation:', chatId, result.error);
       }
-    } catch (error) {
-      console.error('❌ Error saving highlight:', highlight.id, error);
-      failCount++;
     }
   }
 
-  // Clear all pending highlights if at least one succeeded
-  if (successCount > 0) {
-    await new Promise((resolve) => {
-      chrome.storage.local.set({ pending_highlights: [] }, resolve);
-    });
+  // Now save highlights (existing code)
+  console.log('💾 Saving', pendingHighlights.length, 'highlights to Supabase');
+  
+  // Load highlight sync service
+  const { highlightSyncService } = await import(
+    chrome.runtime.getURL('src/services/highlight-sync-service.js')
+  );
+  
+  let successCount = 0;
+  for (const highlight of pendingHighlights) {
+    const result = await highlightSyncService.saveHighlight(highlight);
+    if (result.success) successCount++;
   }
-
+  
+  console.log(`✅ Saved ${successCount}/${pendingHighlights.length} highlights`);
+  
+  // Clear pending highlights
+  await chrome.storage.local.remove('pending_highlights');
+  
   // Update badge count
   await this.updateBadgeCount();
-
-  // Re-render appropriate view (switches to tags if no more pending)
+  
+  // Re-render appropriate view
   await this.renderAppropriateView();
-
-  // Show result
-  if (failCount === 0) {
-    alert(`✅ Successfully saved all ${successCount} highlights!`);
-  } else {
-    alert(`Saved ${successCount} highlights. ${failCount} failed.`);
-  }
-
-  console.log(`✅ Bulk save complete: ${successCount} saved, ${failCount} failed`);
 }
 
 // Handle Clear All

@@ -1,12 +1,16 @@
 // Conversation capture service for ThreadCub Chrome extension
 // Captures full conversation transcripts and syncs to Supabase
 
+import { supabaseAuth } from '../auth/supabase-client.js';
+
 const SUPABASE_URL = 'https://evbkoulaaityzztyutox.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV2YmtvdWxhYWl0eXp6dHl1dG94Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2MTEwMDUsImV4cCI6MjA2ODE4NzAwNX0.OP6_JmlZwxo9p2ZpWSQMdE-wGVSqowB9kkT08A0c92Q';
 
 export const conversationCaptureService = {
   /**
    * Capture full conversation from current page and save/update in Supabase
+   * @param {string} chatId - Chat ID to capture
+   * @returns {Promise<Object>} Result object
    */
   async captureFullConversation(chatId) {
     try {
@@ -23,11 +27,6 @@ export const conversationCaptureService = {
       
       console.log(`📊 [ConversationCapture] Scraped ${messageCount} messages`);
       
-      // Load supabaseAuth dynamically
-      const { supabaseAuth } = await import(
-        chrome.runtime.getURL('src/auth/supabase-client.js')
-      );
-      
       // Check authentication
       const isAuthenticated = await supabaseAuth.isAuthenticated();
       if (!isAuthenticated) {
@@ -35,14 +34,9 @@ export const conversationCaptureService = {
         return { success: false, error: 'Not authenticated' };
       }
       
-      // Get session
-      const session = await supabaseAuth.getSession();
-      if (!session) {
-        return { success: false, error: 'No session' };
-      }
-      
       // Refresh token if expired
-      if (supabaseAuth.isExpired && supabaseAuth.isExpired(session)) {
+      const session = await supabaseAuth.getSession();
+      if (supabaseAuth.isExpired(session)) {
         const refreshed = await supabaseAuth.refreshSession();
         if (!refreshed) {
           return { success: false, error: 'Session expired' };
@@ -61,37 +55,27 @@ export const conversationCaptureService = {
         message_count: messageCount
       };
       
-      console.log('💾 [ConversationCapture] Saving to Supabase...');
-
-// Direct upsert using Supabase REST API
-const response = await fetch(`${SUPABASE_URL}/rest/v1/conversations`, {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'apikey': SUPABASE_ANON_KEY,
-    'Authorization': `Bearer ${currentSession.access_token}`,
-    'Prefer': 'resolution=merge-duplicates,return=representation'
-  },
-  body: JSON.stringify({
-    chat_id: conversationData.chat_id,
-    user_id: conversationData.user_id,
-    title: conversationData.title,
-    platform: conversationData.platform,
-    source_url: conversationData.source_url,
-    full_transcript: conversationData.full_transcript,
-    message_count: conversationData.message_count,
-    captured_at: new Date().toISOString(),
-    last_updated: new Date().toISOString()
-  })
-});
-
-if (!response.ok) {
-  const error = await response.text();
-  console.error('❌ [ConversationCapture] Save failed:', error);
-  throw new Error(`Failed to save conversation: ${response.status} - ${error}`);
-}
-
-const result = await response.json();
+      console.log('💾 [ConversationCapture] Calling upsert function...');
+      
+      // Call the Supabase RPC function for upsert
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/upsert_conversation`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${currentSession.access_token}`
+        },
+        body: JSON.stringify(conversationData)
+      });
+      
+      if (!response.ok) {
+        const error = await response.text();
+        console.error('❌ [ConversationCapture] Upsert failed:', error);
+        throw new Error(`Failed to upsert conversation: ${response.status} - ${error}`);
+      }
+      
+      const result = await response.json();
+      console.log('✅ [ConversationCapture] Conversation captured successfully');
       
       return { success: true, data: result, messageCount };
       
@@ -103,6 +87,7 @@ const result = await response.json();
 
   /**
    * Scrape conversation messages from current page
+   * @returns {Array} Array of message objects
    */
   scrapeConversationFromPage() {
     const messages = [];
@@ -181,6 +166,7 @@ const result = await response.json();
 
   /**
    * Detect platform from current URL
+   * @returns {string} Platform name
    */
   detectPlatform() {
     const hostname = window.location.hostname;
@@ -192,6 +178,7 @@ const result = await response.json();
 
   /**
    * Detect chat title from page
+   * @returns {string} Chat title
    */
   detectChatTitle() {
     const platform = this.detectPlatform();

@@ -2,8 +2,7 @@
 // Provides authentication and API interaction with ThreadCub backend
 
 const SUPABASE_URL = 'https://evbkoulaaityzztyutox.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV2YmtvdWxhYWl0eXp6dHl1dG94Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzIxNDczOTAsImV4cCI6MjA0NzcyMzM5MH0.rIpBv3VqYzNhKx7HRxrBVWg-Kx2pzpX5fE0hHBqHBqg'; // TODO: Replace with actual anon key
-
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV2YmtvdWxhYWl0eXp6dHl1dG94Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2MTEwMDUsImV4cCI6MjA2ODE4NzAwNX0.OP6_JmlZwxo9p2ZpWSQMdE-wGVSqowB9kkT08A0c92Q';
 /**
  * Authentication management for Supabase
  */

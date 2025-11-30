@@ -498,9 +498,9 @@ window.ThreadCubTagging = class ThreadCubTagging {
         // Restore highlights for visible tags with improved matching
         await this.restoreHighlightsImproved();
         
-        // Update UI if panel is open
+        // Update UI if panel is open (use renderAppropriateView to respect pending highlights)
         if (this.isPanelOpen) {
-          this.updateTagsList();
+          await this.renderAppropriateView();
         }
         
         console.log('🔍 DEBUG: ✅ Tags restoration complete');

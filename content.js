@@ -3204,12 +3204,12 @@ function fillInputFieldWithPrompt(prompt) {
 // ===== Auto-start conversation =====
 function attemptAutoStart(platform) {
   console.log('🔧 Attempting auto-start for platform:', platform);
-  
-  if (platform === 'claude.ai') {
+
+  if (platform === window.PlatformDetector.PLATFORMS.CLAUDE || platform === 'claude.ai') {
     attemptClaudeAutoStart();
-  } else if (platform === 'chatgpt') {
+  } else if (platform === window.PlatformDetector.PLATFORMS.CHATGPT || platform === 'chatgpt') {
     attemptChatGPTAutoStart();
-  } else if (platform === 'gemini') {
+  } else if (platform === window.PlatformDetector.PLATFORMS.GEMINI || platform === 'gemini') {
     attemptGeminiAutoStart();
   }
 }
@@ -3316,15 +3316,15 @@ function generateConversationSummary(fullPrompt) {
 function attemptAutoStart() {
   const platform = window.PlatformDetector.detectPlatform();
   console.log('🐻 ThreadCub: Attempting auto-start for platform:', platform);
-  
+
   // Wait a moment for the input to be filled
   setTimeout(() => {
     // Platform-specific auto-start attempts
-    if (platform === 'claude.ai') {
+    if (platform === window.PlatformDetector.PLATFORMS.CLAUDE || platform === 'claude.ai') {
       attemptClaudeAutoStart();
-    } else if (platform === 'chatgpt') {
+    } else if (platform === window.PlatformDetector.PLATFORMS.CHATGPT || platform === 'chatgpt') {
       attemptChatGPTAutoStart();
-    } else if (platform === 'gemini') {
+    } else if (platform === window.PlatformDetector.PLATFORMS.GEMINI || platform === 'gemini') {
       attemptGeminiAutoStart();
     }
   }, 1000);

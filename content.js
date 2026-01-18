@@ -4063,11 +4063,11 @@ function handleChatGPTFlow(continuationPrompt, shareUrl, conversationData) {
   console.log('🤖 ThreadCub: ChatGPT continuation data prepared');
   
   // STEP 3: Use storage for modal
-  const canUseChrome = canUseChromStorage();
+  const canUseChrome = window.StorageService.canUseChromStorage();
   
   if (canUseChrome) {
     console.log('🤖 ThreadCub: Using Chrome storage for ChatGPT modal...');
-    storeWithChrome(continuationData)
+    window.StorageService.storeWithChrome(continuationData)
       .then(() => {
         console.log('🐻 ThreadCub: ChatGPT data stored successfully');
         const chatGPTUrl = 'https://chatgpt.com/';
@@ -4170,11 +4170,11 @@ function handleClaudeFlow(continuationPrompt, shareUrl, conversationData) {
   
   console.log('🤖 ThreadCub: Claude continuation data with message count:', continuationData.totalMessages);
   
-  const canUseChrome = canUseChromStorage();
+  const canUseChrome = window.StorageService.canUseChromStorage();
   
   if (canUseChrome) {
     console.log('🤖 ThreadCub: Using Chrome storage for Claude...');
-    storeWithChrome(continuationData)
+    window.StorageService.storeWithChrome(continuationData)
       .then(() => {
         console.log('🐻 ThreadCub: Claude data stored successfully');
         const claudeUrl = 'https://claude.ai/';
@@ -4185,64 +4185,18 @@ function handleClaudeFlow(continuationPrompt, shareUrl, conversationData) {
       })
       .catch(error => {
         console.log('🤖 ThreadCub: Chrome storage failed, using fallback:', error);
-        handleClaudeFlowFallback(continuationData);
+        window.StorageService.handleClaudeFlowFallback(continuationData);
       });
   } else {
     console.log('🤖 ThreadCub: Using Claude fallback method directly');
-    handleClaudeFlowFallback(continuationData);
+    window.StorageService.handleClaudeFlowFallback(continuationData);
   }
 }
 
-function canUseChromStorage() {
-  try {
-    // Check each condition step by step for better debugging
-    if (typeof chrome === 'undefined') return false;
-    if (!chrome.runtime) return false;
-    if (!chrome.runtime.id) return false;  // This checks if extension context is valid
-    if (!chrome.storage) return false;
-    if (!chrome.storage.local) return false;
-    
-    return true;
-  } catch (error) {
-    console.log('🔧 Chrome check failed:', error);
-    return false;
-  }
-}
-
-async function storeWithChrome(continuationData) {
-  return new Promise((resolve, reject) => {
-    try {
-      chrome.storage.local.set({ threadcubContinuationData: continuationData }, () => {
-        if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
-        } else {
-          console.log('🔧 Chrome storage: Success with message count:', continuationData.totalMessages);
-          resolve();
-        }
-      });
-    } catch (error) {
-      reject(error);
-    }
-  });
-}
-
-function handleClaudeFlowFallback(continuationData) {
-  console.log('🤖 ThreadCub: Using localStorage fallback for Claude...');
-  
-  try {
-    localStorage.setItem('threadcubContinuationData', JSON.stringify(continuationData));
-    console.log('🔧 Claude Fallback: Data stored in localStorage');
-    
-    const claudeUrl = 'https://claude.ai/';
-    window.open(claudeUrl, '_blank');
-    if (window.threadcubButton && window.threadcubButton.showSuccessToast) {
-      window.threadcubButton.showSuccessToast('Opening Claude with conversation context...');
-    }
-    
-  } catch (error) {
-    console.error('🔧 Claude Fallback: localStorage failed:', error);
-  }
-}
+// Storage functions removed - now using window.StorageService:
+// - canUseChromStorage() -> window.StorageService.canUseChromStorage()
+// - storeWithChrome() -> window.StorageService.storeWithChrome()
+// - handleClaudeFlowFallback() -> window.StorageService.handleClaudeFlowFallback()
 
 // === DOWNLOAD FUNCTIONS ===
 
@@ -4389,7 +4343,7 @@ function enhanceFloatingButtonWithConversationFeatures() {
         this.lastConversationData = conversationData;
 
         // Get session ID for anonymous conversation tracking
-        const sessionId = await getOrCreateSessionId();
+        const sessionId = await window.StorageService.getOrCreateSessionId();
         
         // FIXED: Use DIRECT fetch() call to API (same as working main branch) + AUTH TOKEN
         const apiData = {
@@ -4649,102 +4603,5 @@ initializeThreadCub();
 
 // === END SECTION 5A ===
 
-// === SESSION ID MANAGEMENT (FIXED VERSION) ===
-async function getOrCreateSessionId() {
-  let sessionId = null;
-  
-  try {
-    try {
-      sessionId = localStorage.getItem('threadcubSessionId');
-      if (sessionId) {
-        console.log('🔑 Using existing ThreadCub session ID (localStorage):', sessionId);
-        
-        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-          try {
-            chrome.storage.local.set({ threadcubSessionId: sessionId }, () => {
-              if (!chrome.runtime.lastError) {
-                console.log('🔑 Synced session ID to Chrome storage');
-              }
-            });
-          } catch (chromeError) {
-            console.log('🔑 Chrome storage sync failed (non-critical):', chromeError);
-          }
-        }
-        
-        return sessionId;
-      }
-    } catch (localError) {
-      console.log('🔑 localStorage access failed:', localError);
-    }
-    
-    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local && chrome.runtime && chrome.runtime.id) {
-      try {
-        const result = await new Promise((resolve, reject) => {
-          chrome.storage.local.get(['threadcubSessionId'], (result) => {
-            if (chrome.runtime.lastError) {
-              reject(new Error(chrome.runtime.lastError.message));
-            } else {
-              resolve(result);
-            }
-          });
-        });
-        
-        sessionId = result.threadcubSessionId;
-        if (sessionId) {
-          console.log('🔑 Using existing ThreadCub session ID (Chrome storage):', sessionId);
-          
-          try {
-            localStorage.setItem('threadcubSessionId', sessionId);
-            console.log('🔑 Synced session ID to localStorage for dashboard access');
-          } catch (localError) {
-            console.log('🔑 Could not sync to localStorage (non-critical):', localError);
-          }
-          
-          return sessionId;
-        }
-      } catch (chromeError) {
-        console.log('🔑 Chrome storage access failed:', chromeError);
-      }
-    }
-    
-    sessionId = 'tc_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
-    console.log('🔑 Generated new ThreadCub session ID:', sessionId);
-    
-    try {
-      localStorage.setItem('threadcubSessionId', sessionId);
-      console.log('🔑 Saved new session ID to localStorage');
-    } catch (localError) {
-      console.log('🔑 Could not save to localStorage:', localError);
-    }
-    
-    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      try {
-        chrome.storage.local.set({ threadcubSessionId: sessionId }, () => {
-          if (!chrome.runtime.lastError) {
-            console.log('🔑 Saved new session ID to Chrome storage');
-          }
-        });
-      } catch (chromeError) {
-        console.log('🔑 Could not save to Chrome storage (non-critical):', chromeError);
-      }
-    }
-    
-    return sessionId;
-    
-  } catch (error) {
-    console.error('🔑 Session ID management failed:', error);
-    
-    try {
-      sessionId = localStorage.getItem('threadcubSessionId');
-      if (!sessionId) {
-        sessionId = 'tc_emergency_' + Date.now();
-        localStorage.setItem('threadcubSessionId', sessionId);
-      }
-      console.log('🔑 Using emergency session ID:', sessionId);
-      return sessionId;
-    } catch (emergencyError) {
-      console.error('🔑 Emergency session ID failed:', emergencyError);
-      return 'tc_critical_' + Date.now();
-    }
-  }
-}
+// === SESSION ID MANAGEMENT ===
+// getOrCreateSessionId() removed - now using window.StorageService.getOrCreateSessionId()

@@ -67,6 +67,7 @@
     ],
     "js": [
       "src/utils/platform-detector.js",
+      "src/services/storage-service.js",
       "src/ui/side-panel.js",
       "src/core/floating-button.js",
       "content.js"

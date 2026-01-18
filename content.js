@@ -3158,28 +3158,11 @@ function showStreamlinedNotification(continuationData) {
 function fillInputFieldWithPrompt(prompt) {
   const platform = window.PlatformDetector.detectPlatform();
   console.log('🔧 Filling input field with continuation prompt for:', platform);
-  
-  // Platform-specific selectors
-  const selectors = {
-    'claude.ai': [
-      'textarea[data-testid="chat-input"]',
-      'div[contenteditable="true"]',
-      'textarea'
-    ],
-    'chatgpt': [
-      'textarea[data-testid="prompt-textarea"]',
-      '#prompt-textarea',
-      'textarea[placeholder*="Message"]',
-      'textarea'
-    ],
-    'gemini': [
-      'rich-textarea div[contenteditable="true"]',
-      'textarea'
-    ]
-  };
-  
-  const platformSelectors = selectors[platform] || selectors['chatgpt'];
-  
+
+  // Get platform-specific selectors from centralized module
+  const platformSelectors = window.PlatformDetector.getInputSelectors(platform);
+  console.log('🔍 Using selectors:', platformSelectors);
+
   // Find input field
   let inputField = null;
   for (const selector of platformSelectors) {
@@ -3193,12 +3176,12 @@ function fillInputFieldWithPrompt(prompt) {
     }
     if (inputField) break;
   }
-  
+
   if (inputField) {
     console.log('🔧 Found input field:', inputField.tagName, inputField.className);
-    
+
     inputField.focus();
-    
+
     // Fill based on input type
     if (inputField.tagName === 'TEXTAREA') {
       inputField.value = prompt;
@@ -3209,7 +3192,7 @@ function fillInputFieldWithPrompt(prompt) {
       inputField.dispatchEvent(new Event('input', { bubbles: true }));
       inputField.dispatchEvent(new Event('change', { bubbles: true }));
     }
-    
+
     console.log('✅ Input field auto-populated successfully');
     return true;
   } else {
@@ -3421,31 +3404,11 @@ function attemptGeminiAutoStart() {
 // ===== Fill input field with prompt =====
 function fillInputFieldWithPrompt(prompt) {
   const platform = window.PlatformDetector.detectPlatform();
-  console.log('🐻 ThreadCub: Filling input field with continuation prompt');
-  
-  setTimeout(() => {
-    // Platform-specific selectors
-    const selectors = {
-      'claude.ai': [
-        'textarea[data-testid="chat-input"]',
-        'div[contenteditable="true"]',
-        'textarea',
-        '*[contenteditable="true"]',
-        '[role="textbox"]',
-        'input[type="text"]'
-      ],
-      'chatgpt': [
-        'textarea[data-testid="prompt-textarea"]',
-        '#prompt-textarea',
-        'textarea[placeholder*="Message"]'
-      ],
-      'gemini': [
-        'rich-textarea div[contenteditable="true"]',
-        'textarea'
-      ]
-    };
+  console.log('🐻 ThreadCub: Filling input field with continuation prompt for:', platform);
 
-    const platformSelectors = selectors[platform] || selectors['chatgpt'];
+  setTimeout(() => {
+    // Get platform-specific selectors from centralized module
+    const platformSelectors = window.PlatformDetector.getInputSelectors(platform);
     console.log('🔍 Platform detected:', platform, 'Using selectors:', platformSelectors);
     console.log('🔍 About to loop through selectors. Count:', platformSelectors.length);
 
@@ -3465,7 +3428,7 @@ function fillInputFieldWithPrompt(prompt) {
 
     if (inputField) {
       inputField.focus();
-      
+
       // Fill based on input type
       if (inputField.tagName === 'TEXTAREA') {
         inputField.value = prompt;
@@ -3475,7 +3438,7 @@ function fillInputFieldWithPrompt(prompt) {
         inputField.textContent = prompt;
         inputField.dispatchEvent(new Event('input', { bubbles: true }));
       }
-      
+
       console.log('✅ ThreadCub: Input field populated successfully');
       return true;
     } else {

@@ -66,6 +66,7 @@
       "assets/side-panel.css"
     ],
     "js": [
+      "src/utils/platform-detector.js",
       "src/ui/side-panel.js",
       "src/core/floating-button.js",
       "content.js"

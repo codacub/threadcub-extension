@@ -41,11 +41,8 @@ window.ThreadCubTagging = class ThreadCubTagging {
   }
 
   detectPlatform() {
-    const hostname = window.location.hostname;
-    if (hostname.includes('claude.ai')) return 'claude';
-    if (hostname.includes('openai.com') || hostname.includes('chatgpt.com')) return 'chatgpt';
-    if (hostname.includes('gemini.google.com')) return 'gemini';
-    return 'unknown';
+    // Use the centralized platform detector module
+    return window.PlatformDetector.detectPlatform();
   }
 
   async init() {
@@ -1489,40 +1486,9 @@ handleFindOutMore() {
 populateChatInputDirectly(text) {
   console.log('🏷️ ThreadCub: Adding text directly to chat input:', text.substring(0, 50) + '...');
   
-  // Detect current platform
-  const hostname = window.location.hostname;
-  let selectors = [];
-  
-  if (hostname.includes('claude.ai')) {
-    selectors = [
-      'textarea[data-testid="chat-input"]',
-      'div[contenteditable="true"]',
-      'textarea[placeholder*="Talk to Claude"]',
-      'textarea'
-    ];
-  } else if (hostname.includes('chatgpt.com') || hostname.includes('chat.openai.com')) {
-    selectors = [
-      'textarea[data-testid="prompt-textarea"]', 
-      '#prompt-textarea',
-      'textarea[placeholder*="Message"]',
-      'textarea'
-    ];
-  } else if (hostname.includes('gemini.google.com')) {
-    selectors = [
-      'rich-textarea div[contenteditable="true"]',
-      'textarea[placeholder*="Enter a prompt"]',
-      'textarea'
-    ];
-  } else {
-    // Generic selectors for other platforms
-    selectors = [
-      'textarea[placeholder*="message"]',
-      'textarea[placeholder*="prompt"]',
-      'div[contenteditable="true"]',
-      'textarea'
-    ];
-  }
-  
+  // Get platform-specific selectors from centralized module
+  const selectors = window.PlatformDetector.getInputSelectors();
+
   // Try each selector until we find a working input field
   for (const selector of selectors) {
     try {
@@ -3103,7 +3069,7 @@ function executeStreamlinedContinuation(fullPrompt, shareUrl, continuationData) 
   console.log('🚀 Platform:', continuationData.platform);
   console.log('🚀 ChatGPT Flow:', continuationData.chatGPTFlow);
   
-  const platform = detectCurrentPlatform();
+  const platform = window.PlatformDetector.detectPlatform();
   
   // STEP 1: Auto-populate the input field
   console.log('🔧 Auto-populating input field...');
@@ -3190,7 +3156,7 @@ function showStreamlinedNotification(continuationData) {
 
 // ===== Fill input field with prompt =====
 function fillInputFieldWithPrompt(prompt) {
-  const platform = detectCurrentPlatform();
+  const platform = window.PlatformDetector.detectPlatform();
   console.log('🔧 Filling input field with continuation prompt for:', platform);
   
   // Platform-specific selectors
@@ -3338,14 +3304,8 @@ function attemptGeminiAutoStart() {
   }
 }
 
-// ===== Platform detection =====
-function detectCurrentPlatform() {
-  const hostname = window.location.hostname;
-  if (hostname.includes('claude.ai')) return 'claude.ai';
-  if (hostname.includes('openai.com') || hostname.includes('chatgpt.com')) return 'chatgpt';
-  if (hostname.includes('gemini.google.com')) return 'gemini';
-  return 'unknown';
-}
+// ===== Platform detection (now using centralized module) =====
+// Removed - now using window.PlatformDetector.detectPlatform()
 
 // === END SECTION 2A ===
 
@@ -3371,7 +3331,7 @@ function generateConversationSummary(fullPrompt) {
 
 // ===== Attempt to auto-start the chat =====
 function attemptAutoStart() {
-  const platform = detectCurrentPlatform();
+  const platform = window.PlatformDetector.detectPlatform();
   console.log('🐻 ThreadCub: Attempting auto-start for platform:', platform);
   
   // Wait a moment for the input to be filled
@@ -3460,7 +3420,7 @@ function attemptGeminiAutoStart() {
 
 // ===== Fill input field with prompt =====
 function fillInputFieldWithPrompt(prompt) {
-  const platform = detectCurrentPlatform();
+  const platform = window.PlatformDetector.detectPlatform();
   console.log('🐻 ThreadCub: Filling input field with continuation prompt');
   
   setTimeout(() => {
@@ -3537,14 +3497,8 @@ function showDownloadSuccessMessage() {
   ThreadCubFloatingButton.showGlobalSuccessToast();
 }
 
-// ===== Platform detection helper function =====
-function detectCurrentPlatform() {
-  const hostname = window.location.hostname;
-  if (hostname.includes('claude.ai')) return 'claude.ai';
-  if (hostname.includes('openai.com') || hostname.includes('chatgpt.com')) return 'chatgpt';
-  if (hostname.includes('gemini.google.com')) return 'gemini';
-  return 'unknown';
-}
+// ===== Platform detection helper function (now using centralized module) =====
+// Removed - now using window.PlatformDetector.detectPlatform()
 
 // === END SECTION 3A ===
 
@@ -4077,17 +4031,7 @@ If you cannot access it for any reason, please let me know and I'll share the co
   }
 }
 
-function getTargetPlatformFromCurrentUrl() {
-  const hostname = window.location.hostname;
-  if (hostname.includes('chatgpt.com') || hostname.includes('chat.openai.com')) {
-    return 'chatgpt';
-  } else if (hostname.includes('claude.ai')) {
-    return 'claude';
-  } else if (hostname.includes('gemini.google.com')) {
-    return 'gemini';
-  }
-  return 'unknown';
-}
+// getTargetPlatformFromCurrentUrl() removed - now using window.PlatformDetector.detectPlatform()
 
 function generateQuickSummary(messages) {
   if (!messages || messages.length === 0) return 'Empty conversation';
@@ -4116,7 +4060,7 @@ function handleDirectContinuation(conversationData) {
   const minimalPrompt = generateContinuationPrompt(summary, fallbackShareUrl, conversationData.platform, conversationData);
   
   // Route to appropriate platform flow
-  const targetPlatform = getTargetPlatformFromCurrentUrl();
+  const targetPlatform = window.PlatformDetector.detectPlatform();
   
   if (targetPlatform === 'chatgpt') {
     console.log('🐻 ThreadCub: Routing to ChatGPT flow');
@@ -4458,13 +4402,13 @@ function enhanceFloatingButtonWithConversationFeatures() {
         console.log('🐻 ThreadCub: Extracting conversation data...');
         
         let conversationData;
-        const hostname = window.location.hostname;
-        
-        if (hostname.includes('claude.ai')) {
+        const platform = window.PlatformDetector.detectPlatform();
+
+        if (platform === window.PlatformDetector.PLATFORMS.CLAUDE) {
           conversationData = await extractClaudeConversation();
-        } else if (hostname.includes('chatgpt.com') || hostname.includes('chat.openai.com')) {
+        } else if (platform === window.PlatformDetector.PLATFORMS.CHATGPT) {
           conversationData = extractChatGPTConversation();
-        } else if (hostname.includes('gemini.google.com')) {
+        } else if (platform === window.PlatformDetector.PLATFORMS.GEMINI) {
           conversationData = await extractGeminiConversation();
         } else {
           conversationData = extractGenericConversation();
@@ -4523,7 +4467,7 @@ function enhanceFloatingButtonWithConversationFeatures() {
           
           const minimalPrompt = generateContinuationPrompt(summary, shareUrl, conversationData.platform, conversationData);
           
-          const targetPlatform = getTargetPlatformFromCurrentUrl();
+          const targetPlatform = window.PlatformDetector.detectPlatform();
           
           if (targetPlatform === 'chatgpt') {
             console.log('🤖 ThreadCub: Routing to ChatGPT flow (with file download)');
@@ -4573,23 +4517,23 @@ function enhanceFloatingButtonWithConversationFeatures() {
         console.log('🐻 ThreadCub: Extracting conversation data for download...');
         
         let conversationData;
-        const hostname = window.location.hostname;
-        
-        if (hostname.includes('claude.ai')) {
+        const platform = window.PlatformDetector.detectPlatform();
+
+        if (platform === window.PlatformDetector.PLATFORMS.CLAUDE) {
           conversationData = await extractClaudeConversation();
-        } else if (hostname.includes('chatgpt.com') || hostname.includes('chat.openai.com')) {
+        } else if (platform === window.PlatformDetector.PLATFORMS.CHATGPT) {
           conversationData = extractChatGPTConversation();
         } else {
           conversationData = extractGenericConversation();
         }
-        
+
         if (!conversationData || !conversationData.messages || conversationData.messages.length === 0) {
           console.error('🐻 ThreadCub: No conversation data found');
-          
+
           const fallbackData = {
             title: document.title || 'AI Conversation',
             url: window.location.href,
-            platform: hostname.includes('claude.ai') ? 'Claude.ai' : 'Unknown',
+            platform: window.PlatformDetector.getPlatformName(platform),
             exportDate: new Date().toISOString(),
             totalMessages: 0,
             messages: [],

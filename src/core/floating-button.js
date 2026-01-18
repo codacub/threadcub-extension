@@ -707,7 +707,7 @@ class ThreadCubFloatingButton {
   }
 
   // Session ID management removed - now using window.StorageService.getOrCreateSessionId()
-}
+
   // ===== REAL WORKING METHODS (MOVED FROM CONTENT.JS) =====
   async saveAndOpenConversation(source = 'floating') {
   console.log('🐻 ThreadCub: Starting conversation save and open from:', source);

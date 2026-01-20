@@ -22,6 +22,10 @@ const ConversationExtractor = {
       conversationData = this.extractChatGPTConversation();
     } else if (hostname.includes('gemini.google.com')) {
       conversationData = this.extractGeminiConversation();
+    } else if (hostname.includes('grok.x.ai') || (hostname.includes('x.com') && window.location.pathname.includes('/i/grok'))) {
+      conversationData = this.extractGrokConversation();
+    } else if (hostname.includes('chat.deepseek.com')) {
+      conversationData = this.extractDeepSeekConversation();
     } else {
       conversationData = this.extractGenericConversation();
     }
@@ -566,6 +570,163 @@ if (messages.length > 0) {
   console.log(`🟣 ThreadCub: ✅ Gemini extraction complete: ${messages.length} messages`);
   return conversationData;
 },
+
+  // =============================================================================
+  // GROK EXTRACTION
+  // =============================================================================
+
+  extractGrokConversation() {
+    console.log('🤖 ThreadCub: Extracting Grok conversation...');
+
+    const messages = [];
+    let messageIndex = 0;
+
+    // TODO: Update after inspecting Grok's actual DOM structure
+    // Get page title for conversation title
+    const title = document.title || 'Grok Conversation';
+
+    // TODO: Inspect Grok's DOM to find the correct selectors for:
+    // - Message container elements
+    // - User message elements (role detection)
+    // - Assistant message elements (role detection)
+    // - Message content extraction
+    // - Code blocks, images, and other special content
+
+    // PLACEHOLDER: Try generic message selectors
+    console.log('⚠️ ThreadCub: Using placeholder Grok extraction - needs manual selector configuration');
+
+    const messageSelectors = [
+      '[data-testid*="message"]',
+      'div[class*="message"]',
+      'div[class*="conversation"]',
+      'div[class*="chat"]'
+    ];
+
+    let messageElements = [];
+    for (const selector of messageSelectors) {
+      messageElements = document.querySelectorAll(selector);
+      if (messageElements.length > 0) {
+        console.log(`🤖 ThreadCub: Found ${messageElements.length} potential messages with selector: ${selector}`);
+        break;
+      }
+    }
+
+    if (messageElements.length > 0) {
+      messageElements.forEach((element, index) => {
+        const text = element.textContent?.trim() || '';
+        if (text && text.length > 10) {
+          // TODO: Improve role detection based on actual Grok DOM structure
+          // This is a simple heuristic - replace with actual role attribute detection
+          const role = index % 2 === 0 ? 'user' : 'assistant';
+
+          messages.push({
+            id: messageIndex++,
+            role: role,
+            content: text.replace(/^(Copy|Share|Regenerate|Retry)$/gm, '').trim(),
+            timestamp: new Date().toISOString(),
+            extractionMethod: 'grok_placeholder',
+            needsManualConfiguration: true
+          });
+        }
+      });
+    }
+
+    const conversationData = {
+      title: title,
+      url: window.location.href,
+      timestamp: new Date().toISOString(),
+      platform: 'Grok',
+      total_messages: messages.length,
+      messages: messages,
+      extraction_method: 'grok_placeholder',
+      warning: 'This extraction uses placeholder selectors and needs manual configuration after inspecting Grok DOM'
+    };
+
+    console.log(`🤖 ThreadCub: ⚠️ Grok extraction complete (placeholder): ${messages.length} messages`);
+    console.log('⚠️ TODO: Update extractGrokConversation() with actual Grok DOM selectors');
+
+    return conversationData;
+  },
+
+  // =============================================================================
+  // DEEPSEEK EXTRACTION
+  // =============================================================================
+
+  extractDeepSeekConversation() {
+    console.log('🔵 ThreadCub: Extracting DeepSeek conversation...');
+
+    const messages = [];
+    let messageIndex = 0;
+
+    // TODO: Update after inspecting DeepSeek's actual DOM structure
+    // Get page title for conversation title
+    const title = document.title || 'DeepSeek Conversation';
+
+    // TODO: Inspect DeepSeek's DOM to find the correct selectors for:
+    // - Message container elements
+    // - User message elements (role detection)
+    // - Assistant message elements (role detection)
+    // - Message content extraction
+    // - Code blocks, images, and other special content
+
+    // PLACEHOLDER: Try generic message selectors
+    console.log('⚠️ ThreadCub: Using placeholder DeepSeek extraction - needs manual selector configuration');
+
+    const messageSelectors = [
+      '[data-testid*="message"]',
+      '[data-role="user"]',
+      '[data-role="assistant"]',
+      'div[class*="message"]',
+      'div[class*="conversation"]',
+      'div[class*="chat"]'
+    ];
+
+    let messageElements = [];
+    for (const selector of messageSelectors) {
+      messageElements = document.querySelectorAll(selector);
+      if (messageElements.length > 0) {
+        console.log(`🔵 ThreadCub: Found ${messageElements.length} potential messages with selector: ${selector}`);
+        break;
+      }
+    }
+
+    if (messageElements.length > 0) {
+      messageElements.forEach((element, index) => {
+        const text = element.textContent?.trim() || '';
+        if (text && text.length > 10) {
+          // TODO: Improve role detection based on actual DeepSeek DOM structure
+          // Check for role attributes first, fallback to alternating pattern
+          const dataRole = element.getAttribute('data-role');
+          const role = dataRole || (index % 2 === 0 ? 'user' : 'assistant');
+
+          messages.push({
+            id: messageIndex++,
+            role: role,
+            content: text.replace(/^(Copy|Share|Regenerate|Retry)$/gm, '').trim(),
+            timestamp: new Date().toISOString(),
+            extractionMethod: 'deepseek_placeholder',
+            needsManualConfiguration: true
+          });
+        }
+      });
+    }
+
+    const conversationData = {
+      title: title,
+      url: window.location.href,
+      timestamp: new Date().toISOString(),
+      platform: 'DeepSeek',
+      total_messages: messages.length,
+      messages: messages,
+      extraction_method: 'deepseek_placeholder',
+      warning: 'This extraction uses placeholder selectors and needs manual configuration after inspecting DeepSeek DOM'
+    };
+
+    console.log(`🔵 ThreadCub: ⚠️ DeepSeek extraction complete (placeholder): ${messages.length} messages`);
+    console.log('⚠️ TODO: Update extractDeepSeekConversation() with actual DeepSeek DOM selectors');
+
+    return conversationData;
+  },
 
   // =============================================================================
   // GENERIC EXTRACTION

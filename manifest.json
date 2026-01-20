@@ -76,6 +76,7 @@
       "src/core/floating-button.js",
       "src/features/tagging-system.js",
       "src/features/continuation-system.js",
+      "src/features/platform-autostart.js",
       "content.js"
     ],
     "run_at": "document_idle"

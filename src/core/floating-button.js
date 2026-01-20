@@ -795,27 +795,9 @@ class ThreadCubFloatingButton {
 
     console.log('🔍 API Data includes sessionId:', !!apiData.sessionId);
 
-    // Direct fetch call
-    let response;
+    // API call via ApiService
     try {
-      console.log('🔍 userAuthToken before API call:', !!userAuthToken);
-      console.log('🔍 userAuthToken length:', userAuthToken?.length || 'null');
-      console.log('🔍 API Data being sent:', JSON.stringify(apiData, null, 2));
-
-      response = await fetch('https://threadcub.com/api/conversations/save', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(apiData)
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log('✅ ThreadCub: Direct API call successful:', data);
+      const data = await window.ApiService.saveConversation(apiData);
 
       // Generate continuation prompt and handle platform-specific flow
       const summary = data.summary || this.generateQuickSummary(conversationData.messages);

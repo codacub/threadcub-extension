@@ -800,50 +800,20 @@ setupEventListeners() {
   async createConversationWithTags() {
     // Extract conversation data using the floating button's method
     const conversationData = this.floatingButton.extractConversation();
-    
+
     if (!conversationData || conversationData.messages.length === 0) {
       throw new Error('No conversation data available');
     }
-    
+
     // Add tags to conversation data
     conversationData.tags = this.tags;
-    
-    const response = await fetch('https://threadcub.com/api/conversations/tags/create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        conversationData: conversationData,
-        tags: this.tags,
-        source: conversationData.platform?.toLowerCase() || 'unknown',
-        title: conversationData.title
-      })
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to create conversation with tags');
-    }
-    
-    const data = await response.json();
+
+    const data = await window.ApiService.createConversationWithTags(conversationData, this.tags);
     this.currentConversationId = data.conversationId;
-    
-    console.log('🏷️ ThreadCub: Conversation created with tags:', data);
   }
 
   async addTagsToExistingConversation() {
-    const response = await fetch(`https://threadcub.com/api/conversations/${this.currentConversationId}/tags`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        tags: this.tags
-      })
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to add tags to conversation');
-    }
-    
-    const data = await response.json();
-    console.log('🏷️ ThreadCub: Tags added to conversation:', data);
+    const data = await window.ApiService.addTagsToExistingConversation(this.currentConversationId, this.tags);
   }
 
   saveSessionTags() {

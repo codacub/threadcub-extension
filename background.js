@@ -102,8 +102,11 @@ function handleDownload(request, sendResponse) {
 async function handleSaveConversation(data) {
   try {
     console.log('🐻 Background: Making API call to ThreadCub with data:', data);
+
+    // Use ApiService (Note: ApiService is not available in service worker context)
+    // Keeping original implementation for now as service workers can't access content script modules
     console.log('🐻 Background: API URL:', 'https://threadcub.com/api/conversations/save');
-    
+
     // TEMPORARY: Test if endpoint exists with GET first
     console.log('🐻 Background: Testing endpoint accessibility...');
     try {
@@ -115,7 +118,7 @@ async function handleSaveConversation(data) {
     } catch (error) {
       console.log('🐻 Background: GET test failed:', error);
     }
-    
+
     const response = await fetch('https://threadcub.com/api/conversations/save', {
       method: 'POST',
       headers: {
@@ -124,27 +127,27 @@ async function handleSaveConversation(data) {
       },
       body: JSON.stringify(data)
     });
-    
+
     console.log('🐻 Background: POST response status:', response.status);
     console.log('🐻 Background: POST response ok:', response.ok);
-    
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error('🐻 Background: API error response:', errorText);
-      
+
       // If 405, try to get more info about allowed methods
       if (response.status === 405) {
         const allowedMethods = response.headers.get('Allow');
         console.error('🐻 Background: Allowed methods:', allowedMethods);
         throw new Error(`Method not allowed. Allowed methods: ${allowedMethods || 'unknown'}`);
       }
-      
+
       throw new Error(`API call failed: ${response.status} ${response.statusText} - ${errorText}`);
     }
-    
+
     const result = await response.json();
     console.log('🐻 Background: API call successful:', result);
-    
+
     return result;
     
   } catch (error) {

@@ -67,6 +67,7 @@
     ],
     "js": [
       "src/utils/platform-detector.js",
+      "src/utils/utilities.js",
       "src/services/storage-service.js",
       "src/services/api-service.js",
       "src/core/conversation-extractor.js",

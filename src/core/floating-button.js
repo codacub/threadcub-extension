@@ -1165,7 +1165,7 @@ Once you've reviewed it, let me know you're ready to continue from where we left
         messages: conversationData.messages || []
       };
 
-      const filename = this.generateSmartFilename(tagsData); // Use tagsData for filename
+      const filename = window.Utilities.generateSmartFilename(tagsData); // Use tagsData for filename
       const blob = new Blob([JSON.stringify(tagsData, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -1183,54 +1183,6 @@ Once you've reviewed it, let me know you're ready to continue from where we left
     }
   }
 
-  generateSmartFilename(conversationData) {
-    try {
-      const platform = conversationData.platform?.toLowerCase() || 'chat';
-
-      let conversationIdentifier = '';
-
-      if (conversationData.title && conversationData.title !== 'ThreadCub Conversation' && conversationData.title.trim().length > 0) {
-        conversationIdentifier = this.sanitizeFilename(conversationData.title);
-      } else if (conversationData.messages && conversationData.messages.length > 0) {
-        const firstUserMessage = conversationData.messages.find(msg =>
-          msg.role === 'user' || msg.role === 'human'
-        );
-
-        if (firstUserMessage && firstUserMessage.content) {
-          const content = firstUserMessage.content.trim();
-          conversationIdentifier = this.sanitizeFilename(content.substring(0, 50));
-        }
-      }
-
-      if (!conversationIdentifier) {
-        conversationIdentifier = 'conversation';
-      }
-
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      const filename = `${platform}-${conversationIdentifier}-${timestamp}.json`;
-
-      console.log('🐻 ThreadCub: Generated filename:', filename);
-      return filename;
-    } catch (error) {
-      console.error('🐻 ThreadCub: Error generating filename:', error);
-      return `threadcub-conversation-${Date.now()}.json`;
-    }
-  }
-
-  sanitizeFilename(text) {
-    try {
-      return text
-        .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, '')
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-')
-        .replace(/^-|-$/g, '')
-        .slice(0, 50);
-    } catch (error) {
-      console.error('🐻 ThreadCub: Error sanitizing filename:', error);
-      return 'conversation';
-    }
-  }
 }
 
 // Make the class globally available

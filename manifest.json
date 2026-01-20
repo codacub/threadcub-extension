@@ -77,6 +77,7 @@
       "src/features/tagging-system.js",
       "src/features/continuation-system.js",
       "src/features/platform-autostart.js",
+      "src/features/download-manager.js",
       "content.js"
     ],
     "run_at": "document_idle"

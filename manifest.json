@@ -43,6 +43,9 @@
     "https://chatgpt.com/*",
     "https://gemini.google.com/*",
     "https://copilot.microsoft.com/*",
+    "https://grok.x.ai/*",
+    "https://x.com/*",
+    "https://chat.deepseek.com/*",
     "https://threadcub.com/*",
     "https://*.threadcub.com/*"
   ],
@@ -58,7 +61,10 @@
       "https://chat.openai.com/*",
       "https://chatgpt.com/*",
       "https://gemini.google.com/*",
-      "https://copilot.microsoft.com/*"
+      "https://copilot.microsoft.com/*",
+      "https://grok.x.ai/*",
+      "https://x.com/*",
+      "https://chat.deepseek.com/*"
     ],
     "css": [
       "assets/tokens.css",

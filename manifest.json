@@ -78,6 +78,7 @@
       "src/features/continuation-system.js",
       "src/features/platform-autostart.js",
       "src/features/download-manager.js",
+      "src/core/app-initializer.js",
       "content.js"
     ],
     "run_at": "document_idle"

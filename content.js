@@ -1,100 +1,63 @@
+// ============================================================================
+// ThreadCub Content Script - Modular Architecture Entry Point
+// ============================================================================
+//
+// This file serves as the minimal entry point for the ThreadCub extension.
+// All functionality has been extracted into dedicated modules for better
+// organization, maintainability, and testability.
+//
+// MODULE ARCHITECTURE:
+//
+// UTILITIES & SERVICES:
+//   - src/utils/platform-detector.js      Platform detection and selectors
+//   - src/utils/utilities.js              Helper functions (filename generation)
+//   - src/services/storage-service.js     Chrome storage operations
+//   - src/services/api-service.js         ThreadCub API communication
+//
+// CORE FUNCTIONALITY:
+//   - src/core/conversation-extractor.js  Conversation extraction logic
+//   - src/core/floating-button.js         Floating button UI component
+//   - src/core/app-initializer.js         Application initialization
+//
+// UI COMPONENTS:
+//   - src/ui/ui-components.js             Toast notifications and alerts
+//   - src/ui/side-panel.js                Side panel UI
+//
+// FEATURE MODULES:
+//   - src/features/tagging-system.js      Conversation tagging system
+//   - src/features/continuation-system.js Cross-tab continuation logic
+//   - src/features/platform-autostart.js  Platform-specific auto-start
+//   - src/features/download-manager.js    Download and export functionality
+//
+// ============================================================================
+//
+// INITIALIZATION:
+// The application is automatically initialized by app-initializer.js which
+// is loaded before this file in manifest.json. This file exists primarily
+// as a placeholder and documentation of the modular architecture.
+//
+// All modules expose their functionality via window.* objects:
+//   - window.PlatformDetector
+//   - window.Utilities
+//   - window.StorageService
+//   - window.ApiService
+//   - window.ConversationExtractor
+//   - window.UIComponents
+//   - window.ThreadCubFloatingButton
+//   - window.ThreadCubTagging
+//   - window.ContinuationSystem
+//   - window.PlatformAutostart
+//   - window.DownloadManager
+//   - window.AppInitializer
+//
+// ============================================================================
 
-// === SECTION 5A: Main Application Initialization ===
+console.log('🐻 ThreadCub: Content script loaded - All functionality in modules');
+console.log('🐻 ThreadCub: Modular architecture active');
 
-// Main initialization when DOM is ready
-function initializeThreadCub() {
-  console.log('🐻 ThreadCub: Initializing main application...');
-  
-  // Wait for DOM to be ready
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', startThreadCub);
-  } else {
-    startThreadCub();
-  }
+// Optional: Additional logging for debugging module loading
+if (typeof window.AppInitializer !== 'undefined') {
+  console.log('🐻 ThreadCub: ✅ All modules loaded successfully');
+} else {
+  console.error('🐻 ThreadCub: ⚠️ Module loading may be incomplete');
 }
-
-function startThreadCub() {
-  console.log('🐻 ThreadCub: Starting ThreadCub application...');
-  console.log('🐻 ThreadCub: Checking modular classes...');
-  console.log('🐻 ThreadCub: ThreadCubFloatingButton available:', typeof window.ThreadCubFloatingButton);
-  console.log('🐻 ThreadCub: ThreadCubTagging available:', typeof window.ThreadCubTagging);
-  console.log('🐻 ThreadCub: DownloadManager available:', typeof window.DownloadManager);
-
-  // Initialize the floating button (now from external module)
-  if (typeof window.ThreadCubFloatingButton !== 'undefined') {
-    console.log('🐻 ThreadCub: ✅ Initializing floating button from module...');
-
-    try {
-      window.threadcubButton = new window.ThreadCubFloatingButton();
-      console.log('🐻 ThreadCub: ✅ Floating button instance created:', typeof window.threadcubButton);
-
-      // CRITICAL: Enhance the modular floating button with all conversation functionality
-      if (typeof window.DownloadManager !== 'undefined' && typeof window.DownloadManager.enhanceFloatingButtonWithConversationFeatures === 'function') {
-        console.log('🐻 ThreadCub: ✅ Enhancing floating button with conversation features...');
-        window.DownloadManager.enhanceFloatingButtonWithConversationFeatures();
-        console.log('🐻 ThreadCub: ✅ Floating button enhanced successfully');
-      } else {
-        console.error('🐻 ThreadCub: ❌ DownloadManager.enhanceFloatingButtonWithConversationFeatures function not found');
-      }
-      
-      // Initialize tagging system
-      if (typeof window.ThreadCubTagging !== 'undefined') {
-        console.log('🐻 ThreadCub: ✅ Initializing tagging system...');
-        try {
-          window.threadcubTagging = new window.ThreadCubTagging(window.threadcubButton);
-          console.log('🐻 ThreadCub: ✅ Tagging system initialized:', typeof window.threadcubTagging);
-        } catch (taggingError) {
-          console.error('🐻 ThreadCub: ❌ Error initializing tagging system:', taggingError);
-        }
-      } else {
-        console.log('🐻 ThreadCub: ⚠️ ThreadCubTagging not available, will initialize on demand');
-      }
-      
-      // Check for continuation data
-      try {
-        window.ContinuationSystem.checkForContinuationData();
-        console.log('🐻 ThreadCub: ✅ Continuation data check completed');
-      } catch (continuationError) {
-        console.error('🐻 ThreadCub: ❌ Error checking continuation data:', continuationError);
-      }
-      
-      console.log('🐻 ThreadCub: ✅ Application fully initialized with all features!');
-      
-      // Final verification
-      setTimeout(() => {
-        const buttonElement = document.querySelector('#threadcub-edge-btn');
-        console.log('🐻 ThreadCub: Final verification - Button in DOM:', !!buttonElement);
-        if (buttonElement) {
-          console.log('🐻 ThreadCub: 🎉 SUCCESS! Floating button is visible on the page!');
-        } else {
-          console.error('🐻 ThreadCub: ❌ FAILED! Button not found in DOM after initialization');
-        }
-      }, 1000);
-      
-    } catch (buttonError) {
-      console.error('🐻 ThreadCub: ❌ Error creating floating button instance:', buttonError);
-    }
-    
-  } else {
-    console.error('🐻 ThreadCub: ❌ ThreadCubFloatingButton class not found - module may not have loaded');
-    
-    // Retry after a short delay
-    setTimeout(() => {
-      if (typeof window.ThreadCubFloatingButton !== 'undefined') {
-        console.log('🐻 ThreadCub: 🔄 Retrying initialization...');
-        startThreadCub();
-      } else {
-        console.error('🐻 ThreadCub: ❌ Failed to load floating button module after retry');
-      }
-    }, 1000);
-  }
-}
-
-// Start the application immediately
-console.log('🐻 ThreadCub: Starting initialization...');
-initializeThreadCub();
-
-// === END SECTION 5A ===
-
-// === SESSION ID MANAGEMENT ===
-// getOrCreateSessionId() removed - now using window.StorageService.getOrCreateSessionId()

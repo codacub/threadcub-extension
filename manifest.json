@@ -74,6 +74,7 @@
       "src/ui/ui-components.js",
       "src/ui/side-panel.js",
       "src/core/floating-button.js",
+      "src/features/tagging-system.js",
       "content.js"
     ],
     "run_at": "document_idle"

@@ -4072,8 +4072,8 @@ function handleChatGPTFlow(continuationPrompt, shareUrl, conversationData) {
         console.log('🐻 ThreadCub: ChatGPT data stored successfully');
         const chatGPTUrl = 'https://chatgpt.com/';
         window.open(chatGPTUrl, '_blank');
-        if (window.threadcubButton && window.threadcubButton.showSuccessToast) {
-          window.threadcubButton.showSuccessToast('File downloaded! Check your new ChatGPT tab.');
+        if (window.UIComponents) {
+          window.UIComponents.showSuccessToast('File downloaded! Check your new ChatGPT tab.');
         }
       })
       .catch(error => {
@@ -4143,8 +4143,8 @@ function handleChatGPTFlowFallback(continuationData) {
     
     const chatGPTUrl = 'https://chatgpt.com/';
     window.open(chatGPTUrl, '_blank');
-    if (window.threadcubButton && window.threadcubButton.showSuccessToast) {
-      window.threadcubButton.showSuccessToast('File downloaded! Check your new ChatGPT tab.');
+    if (window.UIComponents) {
+      window.UIComponents.showSuccessToast('File downloaded! Check your new ChatGPT tab.');
     }
     
   } catch (error) {
@@ -4179,8 +4179,8 @@ function handleClaudeFlow(continuationPrompt, shareUrl, conversationData) {
         console.log('🐻 ThreadCub: Claude data stored successfully');
         const claudeUrl = 'https://claude.ai/';
         window.open(claudeUrl, '_blank');
-        if (window.threadcubButton && window.threadcubButton.showSuccessToast) {
-          window.threadcubButton.showSuccessToast('Opening Claude with conversation context...');
+        if (window.UIComponents) {
+          window.UIComponents.showSuccessToast('Opening Claude with conversation context...');
         }
       })
       .catch(error => {

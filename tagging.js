@@ -878,50 +878,7 @@ setupEventListeners() {
   }
 
   showNotification(message, type = 'info') {
-    const notification = document.createElement('div');
-    notification.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      padding: 12px 16px;
-      border-radius: 8px;
-      color: white;
-      font-size: 14px;
-      font-weight: 500;
-      z-index: 10000001;
-      opacity: 0;
-      transition: opacity 0.3s ease;
-      max-width: 300px;
-      word-wrap: break-word;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    `;
-    
-    const colors = {
-      success: '#10b981',
-      error: '#ef4444',
-      warning: '#f59e0b',
-      info: '#3b82f6'
-    };
-    
-    notification.style.backgroundColor = colors[type] || colors.info;
-    notification.textContent = message;
-    
-    document.body.appendChild(notification);
-    
-    // Animate in
-    setTimeout(() => {
-      notification.style.opacity = '1';
-    }, 100);
-    
-    // Animate out and remove
-    setTimeout(() => {
-      notification.style.opacity = '0';
-      setTimeout(() => {
-        if (notification.parentNode) {
-          notification.parentNode.removeChild(notification);
-        }
-      }, 300);
-    }, 3000);
+    window.UIComponents.showNotification(message, type);
   }
 
   // Public method to enable/disable tagging

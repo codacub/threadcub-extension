@@ -63,8 +63,8 @@ const StorageService = {
 
       const claudeUrl = 'https://claude.ai/';
       window.open(claudeUrl, '_blank');
-      if (window.threadcubButton && window.threadcubButton.showSuccessToast) {
-        window.threadcubButton.showSuccessToast('Opening Claude with conversation context...');
+      if (window.UIComponents) {
+        window.UIComponents.showSuccessToast('Opening Claude with conversation context...');
       }
 
     } catch (error) {

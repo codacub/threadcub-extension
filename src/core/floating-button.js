@@ -644,53 +644,20 @@ class ThreadCubFloatingButton {
 
   // ===== TOAST NOTIFICATIONS =====
   showSuccessToast(message = '✅ Success!') {
-    this.showToast(message, 'success');
+    window.UIComponents.showSuccessToast(message);
   }
 
   showErrorToast(message = '❌ Error occurred') {
-    this.showToast(message, 'error');
+    window.UIComponents.showErrorToast(message);
   }
 
   showToast(message, type = 'success') {
-    const toast = document.createElement('div');
-    toast.className = `threadcub-toast threadcub-toast-${type}`; // Use classes for styling
-
-    toast.innerHTML = `
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        ${type === 'success'
-          ? '<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/>'
-          : '<circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6"/><path d="m9 9 6 6"/>'
-        }
-      </svg>
-      <span>${message}</span>
-    `;
-
-    document.body.appendChild(toast);
-
-    // Animate in using class
-    setTimeout(() => {
-      toast.classList.add('show');
-    }, 50);
-
-    // Animate out and remove using class
-    setTimeout(() => {
-      toast.classList.remove('show');
-      setTimeout(() => {
-        if (toast.parentNode) {
-          toast.parentNode.removeChild(toast);
-        }
-      }, 300); // Match transition duration
-    }, 3000);
+    window.UIComponents.showToast(message, type);
   }
 
   // Static method for global access
   static showGlobalSuccessToast(message = 'Operation completed successfully!') {
-    if (window.threadcubButton && typeof window.threadcubButton.showSuccessToast === 'function') {
-      window.threadcubButton.showSuccessToast(message);
-    } else {
-      // Fallback toast creation
-      console.log('🐻 ThreadCub:', message);
-    }
+    window.UIComponents.showGlobalSuccessToast(message);
   }
 
   // ===== UTILITY METHODS =====

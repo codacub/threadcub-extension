@@ -33,6 +33,10 @@ function attemptAutoStart() {
       attemptChatGPTAutoStart();
     } else if (platform === window.PlatformDetector.PLATFORMS.GEMINI || platform === 'gemini') {
       attemptGeminiAutoStart();
+    } else if (platform === window.PlatformDetector.PLATFORMS.GROK || platform === 'grok') {
+      attemptGrokAutoStart();
+    } else if (platform === window.PlatformDetector.PLATFORMS.DEEPSEEK || platform === 'deepseek') {
+      attemptDeepSeekAutoStart();
     }
   }, 1000);
 }
@@ -93,7 +97,7 @@ function attemptGeminiAutoStart() {
       'button[aria-label*="Send"]',
       'button[type="submit"]'
     ];
-    
+
     for (const selector of sendSelectors) {
       const sendButton = document.querySelector(selector);
       if (sendButton && !sendButton.disabled) {
@@ -102,9 +106,91 @@ function attemptGeminiAutoStart() {
         return;
       }
     }
-    
+
   } catch (error) {
     console.log('🐻 ThreadCub: Gemini auto-start failed:', error);
+  }
+}
+
+// ===== Grok auto-start =====
+// TODO: Update selectors after inspecting Grok's actual DOM structure
+function attemptGrokAutoStart() {
+  console.log('🐻 ThreadCub: Attempting Grok auto-start');
+  console.warn('⚠️ Grok auto-start needs manual selector configuration');
+
+  try {
+    // TODO: Inspect Grok's DOM to find:
+    // - The actual send button selector
+    // - Whether the button has specific data-testid attributes
+    // - Whether the button is disabled until input is provided
+    // - Any platform-specific quirks or timing issues
+
+    // PLACEHOLDER: Try common send button selectors
+    const sendSelectors = [
+      'button[data-testid="send-button"]',
+      'button[aria-label*="Send"]',
+      'button[aria-label*="Submit"]',
+      'button[type="submit"]',
+      'button[class*="send"]'
+    ];
+
+    for (const selector of sendSelectors) {
+      const sendButton = document.querySelector(selector);
+      if (sendButton && !sendButton.disabled) {
+        console.log('🐻 ThreadCub: Found potential Grok send button, clicking...');
+        sendButton.click();
+        return true;
+      }
+    }
+
+    console.warn('⚠️ ThreadCub: Could not find Grok send button - manual configuration needed');
+    return false;
+
+  } catch (error) {
+    console.log('🐻 ThreadCub: Grok auto-start failed:', error);
+    return false;
+  }
+}
+
+// ===== DeepSeek auto-start =====
+// TODO: Update selectors after inspecting DeepSeek's actual DOM structure
+function attemptDeepSeekAutoStart() {
+  console.log('🐻 ThreadCub: Attempting DeepSeek auto-start');
+  console.warn('⚠️ DeepSeek auto-start needs manual selector configuration');
+
+  try {
+    // TODO: Inspect DeepSeek's DOM to find:
+    // - The actual send button selector
+    // - Whether the button has specific data-testid or data-role attributes
+    // - Whether the button is disabled until input is provided
+    // - Any platform-specific quirks or timing issues
+    // - Whether there are any modals or popups that need handling
+
+    // PLACEHOLDER: Try common send button selectors
+    const sendSelectors = [
+      'button[data-testid="send-button"]',
+      'button[aria-label*="Send"]',
+      'button[aria-label*="Submit"]',
+      'button[type="submit"]',
+      'button[class*="send"]',
+      'button[class*="submit"]'
+    ];
+
+    for (const selector of sendSelectors) {
+      const sendButton = document.querySelector(selector);
+      if (sendButton && !sendButton.disabled) {
+        console.log('🐻 ThreadCub: Found potential DeepSeek send button, clicking...');
+        sendButton.click();
+        return true;
+      }
+    }
+
+    console.warn('⚠️ ThreadCub: Could not find DeepSeek send button - manual configuration needed');
+    return false;
+
+  } catch (error) {
+    console.log('🐻 ThreadCub: DeepSeek auto-start failed:', error);
+    return false;
   }
 }
 
@@ -179,6 +265,8 @@ window.PlatformAutostart = {
   attemptClaudeAutoStart,
   attemptChatGPTAutoStart,
   attemptGeminiAutoStart,
+  attemptGrokAutoStart,
+  attemptDeepSeekAutoStart,
   fillInputFieldWithPrompt,
   showContinuationSuccess,
   showDownloadSuccessMessage

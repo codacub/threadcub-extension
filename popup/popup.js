@@ -178,15 +178,16 @@ function setupPromptsPageEventListeners() {
 async function loadPromptsFromAPI() {
     const container = document.getElementById('promptsContainer');
     if (!container) return;
-    
+
     try {
         // Show loading state
         container.innerHTML = '<div class="loading-message">Loading your prompts...</div>';
-        
+
         // Fetch all prompts from API
+        // Note: ApiService is not available in popup context, keeping original fetch
         const response = await fetch('https://threadcub.com/api/prompts');
         const prompts = await response.json();
-        
+
         console.log('📋 Loaded prompts:', prompts);
         
         if (prompts.length === 0) {

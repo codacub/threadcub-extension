@@ -798,52 +798,22 @@ setupEventListeners() {
   }
 
   async createConversationWithTags() {
-    // Extract conversation data using the floating button's method
-    const conversationData = this.floatingButton.extractConversation();
-    
+    // Extract conversation data using ConversationExtractor
+    const conversationData = await window.ConversationExtractor.extractConversation();
+
     if (!conversationData || conversationData.messages.length === 0) {
       throw new Error('No conversation data available');
     }
-    
+
     // Add tags to conversation data
     conversationData.tags = this.tags;
-    
-    const response = await fetch('https://threadcub.com/api/conversations/tags/create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        conversationData: conversationData,
-        tags: this.tags,
-        source: conversationData.platform?.toLowerCase() || 'unknown',
-        title: conversationData.title
-      })
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to create conversation with tags');
-    }
-    
-    const data = await response.json();
+
+    const data = await window.ApiService.createConversationWithTags(conversationData, this.tags);
     this.currentConversationId = data.conversationId;
-    
-    console.log('🏷️ ThreadCub: Conversation created with tags:', data);
   }
 
   async addTagsToExistingConversation() {
-    const response = await fetch(`https://threadcub.com/api/conversations/${this.currentConversationId}/tags`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        tags: this.tags
-      })
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to add tags to conversation');
-    }
-    
-    const data = await response.json();
-    console.log('🏷️ ThreadCub: Tags added to conversation:', data);
+    const data = await window.ApiService.addTagsToExistingConversation(this.currentConversationId, this.tags);
   }
 
   saveSessionTags() {
@@ -908,50 +878,7 @@ setupEventListeners() {
   }
 
   showNotification(message, type = 'info') {
-    const notification = document.createElement('div');
-    notification.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      padding: 12px 16px;
-      border-radius: 8px;
-      color: white;
-      font-size: 14px;
-      font-weight: 500;
-      z-index: 10000001;
-      opacity: 0;
-      transition: opacity 0.3s ease;
-      max-width: 300px;
-      word-wrap: break-word;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    `;
-    
-    const colors = {
-      success: '#10b981',
-      error: '#ef4444',
-      warning: '#f59e0b',
-      info: '#3b82f6'
-    };
-    
-    notification.style.backgroundColor = colors[type] || colors.info;
-    notification.textContent = message;
-    
-    document.body.appendChild(notification);
-    
-    // Animate in
-    setTimeout(() => {
-      notification.style.opacity = '1';
-    }, 100);
-    
-    // Animate out and remove
-    setTimeout(() => {
-      notification.style.opacity = '0';
-      setTimeout(() => {
-        if (notification.parentNode) {
-          notification.parentNode.removeChild(notification);
-        }
-      }, 300);
-    }, 3000);
+    window.UIComponents.showNotification(message, type);
   }
 
   // Public method to enable/disable tagging

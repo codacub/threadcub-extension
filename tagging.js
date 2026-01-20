@@ -798,8 +798,8 @@ setupEventListeners() {
   }
 
   async createConversationWithTags() {
-    // Extract conversation data using the floating button's method
-    const conversationData = this.floatingButton.extractConversation();
+    // Extract conversation data using ConversationExtractor
+    const conversationData = await window.ConversationExtractor.extractConversation();
 
     if (!conversationData || conversationData.messages.length === 0) {
       throw new Error('No conversation data available');

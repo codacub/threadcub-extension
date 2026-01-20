@@ -69,6 +69,7 @@
       "src/utils/platform-detector.js",
       "src/services/storage-service.js",
       "src/services/api-service.js",
+      "src/core/conversation-extractor.js",
       "src/ui/side-panel.js",
       "src/core/floating-button.js",
       "content.js"

@@ -15,6 +15,8 @@ const PlatformDetector = {
     CHATGPT: 'chatgpt',
     GEMINI: 'gemini',
     COPILOT: 'copilot',
+    GROK: 'grok',
+    DEEPSEEK: 'deepseek',
     UNKNOWN: 'unknown'
   },
 
@@ -24,6 +26,8 @@ const PlatformDetector = {
     chatgpt: 'ChatGPT',
     gemini: 'Gemini',
     copilot: 'Copilot',
+    grok: 'Grok',
+    deepseek: 'DeepSeek',
     unknown: 'Unknown'
   },
 
@@ -50,6 +54,20 @@ const PlatformDetector = {
       'textarea[placeholder*="Ask me anything"]',
       'textarea',
       'div[contenteditable="true"]'
+    ],
+    // TODO: Update these selectors after inspecting Grok's actual DOM structure
+    grok: [
+      'textarea',
+      'div[contenteditable="true"]',
+      'textarea[placeholder*="Ask"]',
+      'textarea[placeholder*="Message"]'
+    ],
+    // TODO: Update these selectors after inspecting DeepSeek's actual DOM structure
+    deepseek: [
+      'textarea',
+      'div[contenteditable="true"]',
+      'textarea[placeholder*="Ask"]',
+      'textarea[placeholder*="Message"]'
     ],
     unknown: [
       'textarea[placeholder*="message"]',
@@ -99,6 +117,14 @@ const PlatformDetector = {
 
     if (hostname.includes('copilot.microsoft.com')) {
       return this.PLATFORMS.COPILOT;
+    }
+
+    if (hostname.includes('grok.x.ai') || (hostname.includes('x.com') && window.location.pathname.includes('/i/grok'))) {
+      return this.PLATFORMS.GROK;
+    }
+
+    if (hostname.includes('chat.deepseek.com')) {
+      return this.PLATFORMS.DEEPSEEK;
     }
 
     return this.PLATFORMS.UNKNOWN;
@@ -170,7 +196,9 @@ const PlatformDetector = {
       this.PLATFORMS.CLAUDE,
       this.PLATFORMS.CHATGPT,
       this.PLATFORMS.GEMINI,
-      this.PLATFORMS.COPILOT
+      this.PLATFORMS.COPILOT,
+      this.PLATFORMS.GROK,
+      this.PLATFORMS.DEEPSEEK
     ];
   }
 };

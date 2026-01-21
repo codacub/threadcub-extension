@@ -22,7 +22,7 @@ const ConversationExtractor = {
       conversationData = this.extractChatGPTConversation();
     } else if (hostname.includes('gemini.google.com')) {
       conversationData = this.extractGeminiConversation();
-    } else if (hostname.includes('grok.x.ai') || (hostname.includes('x.com') && window.location.pathname.includes('/i/grok'))) {
+    } else if (hostname.includes('grok.x.ai') || hostname.includes('grok.com') || (hostname.includes('x.com') && window.location.pathname.includes('/i/grok'))) {
       conversationData = this.extractGrokConversation();
     } else if (hostname.includes('chat.deepseek.com')) {
       conversationData = this.extractDeepSeekConversation();

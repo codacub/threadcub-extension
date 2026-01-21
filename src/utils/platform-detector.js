@@ -119,7 +119,7 @@ const PlatformDetector = {
       return this.PLATFORMS.COPILOT;
     }
 
-    if (hostname.includes('grok.x.ai') || (hostname.includes('x.com') && window.location.pathname.includes('/i/grok'))) {
+    if (hostname.includes('grok.x.ai') || hostname.includes('grok.com') || (hostname.includes('x.com') && window.location.pathname.includes('/i/grok'))) {
       return this.PLATFORMS.GROK;
     }
 

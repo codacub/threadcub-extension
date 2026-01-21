@@ -44,6 +44,7 @@
     "https://gemini.google.com/*",
     "https://copilot.microsoft.com/*",
     "https://grok.x.ai/*",
+    "https://grok.com/*",
     "https://x.com/*",
     "https://chat.deepseek.com/*",
     "https://threadcub.com/*",
@@ -63,6 +64,7 @@
       "https://gemini.google.com/*",
       "https://copilot.microsoft.com/*",
       "https://grok.x.ai/*",
+      "https://grok.com/*",
       "https://x.com/*",
       "https://chat.deepseek.com/*"
     ],

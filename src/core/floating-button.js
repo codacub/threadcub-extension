@@ -773,10 +773,10 @@ class ThreadCubFloatingButton {
         this.handleGeminiFlow(minimalPrompt, shareUrl, conversationData);
       } else if (targetPlatform === 'grok') {
         console.log('🤖 ThreadCub: Routing to Grok flow (with file download)');
-        this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
+        this.handleGrokFlow(minimalPrompt, shareUrl, conversationData);
       } else if (targetPlatform === 'deepseek') {
         console.log('🔵 ThreadCub: Routing to DeepSeek flow (with file download)');
-        this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
+        this.handleDeepSeekFlow(minimalPrompt, shareUrl, conversationData);
       } else {
         console.log('🤖 ThreadCub: Unknown platform, defaulting to ChatGPT flow');
         this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
@@ -1086,6 +1086,222 @@ Once you've reviewed it, let me know you're ready to continue from where we left
   }
 }
 
+  // =============================================================================
+  // GROK FLOW (similar to ChatGPT - with file download)
+  // =============================================================================
+
+  handleGrokFlow(continuationPrompt, shareUrl, conversationData) {
+    console.log('🤖 ThreadCub: Starting ENHANCED Grok flow with auto-download...');
+
+    // STEP 1: Auto-download the conversation file in background
+    this.autoDownloadGrokFile(conversationData, shareUrl);
+
+    // STEP 2: Create continuation data for cross-tab modal
+    const continuationData = {
+      prompt: this.generateGrokContinuationPrompt(),
+      shareUrl: shareUrl,
+      platform: 'Grok',
+      timestamp: Date.now(),
+      messages: conversationData.messages || [],
+      totalMessages: conversationData.total_messages || conversationData.messages?.length || 0,
+      title: conversationData.title || 'Previous Conversation',
+      conversationData: conversationData,
+      grokFlow: true,
+      downloadCompleted: true
+    };
+
+    console.log('🤖 ThreadCub: Grok continuation data prepared');
+
+    // STEP 3: Use storage for modal
+    const canUseChrome = window.StorageService.canUseChromStorage();
+
+    if (canUseChrome) {
+      console.log('🤖 ThreadCub: Using Chrome storage for Grok modal...');
+      window.StorageService.storeWithChrome(continuationData)
+        .then(() => {
+          console.log('🐻 ThreadCub: Grok data stored successfully');
+          const grokUrl = 'https://grok.com/';
+          window.open(grokUrl, '_blank');
+          this.showSuccessToast('File downloaded! Check your new Grok tab.');
+        })
+        .catch(error => {
+          console.log('🤖 ThreadCub: Chrome storage failed, using fallback:', error);
+          this.handleGrokFlowFallback(continuationData);
+        });
+    } else {
+      console.log('🤖 ThreadCub: Using Grok fallback method directly');
+      this.handleGrokFlowFallback(continuationData);
+    }
+  }
+
+  autoDownloadGrokFile(conversationData, shareUrl) {
+    try {
+      console.log('🤖 ThreadCub: Auto-downloading conversation file for Grok...');
+
+      const conversationJSON = {
+        title: conversationData.title || 'ThreadCub Conversation Continuation',
+        url: conversationData.url || window.location.href,
+        platform: conversationData.platform,
+        exportDate: new Date().toISOString(),
+        totalMessages: conversationData.messages.length,
+        shareUrl: shareUrl,
+        messages: conversationData.messages,
+        summary: window.ConversationExtractor.generateQuickSummary(conversationData.messages)
+      };
+
+      const filename = `threadcub-grok-continuation-${new Date().toISOString().split('T')[0]}.json`;
+
+      const blob = new Blob([JSON.stringify(conversationJSON, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      console.log('🤖 ThreadCub: ✅ Grok file auto-downloaded:', filename);
+
+    } catch (error) {
+      console.error('🤖 ThreadCub: Error auto-downloading Grok file:', error);
+    }
+  }
+
+  generateGrokContinuationPrompt() {
+    return `I'd like to continue our previous conversation. I have our complete conversation history as a file that I'll share now.
+
+Please read through the attached conversation file and provide your assessment of:
+- What we were working on
+- The current status/progress
+- Any next steps or tasks mentioned
+
+Once you've reviewed it, let me know you're ready to continue from where we left off.`;
+  }
+
+  handleGrokFlowFallback(continuationData) {
+    console.log('🤖 ThreadCub: Using localStorage fallback for Grok...');
+
+    try {
+      localStorage.setItem('threadcub_continuation', JSON.stringify(continuationData));
+      const grokUrl = 'https://grok.com/';
+      window.open(grokUrl, '_blank');
+      this.showSuccessToast('File downloaded! Check your new Grok tab.');
+    } catch (error) {
+      console.error('🤖 ThreadCub: localStorage fallback failed:', error);
+      this.showErrorToast('Failed to prepare continuation data');
+    }
+  }
+
+  // =============================================================================
+  // DEEPSEEK FLOW (similar to ChatGPT - with file download)
+  // =============================================================================
+
+  handleDeepSeekFlow(continuationPrompt, shareUrl, conversationData) {
+    console.log('🔵 ThreadCub: Starting ENHANCED DeepSeek flow with auto-download...');
+
+    // STEP 1: Auto-download the conversation file in background
+    this.autoDownloadDeepSeekFile(conversationData, shareUrl);
+
+    // STEP 2: Create continuation data for cross-tab modal
+    const continuationData = {
+      prompt: this.generateDeepSeekContinuationPrompt(),
+      shareUrl: shareUrl,
+      platform: 'DeepSeek',
+      timestamp: Date.now(),
+      messages: conversationData.messages || [],
+      totalMessages: conversationData.total_messages || conversationData.messages?.length || 0,
+      title: conversationData.title || 'Previous Conversation',
+      conversationData: conversationData,
+      deepseekFlow: true,
+      downloadCompleted: true
+    };
+
+    console.log('🔵 ThreadCub: DeepSeek continuation data prepared');
+
+    // STEP 3: Use storage for modal
+    const canUseChrome = window.StorageService.canUseChromStorage();
+
+    if (canUseChrome) {
+      console.log('🔵 ThreadCub: Using Chrome storage for DeepSeek modal...');
+      window.StorageService.storeWithChrome(continuationData)
+        .then(() => {
+          console.log('🐻 ThreadCub: DeepSeek data stored successfully');
+          const deepseekUrl = 'https://chat.deepseek.com/';
+          window.open(deepseekUrl, '_blank');
+          this.showSuccessToast('File downloaded! Check your new DeepSeek tab.');
+        })
+        .catch(error => {
+          console.log('🔵 ThreadCub: Chrome storage failed, using fallback:', error);
+          this.handleDeepSeekFlowFallback(continuationData);
+        });
+    } else {
+      console.log('🔵 ThreadCub: Using DeepSeek fallback method directly');
+      this.handleDeepSeekFlowFallback(continuationData);
+    }
+  }
+
+  autoDownloadDeepSeekFile(conversationData, shareUrl) {
+    try {
+      console.log('🔵 ThreadCub: Auto-downloading conversation file for DeepSeek...');
+
+      const conversationJSON = {
+        title: conversationData.title || 'ThreadCub Conversation Continuation',
+        url: conversationData.url || window.location.href,
+        platform: conversationData.platform,
+        exportDate: new Date().toISOString(),
+        totalMessages: conversationData.messages.length,
+        shareUrl: shareUrl,
+        messages: conversationData.messages,
+        summary: window.ConversationExtractor.generateQuickSummary(conversationData.messages)
+      };
+
+      const filename = `threadcub-deepseek-continuation-${new Date().toISOString().split('T')[0]}.json`;
+
+      const blob = new Blob([JSON.stringify(conversationJSON, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      console.log('🔵 ThreadCub: ✅ DeepSeek file auto-downloaded:', filename);
+
+    } catch (error) {
+      console.error('🔵 ThreadCub: Error auto-downloading DeepSeek file:', error);
+    }
+  }
+
+  generateDeepSeekContinuationPrompt() {
+    return `I'd like to continue our previous conversation. I have our complete conversation history as a file that I'll share now.
+
+Please read through the attached conversation file and provide your assessment of:
+- What we were working on
+- The current status/progress
+- Any next steps or tasks mentioned
+
+Once you've reviewed it, let me know you're ready to continue from where we left off.`;
+  }
+
+  handleDeepSeekFlowFallback(continuationData) {
+    console.log('🔵 ThreadCub: Using localStorage fallback for DeepSeek...');
+
+    try {
+      localStorage.setItem('threadcub_continuation', JSON.stringify(continuationData));
+      const deepseekUrl = 'https://chat.deepseek.com/';
+      window.open(deepseekUrl, '_blank');
+      this.showSuccessToast('File downloaded! Check your new DeepSeek tab.');
+    } catch (error) {
+      console.error('🔵 ThreadCub: localStorage fallback failed:', error);
+      this.showErrorToast('Failed to prepare continuation data');
+    }
+  }
+
   handleDirectContinuation(conversationData) {
     console.log('🐻 ThreadCub: Handling direct continuation without API save...');
 
@@ -1115,10 +1331,10 @@ Once you've reviewed it, let me know you're ready to continue from where we left
       this.handleGeminiFlow(minimalPrompt, fallbackShareUrl, conversationData);
     } else if (targetPlatform === 'grok') {
       console.log('🤖 ThreadCub: Routing to Grok flow (with file download)');
-      this.handleChatGPTFlow(minimalPrompt, fallbackShareUrl, conversationData);
+      this.handleGrokFlow(minimalPrompt, fallbackShareUrl, conversationData);
     } else if (targetPlatform === 'deepseek') {
       console.log('🔵 ThreadCub: Routing to DeepSeek flow (with file download)');
-      this.handleChatGPTFlow(minimalPrompt, fallbackShareUrl, conversationData);
+      this.handleDeepSeekFlow(minimalPrompt, fallbackShareUrl, conversationData);
     } else {
       console.log('🤖 ThreadCub: Unknown platform, defaulting to ChatGPT flow');
       this.handleChatGPTFlow(minimalPrompt, fallbackShareUrl, conversationData);

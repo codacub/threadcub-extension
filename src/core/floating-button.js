@@ -771,6 +771,12 @@ class ThreadCubFloatingButton {
       } else if (targetPlatform === 'gemini') {
         console.log('🤖 ThreadCub: Routing to Gemini flow (with file download)');
         this.handleGeminiFlow(minimalPrompt, shareUrl, conversationData);
+      } else if (targetPlatform === 'grok') {
+        console.log('🤖 ThreadCub: Routing to Grok flow (with file download)');
+        this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
+      } else if (targetPlatform === 'deepseek') {
+        console.log('🔵 ThreadCub: Routing to DeepSeek flow (with file download)');
+        this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
       } else {
         console.log('🤖 ThreadCub: Unknown platform, defaulting to ChatGPT flow');
         this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
@@ -1107,6 +1113,12 @@ Once you've reviewed it, let me know you're ready to continue from where we left
     } else if (targetPlatform === 'gemini') {
       console.log('🤖 ThreadCub: Routing to Gemini flow (with file download)');
       this.handleGeminiFlow(minimalPrompt, fallbackShareUrl, conversationData);
+    } else if (targetPlatform === 'grok') {
+      console.log('🤖 ThreadCub: Routing to Grok flow (with file download)');
+      this.handleChatGPTFlow(minimalPrompt, fallbackShareUrl, conversationData);
+    } else if (targetPlatform === 'deepseek') {
+      console.log('🔵 ThreadCub: Routing to DeepSeek flow (with file download)');
+      this.handleChatGPTFlow(minimalPrompt, fallbackShareUrl, conversationData);
     } else {
       console.log('🤖 ThreadCub: Unknown platform, defaulting to ChatGPT flow');
       this.handleChatGPTFlow(minimalPrompt, fallbackShareUrl, conversationData);

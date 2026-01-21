@@ -125,6 +125,12 @@ function enhanceFloatingButtonWithConversationFeatures() {
           } else if (targetPlatform === 'gemini') {
             console.log('🤖 ThreadCub: Routing to Gemini flow (with file download)');
             this.handleGeminiFlow(minimalPrompt, shareUrl, conversationData);
+          } else if (targetPlatform === 'grok') {
+            console.log('🤖 ThreadCub: Routing to Grok flow (with file download)');
+            this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
+          } else if (targetPlatform === 'deepseek') {
+            console.log('🤖 ThreadCub: Routing to DeepSeek flow (with file download)');
+            this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
           } else {
             console.log('🤖 ThreadCub: Unknown platform, defaulting to ChatGPT flow');
             this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);

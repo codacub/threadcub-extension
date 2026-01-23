@@ -86,7 +86,7 @@ function setupFeedbackForm() {
         try {
             // Send to Discord webhook
             // Get your webhook from: Server Settings > Integrations > Webhooks > New Webhook
-            const DISCORD_WEBHOOK = 'https://discord.com/api/webhooks/1464203281101357118/En7IEV7u8sAQ10Oh8RN5iOMw22OITwtER09qasachlHN6zpqRlTpJk-Fst8VQEOOMu6S';
+            const DISCORD_WEBHOOK = 'https://discord.com/api/webhooks/1464360984431824937/Eq6oVXOY8bYhydSrlXMXl3wR-t8uMnneQQudf4_orXns6vANV0KJxsxEsnJJE2EupH3n';
             
             if (DISCORD_WEBHOOK === 'YOUR_DISCORD_WEBHOOK_URL_HERE') {
                 // No webhook configured yet - just log and show success

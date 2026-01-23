@@ -1091,14 +1091,11 @@ Once you've reviewed it, let me know you're ready to continue from where we left
   // =============================================================================
 
   handleGrokFlow(continuationPrompt, shareUrl, conversationData) {
-    console.log('🤖 ThreadCub: Starting ENHANCED Grok flow with auto-download...');
+    console.log('🤖 ThreadCub: Starting Grok flow (URL-based, no downloads - like Claude)...');
 
-    // STEP 1: Auto-download the conversation file in background
-    this.autoDownloadGrokFile(conversationData, shareUrl);
-
-    // STEP 2: Create continuation data for cross-tab modal
+    // Create continuation data with URL-based prompt (NO FILE DOWNLOAD!)
     const continuationData = {
-      prompt: this.generateGrokContinuationPrompt(),
+      prompt: continuationPrompt,  // URL-based prompt from conversation-extractor
       shareUrl: shareUrl,
       platform: 'Grok',
       timestamp: Date.now(),
@@ -1107,22 +1104,22 @@ Once you've reviewed it, let me know you're ready to continue from where we left
       title: conversationData.title || 'Previous Conversation',
       conversationData: conversationData,
       grokFlow: true,
-      downloadCompleted: true
+      downloadCompleted: false  // No file download needed!
     };
 
-    console.log('🤖 ThreadCub: Grok continuation data prepared');
+    console.log('🤖 ThreadCub: Grok continuation data prepared (URL-based, no file)');
 
-    // STEP 3: Use storage for modal
+    // Use storage to pass data to new tab
     const canUseChrome = window.StorageService.canUseChromStorage();
 
     if (canUseChrome) {
-      console.log('🤖 ThreadCub: Using Chrome storage for Grok modal...');
+      console.log('🤖 ThreadCub: Using Chrome storage for Grok...');
       window.StorageService.storeWithChrome(continuationData)
         .then(() => {
           console.log('🐻 ThreadCub: Grok data stored successfully');
           const grokUrl = 'https://grok.com/';
           window.open(grokUrl, '_blank');
-          this.showSuccessToast('File downloaded! Check your new Grok tab.');
+          this.showSuccessToast('Opening Grok with conversation context...');
         })
         .catch(error => {
           console.log('🤖 ThreadCub: Chrome storage failed, using fallback:', error);
@@ -1199,14 +1196,14 @@ Once you've reviewed it, let me know you're ready to continue from where we left
   // =============================================================================
 
   handleDeepSeekFlow(continuationPrompt, shareUrl, conversationData) {
-    console.log('🔵 ThreadCub: Starting ENHANCED DeepSeek flow with auto-download...');
-
-    // STEP 1: Auto-download the conversation file in background
+    console.log('🔵 ThreadCub: Starting DeepSeek flow with auto-download...');
+    
+    // STEP 1: Auto-download the conversation file (same as ChatGPT/Gemini)
     this.autoDownloadDeepSeekFile(conversationData, shareUrl);
-
+    
     // STEP 2: Create continuation data for cross-tab modal
     const continuationData = {
-      prompt: this.generateDeepSeekContinuationPrompt(),
+      prompt: continuationPrompt,  // File-based prompt from conversation-extractor
       shareUrl: shareUrl,
       platform: 'DeepSeek',
       timestamp: Date.now(),
@@ -1215,11 +1212,11 @@ Once you've reviewed it, let me know you're ready to continue from where we left
       title: conversationData.title || 'Previous Conversation',
       conversationData: conversationData,
       deepseekFlow: true,
-      downloadCompleted: true
+      downloadCompleted: true  // File was downloaded!
     };
-
+    
     console.log('🔵 ThreadCub: DeepSeek continuation data prepared');
-
+    
     // STEP 3: Use storage for modal
     const canUseChrome = window.StorageService.canUseChromStorage();
 
@@ -1230,7 +1227,7 @@ Once you've reviewed it, let me know you're ready to continue from where we left
           console.log('🐻 ThreadCub: DeepSeek data stored successfully');
           const deepseekUrl = 'https://chat.deepseek.com/';
           window.open(deepseekUrl, '_blank');
-          this.showSuccessToast('File downloaded! Check your new DeepSeek tab.');
+          this.showSuccessToast('File downloaded! Upload it in your new DeepSeek tab.');
         })
         .catch(error => {
           console.log('🔵 ThreadCub: Chrome storage failed, using fallback:', error);

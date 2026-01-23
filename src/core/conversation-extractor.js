@@ -219,18 +219,16 @@ const ConversationExtractor = {
     }
 
     // Method 6: Fallback to alternating pattern
-    const alternatingRole = index % 2 === 0 ? 'user' : 'assistant';
-    console.log(`🔍 Alternating fallback: ${alternatingRole}`);
-
-    return alternatingRole;
+    const role = index % 2 === 0 ? 'user' : 'assistant';
+    console.log(`🔍 Fallback alternating: ${role}`);
+    return role;
   },
 
-  simpleCleanContent(content) {
-    return content
+  simpleCleanContent(text) {
+    return text
+      .replace(/^\s+|\s+$/g, '')
       .replace(/\n{3,}/g, '\n\n')
-      .replace(/^\s*Copy\s*$/gm, '')
-      .replace(/^\s*Edit\s*$/gm, '')
-      .replace(/^\s*Retry\s*$/gm, '')
+      .replace(/^(Copy|Copy code|Share|Regenerate)$/gm, '')
       .trim();
   },
 
@@ -247,30 +245,35 @@ const ConversationExtractor = {
   },
 
   workingContainerExtraction() {
-    console.log('🐻 ThreadCub: Using fallback working extraction method...');
+    console.log('🐻 ThreadCub: Using working container extraction as fallback...');
 
     const messages = [];
     let messageIndex = 0;
 
-    const containers = document.querySelectorAll('[data-testid*="message"]:not([data-testid*="button"])');
-    console.log(`🐻 ThreadCub: Found ${containers.length} containers`);
+    try {
+      const containers = document.querySelectorAll('[data-testid^="conversation-turn"]');
+      console.log(`🐻 ThreadCub: Found ${containers.length} conversation turns`);
 
-    containers.forEach((container, index) => {
-      const text = container.innerText?.trim() || container.textContent?.trim() || '';
+      containers.forEach((container, index) => {
+        const text = container.innerText?.trim();
+        if (text && text.length > 50) {
+          const role = index % 2 === 0 ? 'user' : 'assistant';
+          messages.push({
+            id: messageIndex++,
+            role: role,
+            content: this.simpleCleanContent(text),
+            timestamp: new Date().toISOString(),
+            extractionMethod: 'working_container',
+            selector_used: '[data-testid^="conversation-turn"]'
+          });
+        }
+      });
 
-      if (text && text.length > 50 && text.length < 15000) {
-        const role = this.enhancedRoleDetection(text, index);
+    } catch (error) {
+      console.error('🐻 ThreadCub: Container extraction error:', error);
+    }
 
-        messages.push({
-          id: messageIndex++,
-          role: role,
-          content: this.simpleCleanContent(text),
-          timestamp: new Date().toISOString(),
-          extractionMethod: 'working_container'
-        });
-      }
-    });
-
+    console.log(`🐻 ThreadCub: Container extraction found: ${messages.length} messages`);
     return messages;
   },
 
@@ -279,194 +282,43 @@ const ConversationExtractor = {
   // =============================================================================
 
   extractChatGPTConversation() {
-    console.log('🤖 ThreadCub: Extracting ChatGPT conversation with TARGETED fix...');
+    console.log('🤖 ThreadCub: Extracting ChatGPT conversation...');
 
     const messages = [];
     let messageIndex = 0;
 
-    // Get page title for conversation title
-    const title = document.title.replace(' | ChatGPT', '') || 'ChatGPT Conversation';
+    const messageElements = document.querySelectorAll('[data-testid^="conversation-turn"]');
+    console.log(`🤖 ThreadCub: Found ${messageElements.length} ChatGPT message elements`);
 
-    // TARGETED FIX: Use the selector that actually works
-    console.log('🤖 ThreadCub: Using PRIMARY ChatGPT selector: [data-message-author-role]');
-
-    const messageElements = document.querySelectorAll('[data-message-author-role]');
-    console.log(`🤖 ThreadCub: Found ${messageElements.length} ChatGPT messages with role attributes`);
-
-    if (messageElements.length === 0) {
-      console.log('🤖 ThreadCub: No role-attributed messages found, using fallback');
-      return this.extractChatGPTFallback(title);
-    }
-
-    // Process each message element
-    messageElements.forEach((element, index) => {
+    messageElements.forEach((messageElement, index) => {
       try {
-        // Get role directly from data attribute (most reliable)
-        const authorRole = element.getAttribute('data-message-author-role');
-        const role = authorRole === 'user' ? 'user' : 'assistant';
+        const text = messageElement.innerText?.trim();
+        if (text && text.length > 10) {
+          const role = index % 2 === 0 ? 'user' : 'assistant';
 
-        // Extract content using multiple strategies
-        let messageContent = this.extractChatGPTMessageContent(element);
-
-        // Skip if no valid content or if it's too short
-        if (!messageContent || messageContent.length < 5) {
-          console.log(`🤖 ThreadCub: Skipping message ${index} - no valid content`);
-          return;
+          messages.push({
+            id: messageIndex++,
+            role: role,
+            content: text,
+            timestamp: new Date().toISOString()
+          });
         }
-
-        // Skip obvious duplicates
-        const isDuplicate = messages.some(msg =>
-          msg.content === messageContent && msg.role === role
-        );
-
-        if (isDuplicate) {
-          console.log(`🤖 ThreadCub: Skipping duplicate message: "${messageContent.slice(0, 50)}..."`);
-          return;
-        }
-
-        // Add valid message
-        messages.push({
-          id: messageIndex++,
-          role: role,
-          content: messageContent.trim(),
-          timestamp: new Date().toISOString(),
-          extractionMethod: 'chatgpt_targeted_fix',
-          messageId: element.getAttribute('data-message-id') || `msg-${index}`
-        });
-
-        console.log(`🤖 ThreadCub: ✅ Added ${role} message: "${messageContent.slice(0, 50)}..."`);
-
       } catch (error) {
-        console.log(`🤖 ThreadCub: Error processing message ${index}:`, error);
+        console.log(`🤖 ThreadCub: Error extracting message ${index}:`, error);
       }
     });
 
     const conversationData = {
-      title: title,
+      title: document.title.replace(' - ChatGPT', '') || 'ChatGPT Conversation',
       url: window.location.href,
       timestamp: new Date().toISOString(),
       platform: 'ChatGPT',
       total_messages: messages.length,
-      messages: messages,
-      extraction_method: 'chatgpt_targeted_fix'
+      messages: messages
     };
 
     console.log(`🤖 ThreadCub: ✅ ChatGPT extraction complete: ${messages.length} messages`);
-
-    // Log summary
-    const userCount = messages.filter(m => m.role === 'user').length;
-    const assistantCount = messages.filter(m => m.role === 'assistant').length;
-    console.log(`🤖 ThreadCub: Messages breakdown - User: ${userCount}, Assistant: ${assistantCount}`);
-
-    if (messages.length > 0) {
-      console.log('🤖 ThreadCub: First message sample:', messages[0]);
-    }
-
     return conversationData;
-  },
-
-  extractChatGPTMessageContent(element) {
-    // Strategy 1: Look for whitespace-pre-wrap (most common ChatGPT content container)
-    const preWrap = element.querySelector('.whitespace-pre-wrap');
-    if (preWrap) {
-      const content = preWrap.textContent?.trim();
-      if (content && content.length > 5) {
-        return this.cleanChatGPTContent(content);
-      }
-    }
-
-    // Strategy 2: Look for specific content containers
-    const contentSelectors = [
-      'div[class*="text-message"]',
-      'div[class*="markdown"]',
-      'div[class*="prose"]',
-      'div[class*="break-words"]',
-      'p'
-    ];
-
-    for (const selector of contentSelectors) {
-      const contentEl = element.querySelector(selector);
-      if (contentEl) {
-        const content = contentEl.textContent?.trim();
-        if (content && content.length > 5) {
-          return this.cleanChatGPTContent(content);
-        }
-      }
-    }
-
-    // Strategy 3: Direct text from element (but filter out UI noise)
-    const directText = element.textContent?.trim() || '';
-
-    // Filter out obvious UI elements
-    if (directText.includes('Copy') ||
-        directText.includes('Regenerate') ||
-        directText.includes('Share') ||
-        directText.length < 5) {
-      return '';
-    }
-
-    return this.cleanChatGPTContent(directText);
-  },
-
-  cleanChatGPTContent(content) {
-    if (!content) return '';
-
-    return content
-      // Remove UI buttons
-      .replace(/^Copy$/gm, '')
-      .replace(/^Regenerate$/gm, '')
-      .replace(/^Share$/gm, '')
-      .replace(/^Edit$/gm, '')
-      .replace(/^Retry$/gm, '')
-
-      // Remove code language labels that appear before code blocks
-      .replace(/^(javascript|python|html|css|java|typescript|json|xml|sql)\s*$/gmi, '')
-
-      // Clean up extra whitespace
-      .replace(/\n{3,}/g, '\n\n')
-      .replace(/^\s+|\s+$/g, '')
-      .trim();
-  },
-
-  extractChatGPTFallback(title) {
-    console.log('🤖 ThreadCub: Using ChatGPT fallback extraction...');
-
-    const messages = [];
-    let messageIndex = 0;
-
-    // Look for conversation turn containers
-    const turnContainers = document.querySelectorAll('div[class*="group/conversation-turn"]');
-    console.log(`🤖 ThreadCub: Found ${turnContainers.length} conversation turns`);
-
-    if (turnContainers.length > 0) {
-      turnContainers.forEach((container, index) => {
-        const text = container.textContent?.trim();
-        if (text && text.length > 20 && text.length < 10000) {
-          // Try to determine role from content patterns
-          const isUser = text.length < 500 ||
-                        text.includes('?') ||
-                        /^(can you|could you|please|help|what|how|why)/i.test(text);
-
-          messages.push({
-            id: messageIndex++,
-            role: isUser ? 'user' : 'assistant',
-            content: this.cleanChatGPTContent(text),
-            timestamp: new Date().toISOString(),
-            extractionMethod: 'chatgpt_fallback'
-          });
-        }
-      });
-    }
-
-    return {
-      title: title,
-      url: window.location.href,
-      timestamp: new Date().toISOString(),
-      platform: 'ChatGPT',
-      total_messages: messages.length,
-      messages: messages,
-      extraction_method: 'chatgpt_fallback'
-    };
   },
 
   // =============================================================================
@@ -474,102 +326,48 @@ const ConversationExtractor = {
   // =============================================================================
 
   extractGeminiConversation() {
-  console.log('🟣 ThreadCub: Extracting Gemini conversation...');
+    console.log('🟣 ThreadCub: Extracting Gemini conversation...');
 
-  const messages = [];
-  let messageIndex = 0;
+    const messages = [];
+    let messageIndex = 0;
 
-  // IMPROVED: Generate better title from first user message
-let title = 'Gemini Conversation';
+    const messageElements = document.querySelectorAll('.conversation-container message-content, [data-test-id*="message"], .model-response-text, .user-query');
 
-// After extracting messages, generate a better title
-if (messages.length > 0) {
-  const firstUserMessage = messages.find(msg => msg.role === 'user');
-  if (firstUserMessage && firstUserMessage.content) {
-    const content = firstUserMessage.content.trim();
-    if (content.length > 10) {
-      // Create descriptive title from first user message
-      title = content.substring(0, 50).replace(/\n/g, ' ').trim();
-      if (content.length > 50) title += '...';
-      title = `${title} - Gemini`;
-    }
-  }
-}
+    console.log(`🟣 ThreadCub: Found ${messageElements.length} potential Gemini message elements`);
 
-  // Try multiple selectors for Gemini messages
-  const messageSelectors = [
-    '[data-test-id="conversation-turn"]',
-    'div[class*="conversation"]',
-    'div[class*="message"]',
-    'div[class*="turn"]'
-  ];
-
-  let messageElements = [];
-  for (const selector of messageSelectors) {
-    messageElements = document.querySelectorAll(selector);
-    if (messageElements.length > 0) {
-      console.log(`🟣 ThreadCub: Found ${messageElements.length} messages with selector:`, selector);
-      break;
-    }
-  }
-
-  // If no specific message elements found, use generic approach
-  if (messageElements.length === 0) {
-    console.log('🟣 ThreadCub: Using generic extraction for Gemini');
-    const textElements = document.querySelectorAll('div, p');
-    const validElements = Array.from(textElements).filter(el => {
-      const text = el.textContent?.trim() || '';
-      return text.length > 20 &&
-             text.length < 5000 &&
-             !text.includes('Copy') &&
-             !text.includes('Share') &&
-             !el.querySelector('button');
-    });
-
-    validElements.forEach((element, index) => {
-      const text = element.textContent?.trim() || '';
-      const role = index % 2 === 0 ? 'user' : 'assistant';
-
-      messages.push({
-        id: messageIndex++,
-        role: role,
-        content: text,
-        timestamp: new Date().toISOString(),
-        extractionMethod: 'gemini_fallback'
-      });
-    });
-  } else {
-    // Process found message elements
     messageElements.forEach((element, index) => {
-      const text = element.textContent?.trim() || '';
-      if (text && text.length > 10) {
-        const role = text.length < 200 && text.includes('?') ? 'user' :
-                     index % 2 === 0 ? 'user' : 'assistant';
+      try {
+        const text = element.innerText?.trim();
+        if (text && text.length > 10) {
+          const isUser = element.classList.contains('user-query') ||
+                        element.querySelector('.user-query') !== null;
 
-        messages.push({
-          id: messageIndex++,
-          role: role,
-          content: text.replace(/^(Copy|Share|Regenerate)$/gm, '').trim(),
-          timestamp: new Date().toISOString(),
-          extractionMethod: 'gemini_direct'
-        });
+          const role = isUser ? 'user' : 'assistant';
+
+          messages.push({
+            id: messageIndex++,
+            role: role,
+            content: text,
+            timestamp: new Date().toISOString()
+          });
+        }
+      } catch (error) {
+        console.log(`🟣 ThreadCub: Error extracting Gemini message ${index}:`, error);
       }
     });
-  }
 
-  const conversationData = {
-    title: title,
-    url: window.location.href,
-    timestamp: new Date().toISOString(),
-    platform: 'Gemini',
-    total_messages: messages.length,
-    messages: messages,
-    extraction_method: 'gemini_extraction'
-  };
+    const conversationData = {
+      title: document.title || 'Gemini Conversation',
+      url: window.location.href,
+      timestamp: new Date().toISOString(),
+      platform: 'Gemini',
+      total_messages: messages.length,
+      messages: messages
+    };
 
-  console.log(`🟣 ThreadCub: ✅ Gemini extraction complete: ${messages.length} messages`);
-  return conversationData;
-},
+    console.log(`🟣 ThreadCub: ✅ Gemini extraction complete: ${messages.length} messages`);
+    return conversationData;
+  },
 
   // =============================================================================
   // GROK EXTRACTION
@@ -597,6 +395,8 @@ if (messages.length > 0) {
 
     const messageSelectors = [
       '[data-testid*="message"]',
+      '[data-role="user"]',
+      '[data-role="assistant"]',
       'div[class*="message"]',
       'div[class*="conversation"]',
       'div[class*="chat"]'
@@ -616,8 +416,9 @@ if (messages.length > 0) {
         const text = element.textContent?.trim() || '';
         if (text && text.length > 10) {
           // TODO: Improve role detection based on actual Grok DOM structure
-          // This is a simple heuristic - replace with actual role attribute detection
-          const role = index % 2 === 0 ? 'user' : 'assistant';
+          // Check for role attributes first, fallback to alternating pattern
+          const dataRole = element.getAttribute('data-role');
+          const role = dataRole || (index % 2 === 0 ? 'user' : 'assistant');
 
           messages.push({
             id: messageIndex++,
@@ -813,14 +614,22 @@ if (messages.length > 0) {
     return `Previous conversation: Started with "${firstUserMessage.content.substring(0, 60)}..." and most recently discussed "${lastUserMessage.content.substring(0, 60)}..."`;
   },
 
+  // ===== FIXED METHOD - Added Grok and DeepSeek support =====
   getTargetPlatformFromCurrentUrl() {
     const hostname = window.location.hostname;
+    const pathname = window.location.pathname;
+    
     if (hostname.includes('chatgpt.com') || hostname.includes('chat.openai.com')) {
       return 'chatgpt';
     } else if (hostname.includes('claude.ai')) {
       return 'claude';
     } else if (hostname.includes('gemini.google.com')) {
       return 'gemini';
+    } else if (hostname.includes('grok.x.ai') || hostname.includes('grok.com') || 
+               (hostname.includes('x.com') && pathname.includes('/i/grok'))) {
+      return 'grok';
+    } else if (hostname.includes('chat.deepseek.com')) {
+      return 'deepseek';
     }
     return 'unknown';
   },
@@ -828,23 +637,38 @@ if (messages.length > 0) {
   generateContinuationPrompt(summary, shareUrl, platform, conversationData) {
     console.log('🐻 ThreadCub: Generating continuation prompt for platform:', platform);
 
-    // FIXED: Add Gemini support - both ChatGPT and Gemini use file-based prompts
-    if (platform && (platform.toLowerCase().includes('chatgpt') ||
-                    platform.toLowerCase().includes('gemini'))) {
-      // ChatGPT/Gemini-specific prompt (file upload)
+    // GROK - URL-based (confirmed working with web_fetch)
+    if (platform && platform.toLowerCase().includes('grok')) {
+      const grokPrompt = `I'd like to continue our previous conversation. The complete context is available at: ${shareUrl}
+
+Please attempt to fetch this URL using your web_fetch tool to access the conversation history. The URL returns a JSON response with the full conversation.
+
+If you're able to retrieve it, let me know you're ready to continue from where we left off.
+If you cannot access it for any reason, please let me know and I'll share the conversation content directly.`;
+
+      console.log('🤖 ThreadCub: Generated Grok URL-based prompt:', grokPrompt.length, 'characters');
+      return grokPrompt;
+    }
+    
+    // CHATGPT/GEMINI/DEEPSEEK - File-based prompts (user manually uploads file)
+    else if (platform && (platform.toLowerCase().includes('chatgpt') ||
+                           platform.toLowerCase().includes('gemini') ||
+                           platform.toLowerCase().includes('deepseek'))) {
       const prompt = `I'd like to continue our previous conversation. I have our complete conversation history as a file that I'll share now.
 
-  Please read through the attached conversation file and provide your assessment of:
-  - What we were working on
-  - The current status/progress
-  - Any next steps or tasks mentioned
+Please read through the attached conversation file and provide your assessment of:
+- What we were working on
+- The current status/progress
+- Any next steps or tasks mentioned
 
-  Once you've reviewed it, let me know you're ready to continue from where we left off.`;
+Once you've reviewed it, let me know you're ready to continue from where we left off.`;
 
-      console.log('🐻 ThreadCub: Generated ChatGPT/Gemini-specific continuation prompt:', prompt.length, 'characters');
+      console.log('🐻 ThreadCub: Generated file-based continuation prompt:', prompt.length, 'characters');
       return prompt;
-    } else {
-      // Claude-specific prompt (URL access)
+    }
+    
+    // CLAUDE (default) - URL-based prompt
+    else {
       const claudePrompt = `I'd like to continue our previous conversation. The complete context is available at: ${shareUrl}
 
 Please attempt to fetch this URL using your web_fetch tool to access the conversation history. The URL returns a JSON response with the full conversation.

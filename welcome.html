@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Welcome to Threadcub</title>
+  <title>Welcome to ThreadCub</title>
   <style>
     * {
       margin: 0;
@@ -21,94 +21,75 @@
     }
 
     .container {
-      max-width: 1140px;
+      max-width: 1200px;
       margin: 0 auto;
       padding: 60px 40px;
     }
 
+    /* Header Section */
     .header {
       text-align: center;
       margin-bottom: 80px;
     }
 
-    .logo-placeholder {
-      width: 64px;
-      height: 64px;
-      background: #e5e7eb;
-      border-radius: 50%;
+    .logo {
+      width: 80px;
+      height: 80px;
       margin: 0 auto 32px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #9ca3af;
-      font-weight: 600;
-      font-size: 14px;
+      display: block;
     }
 
     .main-title {
-      font-size: 32px;
+      font-size: 36px;
       font-weight: 700;
       color: #1a1a1a;
-      margin-bottom: 16px;
+      margin-bottom: 12px;
       letter-spacing: -0.02em;
       line-height: 1.1;
     }
 
     .subtitle {
-      font-size: 16px;
+      font-size: 18px;
       color: #666666;
       font-weight: 400;
-      max-width: 600px;
-      margin: 0 auto;
     }
 
+    /* Features Section */
     .features-section {
-      margin-bottom: 120px;
+      margin-bottom: 80px;
     }
 
-    .features-grid {
+    .feature-row {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 40px;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      margin-bottom: 60px;
+      align-items: center;
     }
 
-    .feature-card {
-      text-align: left;
+    .feature-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .feature-image-wrapper {
+      width: 100%;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
     }
 
     .feature-image {
-      width: 320px;
-      height: 180px;
-      border-radius: 8px;
-      margin-bottom: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      overflow: hidden;
-      background: #e5e7eb;
+      width: 100%;
+      height: auto;
+      display: block;
     }
 
-    .feature-card:nth-child(1) .feature-image {
-      background: #e5e7eb;
-    }
-
-    .feature-card:nth-child(2) .feature-image {
-      background: #e5e7eb;
-    }
-
-    .feature-card:nth-child(3) .feature-image {
-      background: #e5e7eb;
-    }
-
-    .feature-placeholder {
-      color: #9ca3af;
-      font-size: 16px;
-      font-weight: 500;
+    .feature-text {
+      padding: 20px;
     }
 
     .feature-title {
-      font-size: 20px;
+      font-size: 28px;
       font-weight: 700;
       color: #1a1a1a;
       margin-bottom: 16px;
@@ -116,162 +97,70 @@
     }
 
     .feature-description {
-      font-size: 16px;
+      font-size: 18px;
       color: #666666;
       line-height: 1.6;
     }
 
-    .mobile-section {
-      background: #f8fafc;
+    /* Platforms Section */
+    .platforms-section {
+      background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%);
       border-radius: 24px;
       padding: 80px 60px;
-      position: relative;
-      overflow: hidden;
+      text-align: center;
     }
 
-    .mobile-content {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 80px;
-      align-items: center;
-    }
-
-    .mobile-text {
-      max-width: 480px;
-    }
-
-    .mobile-title {
-      font-size: 20px;
+    .platforms-title {
+      font-size: 32px;
       font-weight: 700;
       color: #1a1a1a;
-      margin-bottom: 16px;
+      margin-bottom: 24px;
       line-height: 1.2;
     }
 
-    .mobile-description {
-      font-size: 16px;
-      color: #666666;
-      line-height: 1.6;
-      margin-bottom: 32px;
+    .platforms-description {
+      font-size: 18px;
+      color: #4a4a4a;
+      line-height: 1.7;
+      margin-bottom: 48px;
+      max-width: 800px;
+      margin-left: auto;
+      margin-right: auto;
     }
 
-    .qr-and-stores {
+    .platforms-icons {
       display: flex;
+      justify-content: center;
+      align-items: center;
       gap: 32px;
-      align-items: center;
+      flex-wrap: wrap;
     }
 
-    .qr-placeholder {
-      width: 120px;
-      height: 120px;
-      background: white;
-      border: 1px solid #e5e7eb;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #9ca3af;
-      font-size: 12px;
-      text-align: center;
-      flex-shrink: 0;
-    }
-
-    .app-stores {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .store-button {
-      display: inline-flex;
-      align-items: center;
-      background: #8B5A2B;
-      color: white;
-      padding: 12px 20px;
-      border-radius: 8px;
+    .platform-link {
+      display: inline-block;
       text-decoration: none;
-      font-size: 14px;
-      font-weight: 500;
-      transition: background 0.2s ease;
-      width: 140px;
+      transition: transform 0.2s ease;
     }
 
-    .store-button:hover {
-      background: #A0522D;
+    .platform-link:hover {
+      transform: scale(1.1);
     }
 
-    .mobile-visual {
-      display: flex;
-      justify-content: center;
-      position: relative;
+    .platform-icon {
+      width: 64px;
+      height: 64px;
+      display: block;
     }
 
-    .phone-mockup {
-      width: 280px;
-      height: 560px;
-      background: #8B5A2B;
-      border-radius: 36px;
-      padding: 8px;
-      position: relative;
-      box-shadow: 0 25px 50px rgba(139, 90, 43, 0.15);
-    }
-
-    .phone-screen {
-      width: 100%;
-      height: 100%;
-      background: white;
-      border-radius: 28px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      color: #9ca3af;
-      font-size: 14px;
-      text-align: center;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .phone-screen::before {
-      content: '';
-      position: absolute;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 60px;
-      height: 6px;
-      background: #8B5A2B;
-      border-radius: 3px;
-    }
-
+    /* Responsive Design */
     @media (max-width: 1024px) {
-      .features-grid {
+      .feature-row {
         grid-template-columns: 1fr;
-        gap: 60px;
+        gap: 40px;
       }
-      
-      .feature-card {
+
+      .feature-text {
         text-align: center;
-      }
-      
-      .feature-image {
-        width: 100%;
-        max-width: 320px;
-        margin: 0 auto 24px;
-      }
-      
-      .mobile-content {
-        grid-template-columns: 1fr;
-        gap: 60px;
-        text-align: center;
-      }
-      
-      .mobile-text {
-        max-width: none;
-      }
-      
-      .qr-and-stores {
-        justify-content: center;
       }
     }
 
@@ -279,35 +168,46 @@
       .container {
         padding: 40px 20px;
       }
-      
+
+      .header {
+        margin-bottom: 60px;
+      }
+
       .main-title {
         font-size: 28px;
       }
-      
+
       .subtitle {
         font-size: 16px;
       }
-      
+
       .feature-title {
-        font-size: 18px;
+        font-size: 24px;
       }
-      
-      .mobile-section {
-        padding: 60px 40px;
+
+      .feature-description {
+        font-size: 16px;
       }
-      
-      .mobile-title {
-        font-size: 18px;
+
+      .platforms-section {
+        padding: 60px 30px;
       }
-      
-      .qr-and-stores {
-        flex-direction: column;
+
+      .platforms-title {
+        font-size: 26px;
+      }
+
+      .platforms-description {
+        font-size: 16px;
+      }
+
+      .platform-icon {
+        width: 56px;
+        height: 56px;
+      }
+
+      .platforms-icons {
         gap: 24px;
-      }
-      
-      .app-stores {
-        flex-direction: row;
-        justify-content: center;
       }
     }
 
@@ -315,18 +215,27 @@
       .container {
         padding: 32px 16px;
       }
-      
-      .mobile-section {
-        padding: 40px 24px;
+
+      .logo {
+        width: 64px;
+        height: 64px;
       }
-      
-      .phone-mockup {
-        width: 240px;
-        height: 480px;
+
+      .main-title {
+        font-size: 24px;
       }
-      
-      .feature-image {
-        height: 160px;
+
+      .platforms-section {
+        padding: 40px 20px;
+      }
+
+      .platform-icon {
+        width: 48px;
+        height: 48px;
+      }
+
+      .platforms-icons {
+        gap: 16px;
       }
     }
   </style>
@@ -335,74 +244,69 @@
   <div class="container">
     <!-- Header Section -->
     <div class="header">
-      <div class="logo-placeholder">
-        LOGO
-      </div>
-      <h1 class="main-title">Threadcub is installed!</h1>
-      <p class="subtitle">Now you can access the power of Threadcub from your browser.</p>
+      <img src="icons/threadcub-logo.png" alt="ThreadCub Logo" class="logo">
+      <h1 class="main-title">ThreadCub is installed!</h1>
+      <p class="subtitle">Tiny paws, mighty exports</p>
     </div>
 
     <!-- Features Section -->
     <div class="features-section">
-      <div class="features-grid">
-        <div class="feature-card">
-          <div class="feature-image">
-            <img src="assets/images/tagg-test-1.gif" alt="Threadcub tagging demonstration" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
-          </div>
-          <h3 class="feature-title">Bear-ly any effort required</h3>
-          <p class="feature-description">No need to paws and ask your AI for a summary. Download your full conversation thread directly from your browser with one click – it's un-bear-ably simple!</p>
+      <!-- Feature 1: Continue Conversations -->
+      <div class="feature-row">
+        <div class="feature-image-wrapper">
+          <img src="assets/images/Continue-convo.png" alt="Continue conversations across AI platforms" class="feature-image">
         </div>
-
-        <div class="feature-card">
-          <div class="feature-image">
-            <img src="assets/images/move-the-cub.gif" alt="Threadcub tagging demonstration" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
-          </div>
-          <h3 class="feature-title">From grizzly mess to organized nest</h3>
-          <p class="feature-description">Upload your file and ThreadCub will claw through that bear-sized conversation, transforming it into a cozy, organized format that's perfect for hibernating insights.</p>
+        <div class="feature-text">
+          <h2 class="feature-title">Continue conversations anywhere</h2>
+          <p class="feature-description">
+            Pick up right where you left off! Export your conversation from one AI platform and seamlessly continue it on another. Your context travels with you.
+          </p>
         </div>
+      </div>
 
-        <div class="feature-card">
-          <div class="feature-image">
-            <img src="assets/images/continue-the-chat.gif" alt="Threadcub tagging demonstration" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
-          </div>
-          <h3 class="feature-title">Plays well with all the big bears</h3>
-          <p class="feature-description">Seamlessly capture conversations from ChatGPT, Claude.ai, MS Copilot and more. One cub, all your AI conversations organized – it's a bear necessity!</p>
+      <!-- Feature 2: Bookmark as you go -->
+      <div class="feature-row">
+        <div class="feature-text">
+          <h2 class="feature-title">Bookmark as you go</h2>
+          <p class="feature-description">
+            Though they're actually Pawmarks which get tucked away neatly in a menu for you to refer back to.
+          </p>
+        </div>
+        <div class="feature-image-wrapper">
+          <img src="assets/images/Tag-stuff.png" alt="Bookmark AI conversations with Pawmarks" class="feature-image">
         </div>
       </div>
     </div>
 
-    <!-- Mobile App Section -->
-    <!--
-    <div class="mobile-section">
-      <div class="mobile-content">
-        <div class="mobile-text">
-          <h2 class="mobile-title">Download the mobile app</h2>
-          <p class="mobile-description">Quickly grab and share exported threads, manage conversations on the fly, and get real-time notifications – all from your den!</p>
-          <div class="qr-and-stores">
-            <div class="qr-placeholder">
-              🐻‍❄️<br>QR Code<br>Coming Soon
-            </div>
-            <div class="app-stores">
-              <a href="#" class="store-button">🍎 App Store</a>
-              <a href="#" class="store-button">🤖 Google Play</a>
-            </div>
-          </div>
-        </div>
-        
-        <div class="mobile-visual">
-          <div class="phone-mockup">
-            <div class="phone-screen">
-              <div style="margin-top: 40px;">
-                <div style="font-weight: 600; color: #8B5A2B; margin-bottom: 8px; font-size: 18px;">🐻 Threadcub</div>
-                <div>Mobile App Preview</div>
-                <div style="margin-top: 20px; font-size: 32px;">🍯</div>
-              </div>
-            </div>
-          </div>
-        </div>
+    <!-- Platforms Section -->
+    <div class="platforms-section">
+      <h2 class="platforms-title">Plays well with all the big bears</h2>
+      <p class="platforms-description">
+        Well mostly... As it stands, it seamlessly captures conversations from Claude.ai and Grok and allows you to continue your conversation with the full context intact.
+        <br><br>
+        It also works with ChatGPT, MS Copilot, Google Gemini and Deepseek though not as seamlessly. More details about that in this <a href="https://substack.com/@threadcub" target="_blank" style="color: #1976D2; text-decoration: none;">SubStack article</a>.
+      </p>
+      <div class="platforms-icons">
+        <a href="https://chat.openai.com" target="_blank" rel="noopener noreferrer" class="platform-link">
+          <img src="assets/images/chatgpt-icon.svg" alt="ChatGPT" class="platform-icon" title="ChatGPT">
+        </a>
+        <a href="https://claude.ai" target="_blank" rel="noopener noreferrer" class="platform-link">
+          <img src="assets/images/claude-ai-icon.svg" alt="Claude AI" class="platform-icon" title="Claude AI">
+        </a>
+        <a href="https://chat.deepseek.com" target="_blank" rel="noopener noreferrer" class="platform-link">
+          <img src="assets/images/deepseek-icon.svg" alt="DeepSeek" class="platform-icon" title="DeepSeek">
+        </a>
+        <a href="https://gemini.google.com" target="_blank" rel="noopener noreferrer" class="platform-link">
+          <img src="assets/images/gemini-icon.svg" alt="Google Gemini" class="platform-icon" title="Google Gemini">
+        </a>
+        <a href="https://grok.x.com" target="_blank" rel="noopener noreferrer" class="platform-link">
+          <img src="assets/images/grok-icon.svg" alt="Grok" class="platform-icon" title="Grok">
+        </a>
+        <a href="https://www.perplexity.ai" target="_blank" rel="noopener noreferrer" class="platform-link">
+          <img src="assets/images/perplexity-icon.svg" alt="Perplexity" class="platform-icon" title="Perplexity">
+        </a>
       </div>
     </div>
-    -->
   </div>
 </body>
 </html>

@@ -1,4 +1,3 @@
-
 // === SECTION 3A: Platform Auto-start Functions ===
 
 // ===== Generate intelligent conversation summary =====
@@ -113,19 +112,12 @@ function attemptGeminiAutoStart() {
 }
 
 // ===== Grok auto-start =====
-// TODO: Update selectors after inspecting Grok's actual DOM structure
+// Grok supports web_fetch just like Claude! Auto-submit to let it work.
 function attemptGrokAutoStart() {
-  console.log('🐻 ThreadCub: Attempting Grok auto-start');
-  console.warn('⚠️ Grok auto-start needs manual selector configuration');
+  console.log('🤖 ThreadCub: Attempting Grok auto-start (web_fetch enabled)');
 
   try {
-    // TODO: Inspect Grok's DOM to find:
-    // - The actual send button selector
-    // - Whether the button has specific data-testid attributes
-    // - Whether the button is disabled until input is provided
-    // - Any platform-specific quirks or timing issues
-
-    // PLACEHOLDER: Try common send button selectors
+    // Grok's send button selectors (similar to other platforms)
     const sendSelectors = [
       'button[data-testid="send-button"]',
       'button[aria-label*="Send"]',
@@ -137,36 +129,28 @@ function attemptGrokAutoStart() {
     for (const selector of sendSelectors) {
       const sendButton = document.querySelector(selector);
       if (sendButton && !sendButton.disabled) {
-        console.log('🐻 ThreadCub: Found potential Grok send button, clicking...');
+        console.log('🤖 ThreadCub: Found Grok send button, auto-submitting (like Claude)...');
         sendButton.click();
         return true;
       }
     }
 
-    console.warn('⚠️ ThreadCub: Could not find Grok send button - manual configuration needed');
+    console.warn('⚠️ ThreadCub: Could not find Grok send button');
     return false;
 
   } catch (error) {
-    console.log('🐻 ThreadCub: Grok auto-start failed:', error);
+    console.log('🤖 ThreadCub: Grok auto-start failed:', error);
     return false;
   }
 }
 
 // ===== DeepSeek auto-start =====
-// TODO: Update selectors after inspecting DeepSeek's actual DOM structure
+// DeepSeek now uses direct JSON embedding, so no need for Search button - just auto-submit!
 function attemptDeepSeekAutoStart() {
-  console.log('🐻 ThreadCub: Attempting DeepSeek auto-start');
-  console.warn('⚠️ DeepSeek auto-start needs manual selector configuration');
+  console.log('🔵 ThreadCub: Attempting DeepSeek auto-start (direct JSON, no Search button needed)');
 
   try {
-    // TODO: Inspect DeepSeek's DOM to find:
-    // - The actual send button selector
-    // - Whether the button has specific data-testid or data-role attributes
-    // - Whether the button is disabled until input is provided
-    // - Any platform-specific quirks or timing issues
-    // - Whether there are any modals or popups that need handling
-
-    // PLACEHOLDER: Try common send button selectors
+    // Find and click the Send button (JSON is already embedded in prompt)
     const sendSelectors = [
       'button[data-testid="send-button"]',
       'button[aria-label*="Send"]',
@@ -179,17 +163,17 @@ function attemptDeepSeekAutoStart() {
     for (const selector of sendSelectors) {
       const sendButton = document.querySelector(selector);
       if (sendButton && !sendButton.disabled) {
-        console.log('🐻 ThreadCub: Found potential DeepSeek send button, clicking...');
+        console.log('🔵 ThreadCub: Found DeepSeek send button, auto-submitting...');
         sendButton.click();
         return true;
       }
     }
 
-    console.warn('⚠️ ThreadCub: Could not find DeepSeek send button - manual configuration needed');
+    console.warn('⚠️ ThreadCub: Could not find DeepSeek send button');
     return false;
 
   } catch (error) {
-    console.log('🐻 ThreadCub: DeepSeek auto-start failed:', error);
+    console.log('🔵 ThreadCub: DeepSeek auto-start failed:', error);
     return false;
   }
 }

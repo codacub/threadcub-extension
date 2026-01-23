@@ -1,4 +1,3 @@
-
 // === SECTION 4A-4E: Floating Button Integration with Modular Architecture ===
 
 // The ThreadCubFloatingButton class is now loaded from src/core/floating-button.js
@@ -127,10 +126,10 @@ function enhanceFloatingButtonWithConversationFeatures() {
             this.handleGeminiFlow(minimalPrompt, shareUrl, conversationData);
           } else if (targetPlatform === 'grok') {
             console.log('🤖 ThreadCub: Routing to Grok flow (with file download)');
-            this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
+            this.handleGrokFlow(minimalPrompt, shareUrl, conversationData);
           } else if (targetPlatform === 'deepseek') {
-            console.log('🤖 ThreadCub: Routing to DeepSeek flow (with file download)');
-            this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
+            console.log('🔵 ThreadCub: Routing to DeepSeek flow (with file download)');
+            this.handleDeepSeekFlow(minimalPrompt, shareUrl, conversationData);
           } else {
             console.log('🤖 ThreadCub: Unknown platform, defaulting to ChatGPT flow');
             this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);

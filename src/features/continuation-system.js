@@ -1,4 +1,3 @@
-
 // === SECTION 2A: Streamlined Continuation System (NO MODAL) ===
 
 // ===== STREAMLINED: Check for continuation data and auto-execute =====
@@ -89,8 +88,16 @@ function executeStreamlinedContinuation(fullPrompt, shareUrl, continuationData) 
   console.log('🚀 ThreadCub: Executing streamlined continuation');
   console.log('🚀 Platform:', continuationData.platform);
   console.log('🚀 ChatGPT Flow:', continuationData.chatGPTFlow);
+  console.log('🚀 Gemini Flow:', continuationData.geminiFlow);
+  console.log('🚀 Grok Flow:', continuationData.grokFlow);
+  console.log('🚀 DeepSeek Flow:', continuationData.deepseekFlow);
   
   const platform = window.PlatformDetector.detectPlatform();
+  
+  // Check if this is a file-based flow (user needs to manually upload file)
+  const isFileBased = continuationData.chatGPTFlow || 
+                      continuationData.geminiFlow || 
+                      continuationData.deepseekFlow;
   
   // STEP 1: Auto-populate the input field
   console.log('🔧 Auto-populating input field...');
@@ -102,17 +109,24 @@ function executeStreamlinedContinuation(fullPrompt, shareUrl, continuationData) 
   // Show subtle success notification
   showStreamlinedNotification(continuationData);
   
-  // Auto-start the conversation after brief delay
-  setTimeout(() => {
-    console.log('🔧 Auto-starting conversation...');
-    attemptAutoStart(platform);
-  }, 1500); // Give user moment to see the populated input
+  // Auto-start ONLY for URL-based platforms (Claude, Grok)
+  // File-based platforms (ChatGPT, Gemini, DeepSeek) need user to upload file first
+  if (!isFileBased) {
+    setTimeout(() => {
+      console.log('🔧 Auto-starting conversation...');
+      attemptAutoStart(platform);
+    }, 1500); // Give user moment to see the populated input
+  } else {
+    console.log('📁 File-based flow - skipping auto-start. User needs to upload file manually.');
+  }
 }
 
 // ===== STREAMLINED: Subtle success notification =====
 function showStreamlinedNotification(continuationData) {
   const isChatGPTFlow = continuationData.chatGPTFlow === true;
   const isGeminiFlow = continuationData.geminiFlow === true;
+  const isDeepSeekFlow = continuationData.deepseekFlow === true;
+  const isFileBased = isChatGPTFlow || isGeminiFlow || isDeepSeekFlow;
   const messageCount = continuationData.totalMessages || 'multiple';
   
   // Create small, non-intrusive notification
@@ -121,7 +135,7 @@ function showStreamlinedNotification(continuationData) {
     position: fixed;
     top: 20px;
     right: 20px;
-    background: linear-gradient(135deg, ${isChatGPTFlow ? '#10a37f' : '#667eea'} 0%, ${isChatGPTFlow ? '#0d8f6f' : '#764ba2'} 100%);
+    background: linear-gradient(135deg, ${isFileBased ? '#10a37f' : '#667eea'} 0%, ${isFileBased ? '#0d8f6f' : '#764ba2'} 100%);
     color: white;
     padding: 16px 20px;
     border-radius: 12px;
@@ -137,15 +151,15 @@ function showStreamlinedNotification(continuationData) {
   `;
   
   const title = continuationData.title || 'Previous Conversation';
-  const platformName = isChatGPTFlow ? 'ChatGPT' : (continuationData.platform || 'AI Platform');
+  const platformName = continuationData.platform || 'AI Platform';
   
   notification.innerHTML = `
     <div style="display: flex; align-items: center; gap: 10px;">
-      <div style="font-size: 18px;">${isChatGPTFlow ? '💬' : '🐻'}</div>
+      <div style="font-size: 18px;">${isFileBased ? '💬' : '🐻'}</div>
       <div>
         <div style="font-weight: 700; margin-bottom: 2px;">ThreadCub Continuation</div>
         <div style="font-size: 12px; opacity: 0.9;">${platformName} • ${messageCount} messages</div>
-        ${isChatGPTFlow ? 
+        ${isFileBased ? 
           '<div style="font-size: 11px; opacity: 0.8; margin-top: 4px;">📁 File downloaded, upload when ready</div>' : 
           '<div style="font-size: 11px; opacity: 0.8; margin-top: 4px;">✨ Conversation context loaded</div>'
         }

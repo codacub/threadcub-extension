@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "PageCub",
-  "version": "1.0.0",
-  "description": "Save any webpage as PDF or Markdown. Clean downloads, no clutter.",
+  "name": "ThreadCub",
+  "version": "1.0.2",
+  "description": "Save, tag, and resume AI chats across platforms. ThreadCub makes long conversations organised, searchable, and stress-free.",
 
   
   "icons": {

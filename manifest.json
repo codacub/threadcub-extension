@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ThreadCub",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Save, tag, and resume your AI chats across platforms. ThreadCub makes long conversations organised, searchable, and stress-free.",
 
   
@@ -33,8 +33,7 @@
     "activeTab",
     "downloads",
     "storage",
-    "scripting",
-    "cookies"
+    "scripting"
   ],
   
   "host_permissions": [

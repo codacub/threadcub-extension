@@ -55,12 +55,11 @@ const PlatformDetector = {
       'textarea',
       'div[contenteditable="true"]'
     ],
-    // Grok uses same DOM structure as Claude
+    // Grok uses aria-label based DOM structure
     grok: [
-      'textarea[data-testid="chat-input"]',
-      'div[contenteditable="true"]',
+      'textarea[placeholder="Ask anything"]',
       'textarea[placeholder*="Ask"]',
-      'textarea[placeholder*="Message"]',
+      'div[contenteditable="true"]',
       'textarea'
     ],
     // TODO: Update these selectors after inspecting DeepSeek's actual DOM structure

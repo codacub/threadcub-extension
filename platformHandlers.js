@@ -230,19 +230,19 @@ const PLATFORM_HANDLERS = {
         }
     },
 
-    // Grok - uses same DOM structure as Claude.ai
+    // Grok - uses aria-label="Grok" for assistant messages
     'x.com': {
         name: 'Grok',
         icon: '🤖',
         color: '#1da1f2',
 
         selectors: {
-            // Same selectors as Claude (identical DOM structure)
-            messages: 'div[class*="flex"][class*="flex-col"]',
-            userMessages: 'div[class*="flex"][class*="flex-col"]',
-            assistantMessages: 'div[class*="flex"][class*="flex-col"]',
-            inputField: 'textarea[data-testid="chat-input"], div[contenteditable="true"], textarea',
-            sendButton: 'button[data-testid="send-button"], button[type="submit"]'
+            // Grok uses aria-label for role detection and css-1jxf684 spans for text
+            messages: 'span[class*="css-1jxf684"]',
+            userMessages: 'span[class*="css-1jxf684"]',
+            assistantMessages: 'div[aria-label="Grok"] span[class*="css-1jxf684"]',
+            inputField: 'textarea[placeholder="Ask anything"], textarea[placeholder*="Ask"], textarea',
+            sendButton: 'button[type="submit"], button[aria-label="Send"]'
         },
 
         urls: {
@@ -253,7 +253,7 @@ const PLATFORM_HANDLERS = {
         extractMessage(element) {
             const clone = element.cloneNode(true);
 
-            // Remove UI elements (same as Claude)
+            // Remove UI elements
             const unwantedElements = clone.querySelectorAll(
                 'button, .copy-button, [data-testid*="copy"], .timestamp, .message-actions'
             );
@@ -267,13 +267,7 @@ const PLATFORM_HANDLERS = {
             if (!inputField) return false;
 
             inputField.focus();
-
-            // Handle both textarea and contenteditable
-            if (inputField.tagName === 'TEXTAREA') {
-                inputField.value = prompt;
-            } else {
-                inputField.textContent = prompt;
-            }
+            inputField.value = prompt;
 
             inputField.dispatchEvent(new Event('input', { bubbles: true }));
             inputField.dispatchEvent(new Event('change', { bubbles: true }));
@@ -289,11 +283,11 @@ const PLATFORM_HANDLERS = {
         color: '#1da1f2',
 
         selectors: {
-            messages: 'div[class*="flex"][class*="flex-col"]',
-            userMessages: 'div[class*="flex"][class*="flex-col"]',
-            assistantMessages: 'div[class*="flex"][class*="flex-col"]',
-            inputField: 'textarea[data-testid="chat-input"], div[contenteditable="true"], textarea',
-            sendButton: 'button[data-testid="send-button"], button[type="submit"]'
+            messages: 'span[class*="css-1jxf684"]',
+            userMessages: 'span[class*="css-1jxf684"]',
+            assistantMessages: 'div[aria-label="Grok"] span[class*="css-1jxf684"]',
+            inputField: 'textarea[placeholder="Ask anything"], textarea[placeholder*="Ask"], textarea',
+            sendButton: 'button[type="submit"], button[aria-label="Send"]'
         },
 
         urls: {

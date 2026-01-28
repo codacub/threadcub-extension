@@ -371,11 +371,11 @@ const ConversationExtractor = {
 
   // =============================================================================
   // GROK EXTRACTION
-  // Uses same DOM structure as Claude.ai (flex-based containers)
+  // Uses aria-label="Grok" to identify assistant messages
   // =============================================================================
 
   extractGrokConversation() {
-    console.log('🤖 ThreadCub: Starting Grok extraction (Claude-identical DOM structure)...');
+    console.log('🤖 ThreadCub: Starting Grok extraction (aria-label based)...');
 
     // Handle Grok's title format (may include "Grok" or "X")
     const title = document.title
@@ -386,8 +386,8 @@ const ConversationExtractor = {
       .trim() || 'Grok Conversation';
 
     try {
-      // Use the same extraction approach as Claude (identical DOM structure)
-      const extractedMessages = this.grokSimpleWorkingExtraction();
+      // Use aria-label based extraction for Grok
+      const extractedMessages = this.grokAriaLabelExtraction();
 
       const conversationData = {
         title: title,
@@ -396,7 +396,7 @@ const ConversationExtractor = {
         platform: 'Grok',
         total_messages: extractedMessages.length,
         messages: extractedMessages,
-        extraction_method: 'grok_simple_working_extraction'
+        extraction_method: 'grok_aria_label_extraction'
       };
 
       console.log(`🤖 ThreadCub: ✅ Grok extraction complete: ${extractedMessages.length} messages`);
@@ -406,8 +406,8 @@ const ConversationExtractor = {
     } catch (error) {
       console.error('🤖 ThreadCub: Grok extraction failed:', error);
 
-      // Fallback to working container method
-      const fallbackMessages = this.grokWorkingContainerExtraction();
+      // Fallback to span-based extraction
+      const fallbackMessages = this.grokSpanFallbackExtraction();
 
       return {
         title: title,
@@ -416,88 +416,114 @@ const ConversationExtractor = {
         platform: 'Grok',
         total_messages: fallbackMessages.length,
         messages: fallbackMessages,
-        extraction_method: 'grok_fallback_extraction',
+        extraction_method: 'grok_span_fallback_extraction',
         error: error.message
       };
     }
   },
 
-  // Grok extraction using same selectors as Claude (identical DOM structure)
-  grokSimpleWorkingExtraction() {
-    console.log('🤖 ThreadCub: Using Grok simple extraction (Claude-identical selectors)...');
+  // Grok extraction using aria-label="Grok" to identify assistant messages
+  grokAriaLabelExtraction() {
+    console.log('🤖 ThreadCub: Using Grok aria-label extraction...');
 
     const messages = [];
     let messageIndex = 0;
 
-    // Use the SAME selector that works for Claude
-    const elements = document.querySelectorAll('div[class*="flex"][class*="flex-col"]');
-    console.log(`🤖 ThreadCub: Found ${elements.length} flex elements on Grok`);
+    // Find all Grok (assistant) message containers
+    const grokContainers = document.querySelectorAll('div[aria-label="Grok"]');
+    console.log(`🤖 ThreadCub: Found ${grokContainers.length} Grok message containers`);
 
-    // Filter for elements with substantial text (same as Claude)
-    const textElements = Array.from(elements).filter(el => {
-      const text = el.innerText?.trim() || '';
-      return text.length > 50;
-    });
+    // Find all text spans (both user and assistant messages use these)
+    const allTextSpans = document.querySelectorAll('span[class*="css-1jxf684"]');
+    console.log(`🤖 ThreadCub: Found ${allTextSpans.length} text spans`);
 
-    console.log(`🤖 ThreadCub: Filtered to ${textElements.length} text elements on Grok`);
+    // Group spans by their message context and determine role
+    const processedTexts = new Set();
 
-    // Process each element using same logic as Claude
-    textElements.forEach((element, index) => {
-      const text = element.innerText?.trim() || '';
+    allTextSpans.forEach((span) => {
+      const text = span.textContent?.trim() || '';
 
-      if (text && text.length > 50) {
-        // Use the same enhanced role detection as Claude
-        const role = this.enhancedRoleDetection(text, index);
+      // Skip empty or very short texts, and already processed content
+      if (text.length < 10 || processedTexts.has(text)) {
+        return;
+      }
+
+      // Check if this span is inside a Grok (assistant) container
+      const isGrokMessage = this.hasAncestorWithAriaLabel(span, 'Grok');
+      const role = isGrokMessage ? 'assistant' : 'user';
+
+      // Only add substantial messages
+      if (text.length > 20) {
+        processedTexts.add(text);
 
         messages.push({
           id: messageIndex++,
           role: role,
           content: this.simpleCleanContent(text),
           timestamp: new Date().toISOString(),
-          extractionMethod: 'grok_simple_working',
-          selector_used: 'div[class*="flex"][class*="flex-col"]',
-          element_classes: element.className,
-          element_data_attrs: this.getDataAttributes(element)
+          extractionMethod: 'grok_aria_label',
+          selector_used: 'span[class*="css-1jxf684"]',
+          hasGrokAncestor: isGrokMessage
         });
       }
     });
 
-    console.log(`🤖 ThreadCub: Grok simple extraction found: ${messages.length} messages`);
+    // Sort messages by DOM order (approximate by checking document position)
+    // This helps maintain conversation order
+    console.log(`🤖 ThreadCub: Grok aria-label extraction found: ${messages.length} messages`);
     return messages;
   },
 
-  // Grok fallback extraction using container approach
-  grokWorkingContainerExtraction() {
-    console.log('🤖 ThreadCub: Using Grok container extraction as fallback...');
+  // Helper: Check if element has an ancestor with specific aria-label
+  hasAncestorWithAriaLabel(element, label) {
+    let current = element.parentElement;
+    while (current) {
+      if (current.getAttribute && current.getAttribute('aria-label') === label) {
+        return true;
+      }
+      current = current.parentElement;
+    }
+    return false;
+  },
+
+  // Grok fallback extraction using span classes
+  grokSpanFallbackExtraction() {
+    console.log('🤖 ThreadCub: Using Grok span fallback extraction...');
 
     const messages = [];
     let messageIndex = 0;
 
     try {
-      // Try conversation-turn selectors (similar to ChatGPT)
-      const containers = document.querySelectorAll('[data-testid^="conversation-turn"]');
-      console.log(`🤖 ThreadCub: Found ${containers.length} conversation turns on Grok`);
+      // Try to find message spans by class pattern
+      const spans = document.querySelectorAll('span[class*="css-1jxf684"]');
+      console.log(`🤖 ThreadCub: Found ${spans.length} spans with css-1jxf684 class`);
 
-      containers.forEach((container, index) => {
-        const text = container.innerText?.trim();
-        if (text && text.length > 50) {
-          const role = this.enhancedRoleDetection(text, index);
+      const processedTexts = new Set();
+
+      spans.forEach((span, index) => {
+        const text = span.textContent?.trim();
+        if (text && text.length > 20 && !processedTexts.has(text)) {
+          processedTexts.add(text);
+
+          // Use alternating pattern as fallback for role detection
+          const role = index % 2 === 0 ? 'user' : 'assistant';
+
           messages.push({
             id: messageIndex++,
             role: role,
             content: this.simpleCleanContent(text),
             timestamp: new Date().toISOString(),
-            extractionMethod: 'grok_working_container',
-            selector_used: '[data-testid^="conversation-turn"]'
+            extractionMethod: 'grok_span_fallback',
+            selector_used: 'span[class*="css-1jxf684"]'
           });
         }
       });
 
     } catch (error) {
-      console.error('🤖 ThreadCub: Grok container extraction error:', error);
+      console.error('🤖 ThreadCub: Grok span fallback extraction error:', error);
     }
 
-    console.log(`🤖 ThreadCub: Grok container extraction found: ${messages.length} messages`);
+    console.log(`🤖 ThreadCub: Grok span fallback extraction found: ${messages.length} messages`);
     return messages;
   },
 

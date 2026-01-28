@@ -114,34 +114,79 @@ function attemptGeminiAutoStart() {
 // ===== Grok auto-start =====
 // Grok supports web_fetch just like Claude! Auto-submit to let it work.
 function attemptGrokAutoStart() {
-  console.log('🤖 ThreadCub: Attempting Grok auto-start (web_fetch enabled)');
+  console.log('🤖 ThreadCub: Attempting Grok auto-start with retry logic...');
 
-  try {
-    // Grok's send button selectors (similar to other platforms)
-    const sendSelectors = [
-      'button[data-testid="send-button"]',
-      'button[aria-label*="Send"]',
-      'button[aria-label*="Submit"]',
-      'button[type="submit"]',
-      'button[class*="send"]'
-    ];
+  // Grok-specific send button selectors (comprehensive list)
+  const sendSelectors = [
+    'button[aria-label="Send message"]',
+    'button[aria-label="Send"]',
+    'button[aria-label*="Send"]',
+    'button[aria-label*="send"]',
+    'button[data-testid="send-button"]',
+    'button[data-testid*="send"]',
+    'button[type="submit"]',
+    'button[class*="send"]',
+    'button[class*="Send"]',
+    'button svg[viewBox]',
+    'form button[type="submit"]'
+  ];
 
+  let attempts = 0;
+  const maxAttempts = 5;
+  const retryDelay = 500;
+
+  function tryFindAndClick() {
+    attempts++;
+    console.log(`🤖 ThreadCub: Grok send button attempt ${attempts}/${maxAttempts}`);
+
+    // Try standard selectors
     for (const selector of sendSelectors) {
-      const sendButton = document.querySelector(selector);
-      if (sendButton && !sendButton.disabled) {
-        console.log('🤖 ThreadCub: Found Grok send button, auto-submitting (like Claude)...');
-        sendButton.click();
+      try {
+        const elements = document.querySelectorAll(selector);
+        for (const element of elements) {
+          const button = element.tagName === 'BUTTON' ? element : element.closest('button');
+          if (button && !button.disabled && button.offsetHeight > 0) {
+            console.log('🤖 ThreadCub: Found Grok send button, clicking...');
+            button.focus();
+            button.click();
+            console.log('✅ ThreadCub: Grok send button clicked!');
+            return true;
+          }
+        }
+      } catch (e) {
+        // Continue to next selector
+      }
+    }
+
+    // Alternative: Search all buttons for send-like characteristics
+    const allButtons = document.querySelectorAll('button');
+    for (const button of allButtons) {
+      const ariaLabel = button.getAttribute('aria-label') || '';
+      const className = button.className || '';
+      const isSendButton =
+        ariaLabel.toLowerCase().includes('send') ||
+        className.toLowerCase().includes('send');
+
+      if (isSendButton && !button.disabled && button.offsetHeight > 0) {
+        console.log('🤖 ThreadCub: Found send button via search:', button);
+        button.focus();
+        button.click();
         return true;
       }
     }
 
-    console.warn('⚠️ ThreadCub: Could not find Grok send button');
-    return false;
+    // Retry if not found
+    if (attempts < maxAttempts) {
+      console.log(`🔄 ThreadCub: Retrying in ${retryDelay}ms...`);
+      setTimeout(tryFindAndClick, retryDelay);
+      return false;
+    }
 
-  } catch (error) {
-    console.log('🤖 ThreadCub: Grok auto-start failed:', error);
+    console.log('❌ ThreadCub: Could not find Grok send button after all attempts');
     return false;
   }
+
+  tryFindAndClick();
 }
 
 // ===== DeepSeek auto-start =====

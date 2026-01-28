@@ -325,28 +325,97 @@ function attemptGeminiAutoStart() {
 }
 
 function attemptGrokAutoStart() {
-  try {
-    const sendSelectors = [
-      'button[aria-label*="Send"]',
-      'button[aria-label*="send"]',
-      'button[type="submit"]',
-      'button[data-testid="send-button"]'
-    ];
+  console.log('🤖 ThreadCub: Attempting Grok auto-start with retry logic...');
 
+  // Grok-specific send button selectors (comprehensive list)
+  const sendSelectors = [
+    'button[aria-label="Send message"]',
+    'button[aria-label="Send"]',
+    'button[aria-label*="Send"]',
+    'button[aria-label*="send"]',
+    'button[data-testid="send-button"]',
+    'button[data-testid*="send"]',
+    'button[type="submit"]',
+    'button[class*="send"]',
+    'button[class*="Send"]',
+    // Try to find button with SVG arrow icon
+    'button svg[viewBox]',
+    'form button[type="submit"]'
+  ];
+
+  let attempts = 0;
+  const maxAttempts = 5;
+  const retryDelay = 500;
+
+  function tryFindAndClick() {
+    attempts++;
+    console.log(`🤖 ThreadCub: Grok send button attempt ${attempts}/${maxAttempts}`);
+
+    // First, try standard selectors
     for (const selector of sendSelectors) {
-      const sendButton = document.querySelector(selector);
-      if (sendButton && !sendButton.disabled) {
-        console.log('🔧 Found Grok send button, clicking...');
-        sendButton.click();
-        return;
+      try {
+        const elements = document.querySelectorAll(selector);
+        console.log(`🔍 Selector "${selector}" found ${elements.length} elements`);
+
+        for (const element of elements) {
+          // For SVG selector, we need to get the parent button
+          const button = element.tagName === 'BUTTON' ? element : element.closest('button');
+
+          if (button && !button.disabled && button.offsetHeight > 0) {
+            console.log('🤖 ThreadCub: Found Grok send button:', button);
+            console.log('🤖 Button aria-label:', button.getAttribute('aria-label'));
+            console.log('🤖 Button classes:', button.className);
+
+            // Focus and click
+            button.focus();
+            button.click();
+            console.log('✅ ThreadCub: Grok send button clicked!');
+            return true;
+          }
+        }
+      } catch (e) {
+        console.log(`🔍 Error with selector "${selector}":`, e.message);
       }
     }
 
-    console.log('🔧 No Grok send button found or all disabled');
+    // Alternative: Find all buttons and look for one that seems like a send button
+    const allButtons = document.querySelectorAll('button');
+    console.log(`🔍 Checking ${allButtons.length} total buttons on page`);
 
-  } catch (error) {
-    console.log('🔧 Grok auto-start failed:', error);
+    for (const button of allButtons) {
+      const ariaLabel = button.getAttribute('aria-label') || '';
+      const className = button.className || '';
+      const innerText = button.innerText || '';
+
+      // Check if this looks like a send button
+      const isSendButton =
+        ariaLabel.toLowerCase().includes('send') ||
+        className.toLowerCase().includes('send') ||
+        innerText.toLowerCase().includes('send');
+
+      if (isSendButton && !button.disabled && button.offsetHeight > 0) {
+        console.log('🤖 ThreadCub: Found send button via text search:', button);
+        button.focus();
+        button.click();
+        console.log('✅ ThreadCub: Grok send button clicked (text search)!');
+        return true;
+      }
+    }
+
+    // Retry if not found
+    if (attempts < maxAttempts) {
+      console.log(`🔄 ThreadCub: Retrying in ${retryDelay}ms...`);
+      setTimeout(tryFindAndClick, retryDelay);
+      return false;
+    }
+
+    console.log('❌ ThreadCub: Could not find Grok send button after all attempts');
+    console.log('💡 Debug: User may need to click send manually');
+    return false;
   }
+
+  // Start the retry loop
+  tryFindAndClick();
 }
 
 // ===== Platform detection (now using centralized module) =====

@@ -55,12 +55,13 @@ const PlatformDetector = {
       'textarea',
       'div[contenteditable="true"]'
     ],
-    // TODO: Update these selectors after inspecting Grok's actual DOM structure
+    // Grok uses same DOM structure as Claude
     grok: [
-      'textarea',
+      'textarea[data-testid="chat-input"]',
       'div[contenteditable="true"]',
       'textarea[placeholder*="Ask"]',
-      'textarea[placeholder*="Message"]'
+      'textarea[placeholder*="Message"]',
+      'textarea'
     ],
     // TODO: Update these selectors after inspecting DeepSeek's actual DOM structure
     deepseek: [
@@ -93,6 +94,11 @@ const PlatformDetector = {
     gemini: [
       /\/app\/([^\/\?]+)/,      // /app/conversation-id
       /\/chat\/([^\/\?]+)/      // /chat/conversation-id
+    ],
+    grok: [
+      /\/i\/grok\/([^\/\?]+)/,  // /i/grok/conversation-id
+      /\/grok\/([^\/\?]+)/,     // /grok/conversation-id
+      /([a-f0-9-]{36})/         // any uuid in URL
     ]
   },
 

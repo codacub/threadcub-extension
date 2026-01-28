@@ -190,7 +190,7 @@ const PLATFORM_HANDLERS = {
         name: 'Copilot',
         icon: '🚁',
         color: '#0078d4',
-        
+
         selectors: {
             messages: '.ac-container .ac-textBlock',
             userMessages: '[data-author="user"]',
@@ -198,35 +198,115 @@ const PLATFORM_HANDLERS = {
             inputField: 'textarea[data-testid="chat-input"]',
             sendButton: 'button[type="submit"]'
         },
-        
+
         urls: {
             newChat: 'https://copilot.microsoft.com/',
             continue: 'https://chat.openai.com/'
         },
-        
+
         extractMessage(element) {
             const clone = element.cloneNode(true);
-            
+
             // Remove Copilot-specific UI elements
             const unwantedElements = clone.querySelectorAll(
                 'button, .action-buttons, .feedback-container'
             );
             unwantedElements.forEach(el => el.remove());
-            
+
             return clone.textContent?.trim() || '';
         },
-        
+
         async injectPrompt(prompt) {
             const inputField = document.querySelector(this.selectors.inputField);
             if (!inputField) return false;
-            
+
             inputField.focus();
             inputField.value = prompt;
-            
+
             inputField.dispatchEvent(new Event('input', { bubbles: true }));
             inputField.dispatchEvent(new Event('change', { bubbles: true }));
-            
+
             return true;
+        }
+    },
+
+    // Grok - uses same DOM structure as Claude.ai
+    'x.com': {
+        name: 'Grok',
+        icon: '🤖',
+        color: '#1da1f2',
+
+        selectors: {
+            // Same selectors as Claude (identical DOM structure)
+            messages: 'div[class*="flex"][class*="flex-col"]',
+            userMessages: 'div[class*="flex"][class*="flex-col"]',
+            assistantMessages: 'div[class*="flex"][class*="flex-col"]',
+            inputField: 'textarea[data-testid="chat-input"], div[contenteditable="true"], textarea',
+            sendButton: 'button[data-testid="send-button"], button[type="submit"]'
+        },
+
+        urls: {
+            newChat: 'https://x.com/i/grok',
+            continue: 'https://claude.ai/chat/new'
+        },
+
+        extractMessage(element) {
+            const clone = element.cloneNode(true);
+
+            // Remove UI elements (same as Claude)
+            const unwantedElements = clone.querySelectorAll(
+                'button, .copy-button, [data-testid*="copy"], .timestamp, .message-actions'
+            );
+            unwantedElements.forEach(el => el.remove());
+
+            return clone.textContent?.trim() || '';
+        },
+
+        async injectPrompt(prompt) {
+            const inputField = document.querySelector(this.selectors.inputField);
+            if (!inputField) return false;
+
+            inputField.focus();
+
+            // Handle both textarea and contenteditable
+            if (inputField.tagName === 'TEXTAREA') {
+                inputField.value = prompt;
+            } else {
+                inputField.textContent = prompt;
+            }
+
+            inputField.dispatchEvent(new Event('input', { bubbles: true }));
+            inputField.dispatchEvent(new Event('change', { bubbles: true }));
+
+            return true;
+        }
+    },
+
+    // Grok alternate domain
+    'grok.x.ai': {
+        name: 'Grok',
+        icon: '🤖',
+        color: '#1da1f2',
+
+        selectors: {
+            messages: 'div[class*="flex"][class*="flex-col"]',
+            userMessages: 'div[class*="flex"][class*="flex-col"]',
+            assistantMessages: 'div[class*="flex"][class*="flex-col"]',
+            inputField: 'textarea[data-testid="chat-input"], div[contenteditable="true"], textarea',
+            sendButton: 'button[data-testid="send-button"], button[type="submit"]'
+        },
+
+        urls: {
+            newChat: 'https://grok.x.ai/',
+            continue: 'https://claude.ai/chat/new'
+        },
+
+        extractMessage(element) {
+            return PLATFORM_HANDLERS['x.com'].extractMessage(element);
+        },
+
+        async injectPrompt(prompt) {
+            return PLATFORM_HANDLERS['x.com'].injectPrompt.call(this, prompt);
         }
     }
 };

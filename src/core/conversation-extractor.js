@@ -371,82 +371,134 @@ const ConversationExtractor = {
 
   // =============================================================================
   // GROK EXTRACTION
+  // Uses same DOM structure as Claude.ai (flex-based containers)
   // =============================================================================
 
   extractGrokConversation() {
-    console.log('🤖 ThreadCub: Extracting Grok conversation...');
+    console.log('🤖 ThreadCub: Starting Grok extraction (Claude-identical DOM structure)...');
+
+    // Handle Grok's title format (may include "Grok" or "X")
+    const title = document.title
+      .replace(' - Grok', '')
+      .replace(' | Grok', '')
+      .replace(' - X', '')
+      .replace(' | X', '')
+      .trim() || 'Grok Conversation';
+
+    try {
+      // Use the same extraction approach as Claude (identical DOM structure)
+      const extractedMessages = this.grokSimpleWorkingExtraction();
+
+      const conversationData = {
+        title: title,
+        url: window.location.href,
+        timestamp: new Date().toISOString(),
+        platform: 'Grok',
+        total_messages: extractedMessages.length,
+        messages: extractedMessages,
+        extraction_method: 'grok_simple_working_extraction'
+      };
+
+      console.log(`🤖 ThreadCub: ✅ Grok extraction complete: ${extractedMessages.length} messages`);
+
+      return conversationData;
+
+    } catch (error) {
+      console.error('🤖 ThreadCub: Grok extraction failed:', error);
+
+      // Fallback to working container method
+      const fallbackMessages = this.grokWorkingContainerExtraction();
+
+      return {
+        title: title,
+        url: window.location.href,
+        timestamp: new Date().toISOString(),
+        platform: 'Grok',
+        total_messages: fallbackMessages.length,
+        messages: fallbackMessages,
+        extraction_method: 'grok_fallback_extraction',
+        error: error.message
+      };
+    }
+  },
+
+  // Grok extraction using same selectors as Claude (identical DOM structure)
+  grokSimpleWorkingExtraction() {
+    console.log('🤖 ThreadCub: Using Grok simple extraction (Claude-identical selectors)...');
 
     const messages = [];
     let messageIndex = 0;
 
-    // TODO: Update after inspecting Grok's actual DOM structure
-    // Get page title for conversation title
-    const title = document.title || 'Grok Conversation';
+    // Use the SAME selector that works for Claude
+    const elements = document.querySelectorAll('div[class*="flex"][class*="flex-col"]');
+    console.log(`🤖 ThreadCub: Found ${elements.length} flex elements on Grok`);
 
-    // TODO: Inspect Grok's DOM to find the correct selectors for:
-    // - Message container elements
-    // - User message elements (role detection)
-    // - Assistant message elements (role detection)
-    // - Message content extraction
-    // - Code blocks, images, and other special content
+    // Filter for elements with substantial text (same as Claude)
+    const textElements = Array.from(elements).filter(el => {
+      const text = el.innerText?.trim() || '';
+      return text.length > 50;
+    });
 
-    // PLACEHOLDER: Try generic message selectors
-    console.log('⚠️ ThreadCub: Using placeholder Grok extraction - needs manual selector configuration');
+    console.log(`🤖 ThreadCub: Filtered to ${textElements.length} text elements on Grok`);
 
-    const messageSelectors = [
-      '[data-testid*="message"]',
-      '[data-role="user"]',
-      '[data-role="assistant"]',
-      'div[class*="message"]',
-      'div[class*="conversation"]',
-      'div[class*="chat"]'
-    ];
+    // Process each element using same logic as Claude
+    textElements.forEach((element, index) => {
+      const text = element.innerText?.trim() || '';
 
-    let messageElements = [];
-    for (const selector of messageSelectors) {
-      messageElements = document.querySelectorAll(selector);
-      if (messageElements.length > 0) {
-        console.log(`🤖 ThreadCub: Found ${messageElements.length} potential messages with selector: ${selector}`);
-        break;
+      if (text && text.length > 50) {
+        // Use the same enhanced role detection as Claude
+        const role = this.enhancedRoleDetection(text, index);
+
+        messages.push({
+          id: messageIndex++,
+          role: role,
+          content: this.simpleCleanContent(text),
+          timestamp: new Date().toISOString(),
+          extractionMethod: 'grok_simple_working',
+          selector_used: 'div[class*="flex"][class*="flex-col"]',
+          element_classes: element.className,
+          element_data_attrs: this.getDataAttributes(element)
+        });
       }
-    }
+    });
 
-    if (messageElements.length > 0) {
-      messageElements.forEach((element, index) => {
-        const text = element.textContent?.trim() || '';
-        if (text && text.length > 10) {
-          // TODO: Improve role detection based on actual Grok DOM structure
-          // Check for role attributes first, fallback to alternating pattern
-          const dataRole = element.getAttribute('data-role');
-          const role = dataRole || (index % 2 === 0 ? 'user' : 'assistant');
+    console.log(`🤖 ThreadCub: Grok simple extraction found: ${messages.length} messages`);
+    return messages;
+  },
 
+  // Grok fallback extraction using container approach
+  grokWorkingContainerExtraction() {
+    console.log('🤖 ThreadCub: Using Grok container extraction as fallback...');
+
+    const messages = [];
+    let messageIndex = 0;
+
+    try {
+      // Try conversation-turn selectors (similar to ChatGPT)
+      const containers = document.querySelectorAll('[data-testid^="conversation-turn"]');
+      console.log(`🤖 ThreadCub: Found ${containers.length} conversation turns on Grok`);
+
+      containers.forEach((container, index) => {
+        const text = container.innerText?.trim();
+        if (text && text.length > 50) {
+          const role = this.enhancedRoleDetection(text, index);
           messages.push({
             id: messageIndex++,
             role: role,
-            content: text.replace(/^(Copy|Share|Regenerate|Retry)$/gm, '').trim(),
+            content: this.simpleCleanContent(text),
             timestamp: new Date().toISOString(),
-            extractionMethod: 'grok_placeholder',
-            needsManualConfiguration: true
+            extractionMethod: 'grok_working_container',
+            selector_used: '[data-testid^="conversation-turn"]'
           });
         }
       });
+
+    } catch (error) {
+      console.error('🤖 ThreadCub: Grok container extraction error:', error);
     }
 
-    const conversationData = {
-      title: title,
-      url: window.location.href,
-      timestamp: new Date().toISOString(),
-      platform: 'Grok',
-      total_messages: messages.length,
-      messages: messages,
-      extraction_method: 'grok_placeholder',
-      warning: 'This extraction uses placeholder selectors and needs manual configuration after inspecting Grok DOM'
-    };
-
-    console.log(`🤖 ThreadCub: ⚠️ Grok extraction complete (placeholder): ${messages.length} messages`);
-    console.log('⚠️ TODO: Update extractGrokConversation() with actual Grok DOM selectors');
-
-    return conversationData;
+    console.log(`🤖 ThreadCub: Grok container extraction found: ${messages.length} messages`);
+    return messages;
   },
 
   // =============================================================================

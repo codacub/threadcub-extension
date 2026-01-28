@@ -246,6 +246,8 @@ function attemptAutoStart(platform) {
     attemptChatGPTAutoStart();
   } else if (platform === window.PlatformDetector.PLATFORMS.GEMINI || platform === 'gemini') {
     attemptGeminiAutoStart();
+  } else if (platform === window.PlatformDetector.PLATFORMS.GROK || platform === 'grok') {
+    attemptGrokAutoStart();
   }
 }
 
@@ -305,7 +307,7 @@ function attemptGeminiAutoStart() {
       'button[aria-label*="Send"]',
       'button[type="submit"]'
     ];
-    
+
     for (const selector of sendSelectors) {
       const sendButton = document.querySelector(selector);
       if (sendButton && !sendButton.disabled) {
@@ -314,11 +316,36 @@ function attemptGeminiAutoStart() {
         return;
       }
     }
-    
+
     console.log('🔧 No Gemini send button found or all disabled');
-    
+
   } catch (error) {
     console.log('🔧 Gemini auto-start failed:', error);
+  }
+}
+
+function attemptGrokAutoStart() {
+  try {
+    const sendSelectors = [
+      'button[aria-label*="Send"]',
+      'button[aria-label*="send"]',
+      'button[type="submit"]',
+      'button[data-testid="send-button"]'
+    ];
+
+    for (const selector of sendSelectors) {
+      const sendButton = document.querySelector(selector);
+      if (sendButton && !sendButton.disabled) {
+        console.log('🔧 Found Grok send button, clicking...');
+        sendButton.click();
+        return;
+      }
+    }
+
+    console.log('🔧 No Grok send button found or all disabled');
+
+  } catch (error) {
+    console.log('🔧 Grok auto-start failed:', error);
   }
 }
 

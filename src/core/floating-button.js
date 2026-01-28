@@ -1117,7 +1117,7 @@ Once you've reviewed it, let me know you're ready to continue from where we left
       window.StorageService.storeWithChrome(continuationData)
         .then(() => {
           console.log('🐻 ThreadCub: Grok data stored successfully');
-          const grokUrl = 'https://grok.com/';
+          const grokUrl = 'https://x.com/i/grok';
           window.open(grokUrl, '_blank');
           this.showSuccessToast('Opening Grok with conversation context...');
         })
@@ -1182,9 +1182,9 @@ Once you've reviewed it, let me know you're ready to continue from where we left
 
     try {
       localStorage.setItem('threadcub_continuation', JSON.stringify(continuationData));
-      const grokUrl = 'https://grok.com/';
+      const grokUrl = 'https://x.com/i/grok';
       window.open(grokUrl, '_blank');
-      this.showSuccessToast('File downloaded! Check your new Grok tab.');
+      this.showSuccessToast('Opening Grok with conversation context...');
     } catch (error) {
       console.error('🤖 ThreadCub: localStorage fallback failed:', error);
       this.showErrorToast('Failed to prepare continuation data');

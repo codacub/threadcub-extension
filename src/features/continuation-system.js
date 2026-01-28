@@ -327,8 +327,13 @@ function attemptGeminiAutoStart() {
 function attemptGrokAutoStart() {
   console.log('🤖 ThreadCub: Attempting Grok auto-start with retry logic...');
 
-  // Grok-specific send button selectors (comprehensive list)
+  // Grok-specific send button selectors - PRIMARY: "Grok something" aria-label
   const sendSelectors = [
+    // PRIMARY: Grok's actual send button uses this aria-label
+    'button[aria-label="Grok something"]',
+    'button[aria-label*="Grok something"]',
+    'button[aria-label*="Grok"]',
+    // FALLBACK: Generic send button selectors
     'button[aria-label="Send message"]',
     'button[aria-label="Send"]',
     'button[aria-label*="Send"]',
@@ -337,10 +342,7 @@ function attemptGrokAutoStart() {
     'button[data-testid*="send"]',
     'button[type="submit"]',
     'button[class*="send"]',
-    'button[class*="Send"]',
-    // Try to find button with SVG arrow icon
-    'button svg[viewBox]',
-    'form button[type="submit"]'
+    'button[class*="Send"]'
   ];
 
   let attempts = 0;
@@ -351,53 +353,52 @@ function attemptGrokAutoStart() {
     attempts++;
     console.log(`🤖 ThreadCub: Grok send button attempt ${attempts}/${maxAttempts}`);
 
-    // First, try standard selectors
+    // Try selectors in order (primary first)
     for (const selector of sendSelectors) {
       try {
         const elements = document.querySelectorAll(selector);
-        console.log(`🔍 Selector "${selector}" found ${elements.length} elements`);
+
+        if (elements.length > 0) {
+          console.log(`🔍 Selector "${selector}" found ${elements.length} elements`);
+        }
 
         for (const element of elements) {
-          // For SVG selector, we need to get the parent button
           const button = element.tagName === 'BUTTON' ? element : element.closest('button');
 
           if (button && !button.disabled && button.offsetHeight > 0) {
-            console.log('🤖 ThreadCub: Found Grok send button:', button);
-            console.log('🤖 Button aria-label:', button.getAttribute('aria-label'));
-            console.log('🤖 Button classes:', button.className);
+            const ariaLabel = button.getAttribute('aria-label');
+            console.log('🤖 ThreadCub: Found Grok send button!');
+            console.log(`🤖 Matched selector: "${selector}"`);
+            console.log(`🤖 Button aria-label: "${ariaLabel}"`);
 
             // Focus and click
             button.focus();
             button.click();
-            console.log('✅ ThreadCub: Grok send button clicked!');
+            console.log('✅ ThreadCub: Grok send button clicked successfully!');
             return true;
           }
         }
       } catch (e) {
-        console.log(`🔍 Error with selector "${selector}":`, e.message);
+        // Continue to next selector
       }
     }
 
-    // Alternative: Find all buttons and look for one that seems like a send button
+    // Alternative: Find button with "Grok" in aria-label (handles variations)
     const allButtons = document.querySelectorAll('button');
-    console.log(`🔍 Checking ${allButtons.length} total buttons on page`);
+    console.log(`🔍 Fallback: Checking ${allButtons.length} buttons for Grok-related aria-label`);
 
     for (const button of allButtons) {
       const ariaLabel = button.getAttribute('aria-label') || '';
-      const className = button.className || '';
-      const innerText = button.innerText || '';
 
-      // Check if this looks like a send button
-      const isSendButton =
-        ariaLabel.toLowerCase().includes('send') ||
-        className.toLowerCase().includes('send') ||
-        innerText.toLowerCase().includes('send');
+      // Check for Grok-specific or send-like aria-labels
+      const isGrokButton = ariaLabel.toLowerCase().includes('grok');
+      const isSendButton = ariaLabel.toLowerCase().includes('send');
 
-      if (isSendButton && !button.disabled && button.offsetHeight > 0) {
-        console.log('🤖 ThreadCub: Found send button via text search:', button);
+      if ((isGrokButton || isSendButton) && !button.disabled && button.offsetHeight > 0) {
+        console.log(`🤖 ThreadCub: Found button via fallback search: "${ariaLabel}"`);
         button.focus();
         button.click();
-        console.log('✅ ThreadCub: Grok send button clicked (text search)!');
+        console.log('✅ ThreadCub: Grok send button clicked (fallback)!');
         return true;
       }
     }

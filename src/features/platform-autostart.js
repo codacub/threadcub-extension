@@ -116,8 +116,13 @@ function attemptGeminiAutoStart() {
 function attemptGrokAutoStart() {
   console.log('🤖 ThreadCub: Attempting Grok auto-start with retry logic...');
 
-  // Grok-specific send button selectors (comprehensive list)
+  // Grok-specific send button selectors - PRIMARY: "Grok something" aria-label
   const sendSelectors = [
+    // PRIMARY: Grok's actual send button uses this aria-label
+    'button[aria-label="Grok something"]',
+    'button[aria-label*="Grok something"]',
+    'button[aria-label*="Grok"]',
+    // FALLBACK: Generic send button selectors
     'button[aria-label="Send message"]',
     'button[aria-label="Send"]',
     'button[aria-label*="Send"]',
@@ -126,9 +131,7 @@ function attemptGrokAutoStart() {
     'button[data-testid*="send"]',
     'button[type="submit"]',
     'button[class*="send"]',
-    'button[class*="Send"]',
-    'button svg[viewBox]',
-    'form button[type="submit"]'
+    'button[class*="Send"]'
   ];
 
   let attempts = 0;
@@ -139,14 +142,15 @@ function attemptGrokAutoStart() {
     attempts++;
     console.log(`🤖 ThreadCub: Grok send button attempt ${attempts}/${maxAttempts}`);
 
-    // Try standard selectors
+    // Try selectors in order (primary first)
     for (const selector of sendSelectors) {
       try {
         const elements = document.querySelectorAll(selector);
         for (const element of elements) {
           const button = element.tagName === 'BUTTON' ? element : element.closest('button');
           if (button && !button.disabled && button.offsetHeight > 0) {
-            console.log('🤖 ThreadCub: Found Grok send button, clicking...');
+            const ariaLabel = button.getAttribute('aria-label');
+            console.log(`🤖 ThreadCub: Found Grok send button with aria-label: "${ariaLabel}"`);
             button.focus();
             button.click();
             console.log('✅ ThreadCub: Grok send button clicked!');
@@ -158,17 +162,15 @@ function attemptGrokAutoStart() {
       }
     }
 
-    // Alternative: Search all buttons for send-like characteristics
+    // Alternative: Search all buttons for Grok-related or send-like characteristics
     const allButtons = document.querySelectorAll('button');
     for (const button of allButtons) {
       const ariaLabel = button.getAttribute('aria-label') || '';
-      const className = button.className || '';
-      const isSendButton =
-        ariaLabel.toLowerCase().includes('send') ||
-        className.toLowerCase().includes('send');
+      const isGrokButton = ariaLabel.toLowerCase().includes('grok');
+      const isSendButton = ariaLabel.toLowerCase().includes('send');
 
-      if (isSendButton && !button.disabled && button.offsetHeight > 0) {
-        console.log('🤖 ThreadCub: Found send button via search:', button);
+      if ((isGrokButton || isSendButton) && !button.disabled && button.offsetHeight > 0) {
+        console.log(`🤖 ThreadCub: Found button via fallback: "${ariaLabel}"`);
         button.focus();
         button.click();
         return true;

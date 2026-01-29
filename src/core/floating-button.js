@@ -778,7 +778,7 @@ class ThreadCubFloatingButton {
         console.log('🔵 ThreadCub: Routing to DeepSeek flow (with file download)');
         this.handleDeepSeekFlow(minimalPrompt, shareUrl, conversationData);
       } else if (targetPlatform === 'perplexity') {
-        console.log('🔮 ThreadCub: Routing to Perplexity flow (URL-based)');
+        console.log('🔮 ThreadCub: Routing to Perplexity flow (file-based)');
         this.handlePerplexityFlow(minimalPrompt, shareUrl, conversationData);
       } else {
         console.log('🤖 ThreadCub: Unknown platform, defaulting to ChatGPT flow');
@@ -1446,7 +1446,7 @@ Once you've reviewed it, let me know you're ready to continue from where we left
       console.log('🔵 ThreadCub: Routing to DeepSeek flow (with file download)');
       this.handleDeepSeekFlow(minimalPrompt, fallbackShareUrl, conversationData);
     } else if (targetPlatform === 'perplexity') {
-      console.log('🔮 ThreadCub: Routing to Perplexity flow (URL-based)');
+      console.log('🔮 ThreadCub: Routing to Perplexity flow (file-based)');
       this.handlePerplexityFlow(minimalPrompt, fallbackShareUrl, conversationData);
     } else {
       console.log('🤖 ThreadCub: Unknown platform, defaulting to ChatGPT flow');

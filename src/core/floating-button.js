@@ -1303,15 +1303,18 @@ Once you've reviewed it, let me know you're ready to continue from where we left
   }
 
   // =============================================================================
-  // PERPLEXITY FLOW (URL-based, similar to Claude/Grok)
+  // PERPLEXITY FLOW (Full text paste - Perplexity has web search but NOT web fetch)
   // =============================================================================
 
   handlePerplexityFlow(continuationPrompt, shareUrl, conversationData) {
-    console.log('🔮 ThreadCub: Starting Perplexity flow (URL-based)...');
+    console.log('🔮 ThreadCub: Starting Perplexity flow with full text paste...');
 
-    // Create continuation data with URL-based prompt
+    // STEP 1: Auto-download the conversation file as backup
+    this.autoDownloadPerplexityFile(conversationData, shareUrl);
+
+    // STEP 2: Create continuation data with FULL conversation text
     const continuationData = {
-      prompt: continuationPrompt,
+      prompt: this.generatePerplexityContinuationPrompt(conversationData),
       shareUrl: shareUrl,
       platform: 'Perplexity',
       timestamp: Date.now(),
@@ -1320,12 +1323,12 @@ Once you've reviewed it, let me know you're ready to continue from where we left
       title: conversationData.title || 'Previous Conversation',
       conversationData: conversationData,
       perplexityFlow: true,
-      downloadCompleted: false
+      downloadCompleted: true  // File downloaded as backup
     };
 
-    console.log('🔮 ThreadCub: Perplexity continuation data prepared');
+    console.log('🔮 ThreadCub: Perplexity continuation data prepared with full text');
 
-    // Use storage to pass data to new tab
+    // STEP 3: Use storage for cross-tab data
     const canUseChrome = window.StorageService.canUseChromStorage();
 
     if (canUseChrome) {
@@ -1335,7 +1338,7 @@ Once you've reviewed it, let me know you're ready to continue from where we left
           console.log('🐻 ThreadCub: Perplexity data stored successfully');
           const perplexityUrl = 'https://www.perplexity.ai/';
           window.open(perplexityUrl, '_blank');
-          this.showSuccessToast('Opening Perplexity with conversation context...');
+          this.showSuccessToast('File downloaded! Opening Perplexity...');
         })
         .catch(error => {
           console.log('🔮 ThreadCub: Chrome storage failed, using fallback:', error);
@@ -1347,6 +1350,67 @@ Once you've reviewed it, let me know you're ready to continue from where we left
     }
   }
 
+  autoDownloadPerplexityFile(conversationData, shareUrl) {
+    try {
+      console.log('🔮 ThreadCub: Auto-downloading conversation file for Perplexity...');
+
+      const conversationJSON = {
+        title: conversationData.title || 'ThreadCub Conversation Continuation',
+        url: conversationData.url || window.location.href,
+        platform: conversationData.platform,
+        exportDate: new Date().toISOString(),
+        totalMessages: conversationData.messages.length,
+        source: 'ThreadCub Browser Extension - Perplexity Continuation',
+        shareUrl: shareUrl,
+        instructions: 'This file contains our previous conversation. Copy and paste the conversation into Perplexity to continue.',
+        messages: conversationData.messages,
+        summary: window.ConversationExtractor.generateQuickSummary(conversationData.messages)
+      };
+
+      const filename = `threadcub-perplexity-continuation-${new Date().toISOString().split('T')[0]}.json`;
+
+      const blob = new Blob([JSON.stringify(conversationJSON, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      console.log('🔮 ThreadCub: ✅ Perplexity file auto-downloaded:', filename);
+
+    } catch (error) {
+      console.error('🔮 ThreadCub: Error auto-downloading Perplexity file:', error);
+    }
+  }
+
+  generatePerplexityContinuationPrompt(conversationData) {
+    // Format the conversation history as readable text
+    const messages = conversationData.messages || [];
+    let conversationText = '';
+
+    messages.forEach((msg, index) => {
+      const role = msg.role === 'user' ? 'USER' : 'ASSISTANT';
+      const content = msg.content || '';
+      conversationText += `[${role}]: ${content}\n\n`;
+    });
+
+    return `I'd like to continue our previous conversation. Here's the complete conversation history:
+
+---
+PREVIOUS CONVERSATION:
+---
+${conversationText}
+---
+END OF PREVIOUS CONVERSATION
+---
+
+Please review the conversation above and help me continue from where we left off. What were the main topics and what should we focus on next?`;
+  }
+
   handlePerplexityFlowFallback(continuationData) {
     console.log('🔮 ThreadCub: Using localStorage fallback for Perplexity...');
 
@@ -1354,7 +1418,7 @@ Once you've reviewed it, let me know you're ready to continue from where we left
       localStorage.setItem('threadcub_continuation', JSON.stringify(continuationData));
       const perplexityUrl = 'https://www.perplexity.ai/';
       window.open(perplexityUrl, '_blank');
-      this.showSuccessToast('Opening Perplexity with conversation context...');
+      this.showSuccessToast('File downloaded! Opening Perplexity...');
     } catch (error) {
       console.error('🔮 ThreadCub: localStorage fallback failed:', error);
       this.showErrorToast('Failed to prepare continuation data');

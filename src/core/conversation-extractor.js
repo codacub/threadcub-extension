@@ -894,7 +894,7 @@ const ConversationExtractor = {
   generateContinuationPrompt(summary, shareUrl, platform, conversationData) {
     console.log('🐻 ThreadCub: Generating continuation prompt for platform:', platform);
 
-    // URL-based prompt for platforms with web_fetch capability (Claude, Grok, Perplexity)
+    // URL-based prompt for platforms with web_fetch capability (Claude, Grok)
     const urlBasedPrompt = `I'd like to continue our previous conversation. The complete context is available at: ${shareUrl}
 
 Please attempt to fetch this URL using your web_fetch tool to access the conversation history. The URL returns a JSON response with the full conversation.
@@ -907,26 +907,22 @@ If you're able to retrieve it, let me know you're ready to continue from where w
       return urlBasedPrompt;
     }
 
-    // PERPLEXITY - URL-based (confirmed working with web_fetch, same as Claude/Grok)
-    else if (platform && platform.toLowerCase().includes('perplexity')) {
-      console.log('🔮 ThreadCub: Generated Perplexity URL-based prompt:', urlBasedPrompt.length, 'characters');
-      return urlBasedPrompt;
-    }
-
-    // CHATGPT/GEMINI/DEEPSEEK - File-based prompts (user manually uploads file)
+    // CHATGPT/GEMINI/DEEPSEEK/PERPLEXITY - File/text-based prompts (no URL fetch capability)
+    // Perplexity has web SEARCH but NOT web FETCH - it cannot retrieve URLs directly
     else if (platform && (platform.toLowerCase().includes('chatgpt') ||
                            platform.toLowerCase().includes('gemini') ||
-                           platform.toLowerCase().includes('deepseek'))) {
-      const prompt = `I'd like to continue our previous conversation. I have our complete conversation history as a file that I'll share now.
+                           platform.toLowerCase().includes('deepseek') ||
+                           platform.toLowerCase().includes('perplexity'))) {
+      const prompt = `I'd like to continue our previous conversation. I have our complete conversation history that I'll share now.
 
-Please read through the attached conversation file and provide your assessment of:
+Please read through the conversation and provide your assessment of:
 - What we were working on
 - The current status/progress
 - Any next steps or tasks mentioned
 
 Once you've reviewed it, let me know you're ready to continue from where we left off.`;
 
-      console.log('🐻 ThreadCub: Generated file-based continuation prompt:', prompt.length, 'characters');
+      console.log('🐻 ThreadCub: Generated text-based continuation prompt:', prompt.length, 'characters');
       return prompt;
     }
 

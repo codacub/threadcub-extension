@@ -94,31 +94,33 @@ function executeStreamlinedContinuation(fullPrompt, shareUrl, continuationData) 
   console.log('🚀 Perplexity Flow:', continuationData.perplexityFlow);
   
   const platform = window.PlatformDetector.detectPlatform();
-  
-  // Check if this is a file-based flow (user needs to manually upload file)
-  const isFileBased = continuationData.chatGPTFlow || 
-                      continuationData.geminiFlow || 
-                      continuationData.deepseekFlow;
-  
+
+  // Check if this is a file/text-based flow (user needs to review pasted content)
+  // Perplexity has web SEARCH but NOT web FETCH - cannot retrieve URLs directly
+  const isFileBased = continuationData.chatGPTFlow ||
+                      continuationData.geminiFlow ||
+                      continuationData.deepseekFlow ||
+                      continuationData.perplexityFlow;
+
   // STEP 1: Auto-populate the input field
   console.log('🔧 Auto-populating input field...');
   const populateSuccess = fillInputFieldWithPrompt(fullPrompt);
-  
+
   console.log('🔧 Population result:', populateSuccess);
-  
+
   // FIXED: Always show notification and continue (don't rely on populateSuccess return)
   // Show subtle success notification
   showStreamlinedNotification(continuationData);
-  
-  // Auto-start ONLY for URL-based platforms (Claude, Grok, Perplexity)
-  // File-based platforms (ChatGPT, Gemini, DeepSeek) need user to upload file first
+
+  // Auto-start ONLY for URL-based platforms (Claude, Grok)
+  // File/text-based platforms (ChatGPT, Gemini, DeepSeek, Perplexity) need user to review first
   if (!isFileBased) {
     setTimeout(() => {
       console.log('🔧 Auto-starting conversation...');
       attemptAutoStart(platform);
     }, 1500); // Give user moment to see the populated input
   } else {
-    console.log('📁 File-based flow - skipping auto-start. User needs to upload file manually.');
+    console.log('📁 File/text-based flow - skipping auto-start. User needs to review content first.');
   }
 }
 
@@ -127,7 +129,8 @@ function showStreamlinedNotification(continuationData) {
   const isChatGPTFlow = continuationData.chatGPTFlow === true;
   const isGeminiFlow = continuationData.geminiFlow === true;
   const isDeepSeekFlow = continuationData.deepseekFlow === true;
-  const isFileBased = isChatGPTFlow || isGeminiFlow || isDeepSeekFlow;
+  const isPerplexityFlow = continuationData.perplexityFlow === true;
+  const isFileBased = isChatGPTFlow || isGeminiFlow || isDeepSeekFlow || isPerplexityFlow;
   const messageCount = continuationData.totalMessages || 'multiple';
   
   // Create small, non-intrusive notification

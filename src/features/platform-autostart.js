@@ -36,6 +36,8 @@ function attemptAutoStart() {
       attemptGrokAutoStart();
     } else if (platform === window.PlatformDetector.PLATFORMS.DEEPSEEK || platform === 'deepseek') {
       attemptDeepSeekAutoStart();
+    } else if (platform === window.PlatformDetector.PLATFORMS.PERPLEXITY || platform === 'perplexity') {
+      attemptPerplexityAutoStart();
     }
   }, 1000);
 }
@@ -225,6 +227,76 @@ function attemptDeepSeekAutoStart() {
   }
 }
 
+// ===== Perplexity auto-start =====
+function attemptPerplexityAutoStart() {
+  console.log('🔮 ThreadCub: Attempting Perplexity auto-start with retry logic...');
+
+  // Perplexity send button selectors - PRIMARY: "Submit" aria-label
+  const sendSelectors = [
+    'button[aria-label="Submit"]',
+    'button[aria-label*="Submit"]',
+    'button[aria-label="Send"]',
+    'button[aria-label*="Send"]',
+    'button[type="submit"]',
+    'button[data-testid="send-button"]'
+  ];
+
+  let attempts = 0;
+  const maxAttempts = 5;
+  const retryDelay = 500;
+
+  function tryFindAndClick() {
+    attempts++;
+    console.log(`🔮 ThreadCub: Perplexity send button attempt ${attempts}/${maxAttempts}`);
+
+    for (const selector of sendSelectors) {
+      try {
+        const elements = document.querySelectorAll(selector);
+        for (const element of elements) {
+          const button = element.tagName === 'BUTTON' ? element : element.closest('button');
+          if (button && !button.disabled && button.offsetHeight > 0) {
+            const ariaLabel = button.getAttribute('aria-label');
+            console.log(`🔮 ThreadCub: Found Perplexity send button with aria-label: "${ariaLabel}"`);
+            button.focus();
+            button.click();
+            console.log('✅ ThreadCub: Perplexity send button clicked!');
+            return true;
+          }
+        }
+      } catch (e) {
+        // Continue to next selector
+      }
+    }
+
+    // Fallback: Search all buttons for Submit-related characteristics
+    const allButtons = document.querySelectorAll('button');
+    for (const button of allButtons) {
+      const ariaLabel = button.getAttribute('aria-label') || '';
+      const isSubmitButton = ariaLabel.toLowerCase().includes('submit');
+      const isSendButton = ariaLabel.toLowerCase().includes('send');
+
+      if ((isSubmitButton || isSendButton) && !button.disabled && button.offsetHeight > 0) {
+        console.log(`🔮 ThreadCub: Found button via fallback: "${ariaLabel}"`);
+        button.focus();
+        button.click();
+        return true;
+      }
+    }
+
+    // Retry if not found
+    if (attempts < maxAttempts) {
+      console.log(`🔄 ThreadCub: Retrying in ${retryDelay}ms...`);
+      setTimeout(tryFindAndClick, retryDelay);
+      return false;
+    }
+
+    console.log('❌ ThreadCub: Could not find Perplexity send button after all attempts');
+    return false;
+  }
+
+  tryFindAndClick();
+}
+
 // ===== Fill input field with prompt =====
 function fillInputFieldWithPrompt(prompt) {
   const platform = window.PlatformDetector.detectPlatform();
@@ -298,6 +370,7 @@ window.PlatformAutostart = {
   attemptGeminiAutoStart,
   attemptGrokAutoStart,
   attemptDeepSeekAutoStart,
+  attemptPerplexityAutoStart,
   fillInputFieldWithPrompt,
   showContinuationSuccess,
   showDownloadSuccessMessage

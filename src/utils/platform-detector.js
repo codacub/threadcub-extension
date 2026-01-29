@@ -17,6 +17,7 @@ const PlatformDetector = {
     COPILOT: 'copilot',
     GROK: 'grok',
     DEEPSEEK: 'deepseek',
+    PERPLEXITY: 'perplexity',
     UNKNOWN: 'unknown'
   },
 
@@ -28,6 +29,7 @@ const PlatformDetector = {
     copilot: 'Copilot',
     grok: 'Grok',
     deepseek: 'DeepSeek',
+    perplexity: 'Perplexity',
     unknown: 'Unknown'
   },
 
@@ -69,6 +71,13 @@ const PlatformDetector = {
       'textarea[placeholder*="Ask"]',
       'textarea[placeholder*="Message"]'
     ],
+    // Perplexity uses textarea with "Ask" placeholder
+    perplexity: [
+      'textarea[placeholder*="Ask"]',
+      'textarea[placeholder*="Search"]',
+      'textarea',
+      'div[contenteditable="true"]'
+    ],
     unknown: [
       'textarea[placeholder*="message"]',
       'textarea[placeholder*="prompt"]',
@@ -97,6 +106,10 @@ const PlatformDetector = {
     grok: [
       /\/i\/grok\/([^\/\?]+)/,  // /i/grok/conversation-id
       /\/grok\/([^\/\?]+)/,     // /grok/conversation-id
+      /([a-f0-9-]{36})/         // any uuid in URL
+    ],
+    perplexity: [
+      /\/search\/([^\/\?]+)/,   // /search/conversation-id
       /([a-f0-9-]{36})/         // any uuid in URL
     ]
   },
@@ -130,6 +143,10 @@ const PlatformDetector = {
 
     if (hostname.includes('chat.deepseek.com')) {
       return this.PLATFORMS.DEEPSEEK;
+    }
+
+    if (hostname.includes('perplexity.ai')) {
+      return this.PLATFORMS.PERPLEXITY;
     }
 
     return this.PLATFORMS.UNKNOWN;
@@ -203,7 +220,8 @@ const PlatformDetector = {
       this.PLATFORMS.GEMINI,
       this.PLATFORMS.COPILOT,
       this.PLATFORMS.GROK,
-      this.PLATFORMS.DEEPSEEK
+      this.PLATFORMS.DEEPSEEK,
+      this.PLATFORMS.PERPLEXITY
     ];
   }
 };

@@ -248,6 +248,8 @@ function attemptAutoStart(platform) {
     attemptGeminiAutoStart();
   } else if (platform === window.PlatformDetector.PLATFORMS.GROK || platform === 'grok') {
     attemptGrokAutoStart();
+  } else if (platform === window.PlatformDetector.PLATFORMS.PERPLEXITY || platform === 'perplexity') {
+    attemptPerplexityAutoStart();
   }
 }
 
@@ -411,6 +413,94 @@ function attemptGrokAutoStart() {
     }
 
     console.log('❌ ThreadCub: Could not find Grok send button after all attempts');
+    console.log('💡 Debug: User may need to click send manually');
+    return false;
+  }
+
+  // Start the retry loop
+  tryFindAndClick();
+}
+
+function attemptPerplexityAutoStart() {
+  console.log('🔮 ThreadCub: Attempting Perplexity auto-start with retry logic...');
+
+  // Perplexity send button selectors - PRIMARY: "Submit" aria-label
+  const sendSelectors = [
+    // PRIMARY: Perplexity's submit button
+    'button[aria-label="Submit"]',
+    'button[aria-label*="Submit"]',
+    // FALLBACK: Generic send button selectors
+    'button[aria-label="Send"]',
+    'button[aria-label*="Send"]',
+    'button[type="submit"]',
+    'button[data-testid="send-button"]'
+  ];
+
+  let attempts = 0;
+  const maxAttempts = 5;
+  const retryDelay = 500;
+
+  function tryFindAndClick() {
+    attempts++;
+    console.log(`🔮 ThreadCub: Perplexity send button attempt ${attempts}/${maxAttempts}`);
+
+    // Try selectors in order (primary first)
+    for (const selector of sendSelectors) {
+      try {
+        const elements = document.querySelectorAll(selector);
+
+        if (elements.length > 0) {
+          console.log(`🔍 Selector "${selector}" found ${elements.length} elements`);
+        }
+
+        for (const element of elements) {
+          const button = element.tagName === 'BUTTON' ? element : element.closest('button');
+
+          if (button && !button.disabled && button.offsetHeight > 0) {
+            const ariaLabel = button.getAttribute('aria-label');
+            console.log('🔮 ThreadCub: Found Perplexity send button!');
+            console.log(`🔮 Matched selector: "${selector}"`);
+            console.log(`🔮 Button aria-label: "${ariaLabel}"`);
+
+            // Focus and click
+            button.focus();
+            button.click();
+            console.log('✅ ThreadCub: Perplexity send button clicked successfully!');
+            return true;
+          }
+        }
+      } catch (e) {
+        // Continue to next selector
+      }
+    }
+
+    // Alternative: Find button with "Submit" in aria-label
+    const allButtons = document.querySelectorAll('button');
+    console.log(`🔍 Fallback: Checking ${allButtons.length} buttons for Submit-related aria-label`);
+
+    for (const button of allButtons) {
+      const ariaLabel = button.getAttribute('aria-label') || '';
+
+      const isSubmitButton = ariaLabel.toLowerCase().includes('submit');
+      const isSendButton = ariaLabel.toLowerCase().includes('send');
+
+      if ((isSubmitButton || isSendButton) && !button.disabled && button.offsetHeight > 0) {
+        console.log(`🔮 ThreadCub: Found button via fallback search: "${ariaLabel}"`);
+        button.focus();
+        button.click();
+        console.log('✅ ThreadCub: Perplexity send button clicked (fallback)!');
+        return true;
+      }
+    }
+
+    // Retry if not found
+    if (attempts < maxAttempts) {
+      console.log(`🔄 ThreadCub: Retrying in ${retryDelay}ms...`);
+      setTimeout(tryFindAndClick, retryDelay);
+      return false;
+    }
+
+    console.log('❌ ThreadCub: Could not find Perplexity send button after all attempts');
     console.log('💡 Debug: User may need to click send manually');
     return false;
   }

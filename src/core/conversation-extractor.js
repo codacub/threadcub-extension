@@ -26,6 +26,8 @@ const ConversationExtractor = {
       conversationData = this.extractGrokConversation();
     } else if (hostname.includes('chat.deepseek.com')) {
       conversationData = this.extractDeepSeekConversation();
+    } else if (hostname.includes('perplexity.ai')) {
+      conversationData = this.extractPerplexityConversation();
     } else {
       conversationData = this.extractGenericConversation();
     }
@@ -608,6 +610,181 @@ const ConversationExtractor = {
   },
 
   // =============================================================================
+  // PERPLEXITY EXTRACTION
+  // User messages: h1[class*="group/query"] > span.select-text
+  // Assistant messages: div[id^="markdown-content"] > div.prose
+  // =============================================================================
+
+  extractPerplexityConversation() {
+    console.log('🔮 ThreadCub: Starting Perplexity extraction...');
+
+    // Extract title from page title or first user query
+    const title = document.title
+      .replace(' - Perplexity', '')
+      .replace(' | Perplexity', '')
+      .trim() || 'Perplexity Conversation';
+
+    try {
+      const extractedMessages = this.perplexityDOMExtraction();
+
+      const conversationData = {
+        title: title,
+        url: window.location.href,
+        timestamp: new Date().toISOString(),
+        platform: 'Perplexity',
+        total_messages: extractedMessages.length,
+        messages: extractedMessages,
+        extraction_method: 'perplexity_dom_extraction'
+      };
+
+      console.log(`🔮 ThreadCub: ✅ Perplexity extraction complete: ${extractedMessages.length} messages`);
+
+      return conversationData;
+
+    } catch (error) {
+      console.error('🔮 ThreadCub: Perplexity extraction failed:', error);
+
+      // Fallback extraction
+      const fallbackMessages = this.perplexityFallbackExtraction();
+
+      return {
+        title: title,
+        url: window.location.href,
+        timestamp: new Date().toISOString(),
+        platform: 'Perplexity',
+        total_messages: fallbackMessages.length,
+        messages: fallbackMessages,
+        extraction_method: 'perplexity_fallback_extraction',
+        error: error.message
+      };
+    }
+  },
+
+  // Perplexity DOM extraction using specific selectors
+  perplexityDOMExtraction() {
+    console.log('🔮 ThreadCub: Using Perplexity DOM extraction...');
+
+    const messages = [];
+    let messageIndex = 0;
+
+    // Find all user messages: h1[class*="group/query"]
+    const userMessageContainers = document.querySelectorAll('h1[class*="group/query"]');
+    console.log(`🔮 ThreadCub: Found ${userMessageContainers.length} user message containers`);
+
+    // Find all assistant messages: div[id^="markdown-content"]
+    const assistantMessageContainers = document.querySelectorAll('div[id^="markdown-content"]');
+    console.log(`🔮 ThreadCub: Found ${assistantMessageContainers.length} assistant message containers`);
+
+    // Build a combined list with DOM positions for proper ordering
+    const allMessages = [];
+
+    // Process user messages
+    userMessageContainers.forEach((container) => {
+      // Extract text from span.select-text inside the container
+      const textSpan = container.querySelector('span.select-text');
+      const text = textSpan ? textSpan.textContent?.trim() : container.textContent?.trim();
+
+      if (text && text.length > 0) {
+        allMessages.push({
+          element: container,
+          role: 'user',
+          content: text,
+          position: this.getElementPosition(container)
+        });
+      }
+    });
+
+    // Process assistant messages
+    assistantMessageContainers.forEach((container) => {
+      // Extract text from div.prose inside the container
+      const proseDiv = container.querySelector('div.prose');
+      const text = proseDiv ? proseDiv.textContent?.trim() : container.textContent?.trim();
+
+      if (text && text.length > 0) {
+        allMessages.push({
+          element: container,
+          role: 'assistant',
+          content: this.cleanPerplexityContent(text),
+          position: this.getElementPosition(container)
+        });
+      }
+    });
+
+    // Sort by DOM position to maintain conversation order
+    allMessages.sort((a, b) => a.position - b.position);
+
+    // Convert to final message format
+    allMessages.forEach((msg) => {
+      messages.push({
+        id: messageIndex++,
+        role: msg.role,
+        content: msg.content,
+        timestamp: new Date().toISOString(),
+        extractionMethod: 'perplexity_dom',
+        selector_used: msg.role === 'user' ? 'h1[class*="group/query"]' : 'div[id^="markdown-content"]'
+      });
+    });
+
+    console.log(`🔮 ThreadCub: Perplexity DOM extraction found: ${messages.length} messages`);
+    return messages;
+  },
+
+  // Helper: Get element's position in document for sorting
+  getElementPosition(element) {
+    const rect = element.getBoundingClientRect();
+    return rect.top + window.scrollY;
+  },
+
+  // Helper: Clean Perplexity content
+  cleanPerplexityContent(text) {
+    return text
+      .replace(/^\s+|\s+$/g, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/^(Copy|Share|Sources|Related)$/gm, '')
+      .trim();
+  },
+
+  // Perplexity fallback extraction
+  perplexityFallbackExtraction() {
+    console.log('🔮 ThreadCub: Using Perplexity fallback extraction...');
+
+    const messages = [];
+    let messageIndex = 0;
+
+    try {
+      // Try alternative selectors
+      const allProseElements = document.querySelectorAll('div.prose, [class*="prose"]');
+      console.log(`🔮 ThreadCub: Found ${allProseElements.length} prose elements`);
+
+      const processedTexts = new Set();
+
+      allProseElements.forEach((element, index) => {
+        const text = element.textContent?.trim();
+        if (text && text.length > 20 && !processedTexts.has(text)) {
+          processedTexts.add(text);
+
+          // Alternating pattern as fallback
+          const role = index % 2 === 0 ? 'user' : 'assistant';
+
+          messages.push({
+            id: messageIndex++,
+            role: role,
+            content: this.cleanPerplexityContent(text),
+            timestamp: new Date().toISOString(),
+            extractionMethod: 'perplexity_fallback'
+          });
+        }
+      });
+
+    } catch (error) {
+      console.error('🔮 ThreadCub: Perplexity fallback extraction error:', error);
+    }
+
+    console.log(`🔮 ThreadCub: Perplexity fallback extraction found: ${messages.length} messages`);
+    return messages;
+  },
+
+  // =============================================================================
   // GENERIC EXTRACTION
   // =============================================================================
 
@@ -708,6 +885,8 @@ const ConversationExtractor = {
       return 'grok';
     } else if (hostname.includes('chat.deepseek.com')) {
       return 'deepseek';
+    } else if (hostname.includes('perplexity.ai')) {
+      return 'perplexity';
     }
     return 'unknown';
   },

@@ -302,6 +302,51 @@ const PLATFORM_HANDLERS = {
         async injectPrompt(prompt) {
             return PLATFORM_HANDLERS['x.com'].injectPrompt.call(this, prompt);
         }
+    },
+
+    // Perplexity - uses h1 for user queries and markdown-content for responses
+    'www.perplexity.ai': {
+        name: 'Perplexity',
+        icon: '🔮',
+        color: '#20808d',
+
+        selectors: {
+            messages: 'h1[class*="group/query"], div[id^="markdown-content"]',
+            userMessages: 'h1[class*="group/query"]',
+            assistantMessages: 'div[id^="markdown-content"]',
+            inputField: 'textarea[placeholder*="Ask"], textarea',
+            sendButton: 'button[aria-label="Submit"]'
+        },
+
+        urls: {
+            newChat: 'https://www.perplexity.ai/',
+            continue: 'https://claude.ai/chat/new'
+        },
+
+        extractMessage(element) {
+            const clone = element.cloneNode(true);
+
+            // Remove UI elements
+            const unwantedElements = clone.querySelectorAll(
+                'button, .copy-button, [data-testid*="copy"], .sources, .related'
+            );
+            unwantedElements.forEach(el => el.remove());
+
+            return clone.textContent?.trim() || '';
+        },
+
+        async injectPrompt(prompt) {
+            const inputField = document.querySelector(this.selectors.inputField);
+            if (!inputField) return false;
+
+            inputField.focus();
+            inputField.value = prompt;
+
+            inputField.dispatchEvent(new Event('input', { bubbles: true }));
+            inputField.dispatchEvent(new Event('change', { bubbles: true }));
+
+            return true;
+        }
     }
 };
 

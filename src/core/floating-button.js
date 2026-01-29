@@ -777,6 +777,9 @@ class ThreadCubFloatingButton {
       } else if (targetPlatform === 'deepseek') {
         console.log('🔵 ThreadCub: Routing to DeepSeek flow (with file download)');
         this.handleDeepSeekFlow(minimalPrompt, shareUrl, conversationData);
+      } else if (targetPlatform === 'perplexity') {
+        console.log('🔮 ThreadCub: Routing to Perplexity flow (URL-based)');
+        this.handlePerplexityFlow(minimalPrompt, shareUrl, conversationData);
       } else {
         console.log('🤖 ThreadCub: Unknown platform, defaulting to ChatGPT flow');
         this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
@@ -1299,6 +1302,65 @@ Once you've reviewed it, let me know you're ready to continue from where we left
     }
   }
 
+  // =============================================================================
+  // PERPLEXITY FLOW (URL-based, similar to Claude/Grok)
+  // =============================================================================
+
+  handlePerplexityFlow(continuationPrompt, shareUrl, conversationData) {
+    console.log('🔮 ThreadCub: Starting Perplexity flow (URL-based)...');
+
+    // Create continuation data with URL-based prompt
+    const continuationData = {
+      prompt: continuationPrompt,
+      shareUrl: shareUrl,
+      platform: 'Perplexity',
+      timestamp: Date.now(),
+      messages: conversationData.messages || [],
+      totalMessages: conversationData.total_messages || conversationData.messages?.length || 0,
+      title: conversationData.title || 'Previous Conversation',
+      conversationData: conversationData,
+      perplexityFlow: true,
+      downloadCompleted: false
+    };
+
+    console.log('🔮 ThreadCub: Perplexity continuation data prepared');
+
+    // Use storage to pass data to new tab
+    const canUseChrome = window.StorageService.canUseChromStorage();
+
+    if (canUseChrome) {
+      console.log('🔮 ThreadCub: Using Chrome storage for Perplexity...');
+      window.StorageService.storeWithChrome(continuationData)
+        .then(() => {
+          console.log('🐻 ThreadCub: Perplexity data stored successfully');
+          const perplexityUrl = 'https://www.perplexity.ai/';
+          window.open(perplexityUrl, '_blank');
+          this.showSuccessToast('Opening Perplexity with conversation context...');
+        })
+        .catch(error => {
+          console.log('🔮 ThreadCub: Chrome storage failed, using fallback:', error);
+          this.handlePerplexityFlowFallback(continuationData);
+        });
+    } else {
+      console.log('🔮 ThreadCub: Using Perplexity fallback method directly');
+      this.handlePerplexityFlowFallback(continuationData);
+    }
+  }
+
+  handlePerplexityFlowFallback(continuationData) {
+    console.log('🔮 ThreadCub: Using localStorage fallback for Perplexity...');
+
+    try {
+      localStorage.setItem('threadcub_continuation', JSON.stringify(continuationData));
+      const perplexityUrl = 'https://www.perplexity.ai/';
+      window.open(perplexityUrl, '_blank');
+      this.showSuccessToast('Opening Perplexity with conversation context...');
+    } catch (error) {
+      console.error('🔮 ThreadCub: localStorage fallback failed:', error);
+      this.showErrorToast('Failed to prepare continuation data');
+    }
+  }
+
   handleDirectContinuation(conversationData) {
     console.log('🐻 ThreadCub: Handling direct continuation without API save...');
 
@@ -1332,6 +1394,9 @@ Once you've reviewed it, let me know you're ready to continue from where we left
     } else if (targetPlatform === 'deepseek') {
       console.log('🔵 ThreadCub: Routing to DeepSeek flow (with file download)');
       this.handleDeepSeekFlow(minimalPrompt, fallbackShareUrl, conversationData);
+    } else if (targetPlatform === 'perplexity') {
+      console.log('🔮 ThreadCub: Routing to Perplexity flow (URL-based)');
+      this.handlePerplexityFlow(minimalPrompt, fallbackShareUrl, conversationData);
     } else {
       console.log('🤖 ThreadCub: Unknown platform, defaulting to ChatGPT flow');
       this.handleChatGPTFlow(minimalPrompt, fallbackShareUrl, conversationData);

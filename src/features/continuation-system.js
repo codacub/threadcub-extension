@@ -103,10 +103,16 @@ function executeStreamlinedContinuation(fullPrompt, shareUrl, continuationData) 
                       continuationData.perplexityFlow;
 
   // STEP 1: Auto-populate the input field
+  // Use retry logic for file-based platforms (they may have slower-loading inputs)
   console.log('🔧 Auto-populating input field...');
-  const populateSuccess = fillInputFieldWithPrompt(fullPrompt);
-
-  console.log('🔧 Population result:', populateSuccess);
+  if (isFileBased) {
+    // File-based platforms need retry logic for reliable input filling
+    fillInputFieldWithRetry(fullPrompt, 5, 500);
+    console.log('🔧 Using retry logic for file-based platform');
+  } else {
+    const populateSuccess = fillInputFieldWithPrompt(fullPrompt);
+    console.log('🔧 Population result:', populateSuccess);
+  }
 
   // FIXED: Always show notification and continue (don't rely on populateSuccess return)
   // Show subtle success notification
@@ -238,6 +244,34 @@ function fillInputFieldWithPrompt(prompt) {
     console.error('❌ Could not find input field for platform:', platform);
     return false;
   }
+}
+
+// ===== Fill input with retry logic (for platforms with slow-loading inputs) =====
+function fillInputFieldWithRetry(prompt, maxAttempts = 5, retryDelay = 500) {
+  const platform = window.PlatformDetector.detectPlatform();
+  console.log('🔧 Filling input field with retry for:', platform);
+
+  let attempts = 0;
+
+  function tryFill() {
+    attempts++;
+    console.log(`🔧 Input fill attempt ${attempts}/${maxAttempts}`);
+
+    const success = fillInputFieldWithPrompt(prompt);
+
+    if (success) {
+      console.log('✅ Input field filled successfully on attempt', attempts);
+      return true;
+    } else if (attempts < maxAttempts) {
+      console.log(`🔧 Input not found, retrying in ${retryDelay}ms...`);
+      setTimeout(tryFill, retryDelay);
+    } else {
+      console.error('❌ Failed to fill input after', maxAttempts, 'attempts');
+      return false;
+    }
+  }
+
+  tryFill();
 }
 
 // ===== Auto-start conversation =====
@@ -523,6 +557,7 @@ window.ContinuationSystem = {
   checkForContinuationData,
   executeStreamlinedContinuation,
   fillInputFieldWithPrompt,
+  fillInputFieldWithRetry,
   attemptAutoStart
 };
 

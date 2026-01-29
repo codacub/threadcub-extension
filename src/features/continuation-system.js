@@ -91,6 +91,7 @@ function executeStreamlinedContinuation(fullPrompt, shareUrl, continuationData) 
   console.log('🚀 Gemini Flow:', continuationData.geminiFlow);
   console.log('🚀 Grok Flow:', continuationData.grokFlow);
   console.log('🚀 DeepSeek Flow:', continuationData.deepseekFlow);
+  console.log('🚀 Perplexity Flow:', continuationData.perplexityFlow);
   
   const platform = window.PlatformDetector.detectPlatform();
   
@@ -109,7 +110,7 @@ function executeStreamlinedContinuation(fullPrompt, shareUrl, continuationData) 
   // Show subtle success notification
   showStreamlinedNotification(continuationData);
   
-  // Auto-start ONLY for URL-based platforms (Claude, Grok)
+  // Auto-start ONLY for URL-based platforms (Claude, Grok, Perplexity)
   // File-based platforms (ChatGPT, Gemini, DeepSeek) need user to upload file first
   if (!isFileBased) {
     setTimeout(() => {

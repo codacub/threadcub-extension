@@ -894,19 +894,25 @@ const ConversationExtractor = {
   generateContinuationPrompt(summary, shareUrl, platform, conversationData) {
     console.log('🐻 ThreadCub: Generating continuation prompt for platform:', platform);
 
-    // GROK - URL-based (confirmed working with web_fetch)
-    if (platform && platform.toLowerCase().includes('grok')) {
-      const grokPrompt = `I'd like to continue our previous conversation. The complete context is available at: ${shareUrl}
+    // URL-based prompt for platforms with web_fetch capability (Claude, Grok, Perplexity)
+    const urlBasedPrompt = `I'd like to continue our previous conversation. The complete context is available at: ${shareUrl}
 
 Please attempt to fetch this URL using your web_fetch tool to access the conversation history. The URL returns a JSON response with the full conversation.
 
-If you're able to retrieve it, let me know you're ready to continue from where we left off.
-If you cannot access it for any reason, please let me know and I'll share the conversation content directly.`;
+If you're able to retrieve it, let me know you're ready to continue from where we left off. If you cannot access it for any reason, please let me know and I'll share the conversation content directly.`;
 
-      console.log('🤖 ThreadCub: Generated Grok URL-based prompt:', grokPrompt.length, 'characters');
-      return grokPrompt;
+    // GROK - URL-based (confirmed working with web_fetch)
+    if (platform && platform.toLowerCase().includes('grok')) {
+      console.log('🤖 ThreadCub: Generated Grok URL-based prompt:', urlBasedPrompt.length, 'characters');
+      return urlBasedPrompt;
     }
-    
+
+    // PERPLEXITY - URL-based (confirmed working with web_fetch, same as Claude/Grok)
+    else if (platform && platform.toLowerCase().includes('perplexity')) {
+      console.log('🔮 ThreadCub: Generated Perplexity URL-based prompt:', urlBasedPrompt.length, 'characters');
+      return urlBasedPrompt;
+    }
+
     // CHATGPT/GEMINI/DEEPSEEK - File-based prompts (user manually uploads file)
     else if (platform && (platform.toLowerCase().includes('chatgpt') ||
                            platform.toLowerCase().includes('gemini') ||
@@ -923,18 +929,11 @@ Once you've reviewed it, let me know you're ready to continue from where we left
       console.log('🐻 ThreadCub: Generated file-based continuation prompt:', prompt.length, 'characters');
       return prompt;
     }
-    
+
     // CLAUDE (default) - URL-based prompt
     else {
-      const claudePrompt = `I'd like to continue our previous conversation. The complete context is available at: ${shareUrl}
-
-Please attempt to fetch this URL using your web_fetch tool to access the conversation history. The URL returns a JSON response with the full conversation.
-
-If you're able to retrieve it, let me know you're ready to continue from where we left off.
-If you cannot access it for any reason, please let me know and I'll share the conversation content directly.`;
-
-      console.log('🐻 ThreadCub: Generated Claude-specific continuation prompt:', claudePrompt.length, 'characters');
-      return claudePrompt;
+      console.log('🐻 ThreadCub: Generated Claude URL-based prompt:', urlBasedPrompt.length, 'characters');
+      return urlBasedPrompt;
     }
   }
 

@@ -130,6 +130,9 @@ function enhanceFloatingButtonWithConversationFeatures() {
           } else if (targetPlatform === 'deepseek') {
             console.log('🔵 ThreadCub: Routing to DeepSeek flow (with file download)');
             this.handleDeepSeekFlow(minimalPrompt, shareUrl, conversationData);
+          } else if (targetPlatform === 'perplexity') {
+            console.log('🔮 ThreadCub: Routing to Perplexity flow (URL-based)');
+            this.handlePerplexityFlow(minimalPrompt, shareUrl, conversationData);
           } else {
             console.log('🤖 ThreadCub: Unknown platform, defaulting to ChatGPT flow');
             this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);

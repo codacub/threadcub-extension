@@ -241,6 +241,7 @@ div.threadcub-tag-card .action-button svg {
 
 .save-note-btn.active {
   background: var(--color-primary);
+  color: var(--color-white) !important; /* White text on purple background */
   opacity: 1;
   pointer-events: auto; /* Allows clicks when active */
 }

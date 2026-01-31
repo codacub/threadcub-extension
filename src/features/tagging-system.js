@@ -1745,10 +1745,11 @@ createSidePanel() {
         cursor: pointer;
         transition: all 0.2s ease;
         backdrop-filter: blur(10px);
+        text-align: center;
       ">
         CLOSE
       </button>
-      
+
       <button id="threadcub-download-json" style="
         flex: 1;
         padding: 12px 16px;
@@ -1761,6 +1762,7 @@ createSidePanel() {
         cursor: pointer;
         transition: all 0.2s ease;
         backdrop-filter: blur(10px);
+        text-align: center;
       ">
         DOWNLOAD
       </button>

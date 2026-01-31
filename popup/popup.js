@@ -12,7 +12,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         await initializeLogo();
         setupFeedbackForm();
-        setupDiscordLink();
         
         console.log('🎉 ThreadCub Popup: Initialization complete!');
         
@@ -127,37 +126,6 @@ function setupFeedbackForm() {
         if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
             submitButton.click();
         }
-    });
-}
-
-// =============================================================================
-// DISCORD LINK SETUP
-// =============================================================================
-
-function setupDiscordLink() {
-    const discordLink = document.getElementById('discordLink');
-    
-    if (!discordLink) {
-        console.error('Discord link not found');
-        return;
-    }
-    
-    discordLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        
-        // Your Discord invite link - never expires!
-        const DISCORD_INVITE = 'https://discord.gg/9TDEMxWZ';
-        
-        console.log('🐻 Opening Discord:', DISCORD_INVITE);
-        
-        // Open Discord in new tab
-        if (typeof chrome !== 'undefined' && chrome.tabs) {
-            chrome.tabs.create({ url: DISCORD_INVITE });
-        } else {
-            window.open(DISCORD_INVITE, '_blank');
-        }
-        
-        showNotification('Opening Discord... See you there!', 'info');
     });
 }
 

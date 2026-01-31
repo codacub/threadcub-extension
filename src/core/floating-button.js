@@ -193,8 +193,8 @@ class ThreadCubFloatingButton {
   setupTooltips() {
     const tooltipData = {
       'threadcub-new-btn': 'CONTINUE YOUR CHAT',
-      'threadcub-download-btn': 'SAVE FOR LATER',
-      'threadcub-tag-btn': 'YOUR TAGS',
+      'threadcub-download-btn': 'DOWNLOAD',
+      'threadcub-tag-btn': 'PAWMARKS',
       'threadcub-close-btn': 'BYE FOR NOW'
     };
 

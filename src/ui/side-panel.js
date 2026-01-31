@@ -322,11 +322,11 @@ class ThreadCubSidePanel {
 
         if (hasText) {
           saveBtn.classList.add('active'); // Use class for active state
-          // Inline styles to override Grok's aggressive CSS
-          saveBtn.style.color = 'white';
+          // Use setProperty with 'important' to override Grok's !important CSS
+          saveBtn.style.setProperty('color', 'white', 'important');
         } else {
           saveBtn.classList.remove('active'); // Remove class for inactive state
-          saveBtn.style.color = ''; // Reset to CSS default
+          saveBtn.style.removeProperty('color'); // Reset to CSS default
         }
       });
 

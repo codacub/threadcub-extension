@@ -2390,8 +2390,8 @@ handleTextSelection(e) {
     const selection = window.getSelection();
     const selectedText = selection.toString().trim();
     
-    // Check if we have a reasonable text selection
-    if (selectedText.length > 3 && selectedText.length < 5000) {
+    // Check if we have a reasonable text selection (2+ characters minimum)
+    if (selectedText.length > 1 && selectedText.length < 5000) {
       // Additional check: make sure we're not selecting input field content
       if (selection.rangeCount > 0) {
         const range = selection.getRangeAt(0);

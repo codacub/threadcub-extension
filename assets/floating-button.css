@@ -287,6 +287,12 @@
   box-shadow: var(--shadow-action-btn-close-hover) !important;
 }
 
+/* Ensure white icons on hover for new-btn and close-btn (Grok fix) */
+.threadcub-new-btn:hover svg,
+.threadcub-close-btn:hover svg {
+  stroke: white !important;
+}
+
 /* Layout for Action Buttons based on edge */
 #threadcub-edge-btn.edge-right .threadcub-action-buttons,
 #threadcub-edge-btn.edge-left .threadcub-action-buttons {

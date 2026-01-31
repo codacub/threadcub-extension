@@ -93,8 +93,16 @@ class ThreadCubSidePanel {
   }
 
   createActionButton(action, iconSvg, tagId) {
+    // Check if we're on x.com/i/grok - needs inline styles to override X.com's CSS
+    const isXGrok = window.location.hostname.includes('x.com') &&
+                    window.location.pathname.includes('/i/grok');
+
+    const inlineStyles = isXGrok
+      ? 'style="display: flex !important; align-items: center !important; justify-content: center !important; text-align: center !important;"'
+      : '';
+
     return `
-      <div class="action-button" data-action="${action}" data-tag-id="${tagId}">
+      <div class="action-button" data-action="${action}" data-tag-id="${tagId}" ${inlineStyles}>
         ${iconSvg}
       </div>
     `;

@@ -56,7 +56,9 @@
 }
 
 /* Action Button specific styles - high specificity for X.com/Grok override */
+/* Using <button> element for better centering on X.com */
 .action-button,
+button.action-button,
 .threadcub-tag-card .action-button,
 .action-button[data-action] {
   display: flex !important;
@@ -71,6 +73,11 @@
   line-height: 1 !important;
   text-align: center !important;
   box-sizing: border-box !important;
+  /* Button reset styles */
+  background: none !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
 }
 
 /* Ensure SVG icons inherit color correctly on all platforms */

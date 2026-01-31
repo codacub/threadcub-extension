@@ -1184,7 +1184,7 @@ Once you've reviewed it, let me know you're ready to continue from where we left
     console.log('🤖 ThreadCub: Using localStorage fallback for Grok...');
 
     try {
-      localStorage.setItem('threadcub_continuation', JSON.stringify(continuationData));
+      localStorage.setItem('threadcubContinuationData', JSON.stringify(continuationData));
       const grokUrl = 'https://x.com/i/grok';
       window.open(grokUrl, '_blank');
       this.showSuccessToast('Opening Grok with conversation context...');
@@ -1292,7 +1292,7 @@ Once you've reviewed it, let me know you're ready to continue from where we left
     console.log('🔵 ThreadCub: Using localStorage fallback for DeepSeek...');
 
     try {
-      localStorage.setItem('threadcub_continuation', JSON.stringify(continuationData));
+      localStorage.setItem('threadcubContinuationData', JSON.stringify(continuationData));
       const deepseekUrl = 'https://chat.deepseek.com/';
       window.open(deepseekUrl, '_blank');
       this.showSuccessToast('File downloaded! Check your new DeepSeek tab.');
@@ -1329,25 +1329,11 @@ Once you've reviewed it, let me know you're ready to continue from where we left
     console.log('🔮 ThreadCub: Perplexity continuation data prepared');
 
     // STEP 3: Use storage for modal
-    const canUseChrome = window.StorageService.canUseChromStorage();
-
-    if (canUseChrome) {
-      console.log('🔮 ThreadCub: Using Chrome storage for Perplexity modal...');
-      window.StorageService.storeWithChrome(continuationData)
-        .then(() => {
-          console.log('🐻 ThreadCub: Perplexity data stored successfully');
-          const perplexityUrl = 'https://www.perplexity.ai/';
-          window.open(perplexityUrl, '_blank');
-          this.showSuccessToast('File downloaded! Upload it in your new Perplexity tab.');
-        })
-        .catch(error => {
-          console.log('🔮 ThreadCub: Chrome storage failed, using fallback:', error);
-          this.handlePerplexityFlowFallback(continuationData);
-        });
-    } else {
-      console.log('🔮 ThreadCub: Using Perplexity fallback method directly');
-      this.handlePerplexityFlowFallback(continuationData);
-    }
+   // PERPLEXITY SPECIAL CASE: Chrome APIs (chrome.runtime, chrome.storage) are completely 
+    // undefined on www.perplexity.ai domain, so we must use localStorage instead.
+    // This works fine since localStorage syncs instantly between tabs of the same domain.
+    console.log('🔮 ThreadCub: Perplexity - using localStorage (Chrome APIs unavailable on this domain)');
+    this.handlePerplexityFlowFallback(continuationData);
   }
 
   autoDownloadPerplexityFile(conversationData, shareUrl) {
@@ -1402,7 +1388,7 @@ Once you've reviewed it, let me know you're ready to continue from where we left
     console.log('🔮 ThreadCub: Using localStorage fallback for Perplexity...');
 
     try {
-      localStorage.setItem('threadcub_continuation', JSON.stringify(continuationData));
+      localStorage.setItem('threadcubContinuationData', JSON.stringify(continuationData));
       const perplexityUrl = 'https://www.perplexity.ai/';
       window.open(perplexityUrl, '_blank');
       this.showSuccessToast('File downloaded! Upload it in your new Perplexity tab.');

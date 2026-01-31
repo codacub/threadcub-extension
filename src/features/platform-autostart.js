@@ -7,14 +7,14 @@ function generateConversationSummary(fullPrompt) {
     const messageMatches = fullPrompt.match(/\*\*You:\*\*[^*]+|\*\*Assistant:\*\*[^*]+/g);
     
     if (!messageMatches || messageMatches.length === 0) {
-      return '📝 No conversation content available for summary.';
+      return '📋 No conversation content available for summary.';
     }
     
     return `📋 Previous conversation with ${messageMatches.length} messages ready to continue.`;
     
   } catch (error) {
     console.log('🐻 ThreadCub: Error generating summary:', error);
-    return '📝 Conversation summary unavailable - full context will be provided when continuing.';
+    return '📋 Conversation summary unavailable - full context will be provided when continuing.';
   }
 }
 
@@ -228,73 +228,12 @@ function attemptDeepSeekAutoStart() {
 }
 
 // ===== Perplexity auto-start =====
+// NOTE: Perplexity is a file-based platform (like ChatGPT/Gemini/DeepSeek)
+// It does NOT auto-start - user needs to manually upload the JSON file
 function attemptPerplexityAutoStart() {
-  console.log('🔮 ThreadCub: Attempting Perplexity auto-start with retry logic...');
-
-  // Perplexity send button selectors - PRIMARY: "Submit" aria-label
-  const sendSelectors = [
-    'button[aria-label="Submit"]',
-    'button[aria-label*="Submit"]',
-    'button[aria-label="Send"]',
-    'button[aria-label*="Send"]',
-    'button[type="submit"]',
-    'button[data-testid="send-button"]'
-  ];
-
-  let attempts = 0;
-  const maxAttempts = 5;
-  const retryDelay = 500;
-
-  function tryFindAndClick() {
-    attempts++;
-    console.log(`🔮 ThreadCub: Perplexity send button attempt ${attempts}/${maxAttempts}`);
-
-    for (const selector of sendSelectors) {
-      try {
-        const elements = document.querySelectorAll(selector);
-        for (const element of elements) {
-          const button = element.tagName === 'BUTTON' ? element : element.closest('button');
-          if (button && !button.disabled && button.offsetHeight > 0) {
-            const ariaLabel = button.getAttribute('aria-label');
-            console.log(`🔮 ThreadCub: Found Perplexity send button with aria-label: "${ariaLabel}"`);
-            button.focus();
-            button.click();
-            console.log('✅ ThreadCub: Perplexity send button clicked!');
-            return true;
-          }
-        }
-      } catch (e) {
-        // Continue to next selector
-      }
-    }
-
-    // Fallback: Search all buttons for Submit-related characteristics
-    const allButtons = document.querySelectorAll('button');
-    for (const button of allButtons) {
-      const ariaLabel = button.getAttribute('aria-label') || '';
-      const isSubmitButton = ariaLabel.toLowerCase().includes('submit');
-      const isSendButton = ariaLabel.toLowerCase().includes('send');
-
-      if ((isSubmitButton || isSendButton) && !button.disabled && button.offsetHeight > 0) {
-        console.log(`🔮 ThreadCub: Found button via fallback: "${ariaLabel}"`);
-        button.focus();
-        button.click();
-        return true;
-      }
-    }
-
-    // Retry if not found
-    if (attempts < maxAttempts) {
-      console.log(`🔄 ThreadCub: Retrying in ${retryDelay}ms...`);
-      setTimeout(tryFindAndClick, retryDelay);
-      return false;
-    }
-
-    console.log('❌ ThreadCub: Could not find Perplexity send button after all attempts');
-    return false;
-  }
-
-  tryFindAndClick();
+  console.log('🔮 ThreadCub: Perplexity uses file upload method');
+  console.log('🔮 Skipping auto-start - user will manually upload JSON and send');
+  // No action needed - the continuation system handles filling the input field with instructions
 }
 
 // ===== Fill input field with prompt =====
@@ -302,46 +241,78 @@ function fillInputFieldWithPrompt(prompt) {
   const platform = window.PlatformDetector.detectPlatform();
   console.log('🐻 ThreadCub: Filling input field with continuation prompt for:', platform);
 
-  setTimeout(() => {
-    // Get platform-specific selectors from centralized module
-    const platformSelectors = window.PlatformDetector.getInputSelectors(platform);
-    console.log('🔍 Platform detected:', platform, 'Using selectors:', platformSelectors);
-    console.log('🔍 About to loop through selectors. Count:', platformSelectors.length);
+  // Get platform-specific selectors from centralized module
+  const platformSelectors = window.PlatformDetector.getInputSelectors(platform);
+  console.log('🔍 Platform detected:', platform, 'Using selectors:', platformSelectors);
+  console.log('🔍 About to loop through selectors. Count:', platformSelectors.length);
 
-    // Find input field
-    let inputField = null;
-    for (const selector of platformSelectors) {
-      const elements = document.querySelectorAll(selector);
-      console.log('🔍 Checked selector:', selector, 'Found elements:', elements.length);
-      for (const element of elements) {
-        if (element.offsetHeight > 0 && !element.disabled) {
-          inputField = element;
-          break;
+  // Find input field
+  let inputField = null;
+  for (const selector of platformSelectors) {
+    const elements = document.querySelectorAll(selector);
+    console.log('🔍 Checked selector:', selector, 'Found elements:', elements.length);
+    for (const element of elements) {
+      if (element.offsetHeight > 0 && !element.disabled) {
+        inputField = element;
+        break;
+      }
+    }
+    if (inputField) break;
+  }
+
+  if (inputField) {
+    console.log('🔍 Found input field:', inputField.tagName, 'contentEditable:', inputField.contentEditable);
+    
+    inputField.focus();
+    inputField.click(); // Some platforms need click too
+
+    // Fill based on input type
+    if (inputField.tagName === 'TEXTAREA' || inputField.tagName === 'INPUT') {
+      inputField.value = prompt;
+      inputField.dispatchEvent(new Event('input', { bubbles: true }));
+      inputField.dispatchEvent(new Event('change', { bubbles: true }));
+      console.log('✅ Filled TEXTAREA/INPUT');
+      return true;
+    } else if (inputField.contentEditable === 'true') {
+      // For contenteditable (like Perplexity), use multiple methods
+      console.log('🔮 Filling contenteditable div for Perplexity...');
+      
+      // Method 1: Set innerHTML (better for contenteditable)
+      inputField.innerHTML = prompt;
+      
+      // Method 2: Also try textContent as backup
+      inputField.textContent = prompt;
+      
+      // Method 3: Use execCommand if available (older browsers)
+      if (document.execCommand) {
+        try {
+          inputField.focus();
+          document.execCommand('selectAll', false, null);
+          document.execCommand('insertText', false, prompt);
+        } catch (e) {
+          console.log('🔮 execCommand failed, using direct methods');
         }
       }
-      if (inputField) break;
-    }
-
-    if (inputField) {
-      inputField.focus();
-
-      // Fill based on input type
-      if (inputField.tagName === 'TEXTAREA') {
-        inputField.value = prompt;
-        inputField.dispatchEvent(new Event('input', { bubbles: true }));
-        inputField.dispatchEvent(new Event('change', { bubbles: true }));
-      } else if (inputField.contentEditable === 'true') {
-        inputField.textContent = prompt;
-        inputField.dispatchEvent(new Event('input', { bubbles: true }));
-      }
-
+      
+      // Trigger ALL possible events
+      inputField.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+      inputField.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+      inputField.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true }));
+      inputField.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, cancelable: true }));
+      inputField.dispatchEvent(new Event('blur', { bubbles: true }));
+      inputField.focus(); // Refocus
+      
+      console.log('✅ Filled contenteditable with enhanced method');
       console.log('✅ ThreadCub: Input field populated successfully');
       return true;
-    } else {
-      console.log('❌ ThreadCub: Could not find input field');
-      return false;
     }
-  }, 2000); // Wait 2 seconds
+
+    console.log('✅ ThreadCub: Input field populated successfully');
+    return true;
+  } else {
+    console.log('❌ ThreadCub: Could not find input field');
+    return false;
+  }
 }
 
 // ===== Show continuation success message =====

@@ -4,51 +4,84 @@
 function checkForContinuationData() {
   console.log('🐻 ThreadCub: Checking for continuation data using Chrome storage');
   
+  let retryCount = 0;
+  const maxRetries = 10; // Try up to 10 times
+  const retryDelay = 500; // Every 500ms
+  
   // Check if chrome storage is available
   if (typeof chrome !== 'undefined' && chrome.storage) {
-    try {
-      chrome.storage.local.get(['threadcubContinuationData'], (result) => {
-        if (chrome.runtime.lastError) {
-          console.log('🐻 ThreadCub: Chrome storage error:', chrome.runtime.lastError);
-          console.log('🐻 ThreadCub: Falling back to localStorage...');
-          checkLocalStorageFallback(); // ✅ Add this fallback call
-          return;
-        }
-        
-        const data = result.threadcubContinuationData;
-        if (data) {
-          console.log('🐻 ThreadCub: Found continuation data:', data);
-          
-          // Check if data is recent (less than 5 minutes old)
-          const isRecent = (Date.now() - data.timestamp) < 5 * 60 * 1000;
-          
-          if (isRecent) {
-            // Clear the data so it's only used once
-            chrome.storage.local.remove(['threadcubContinuationData'], () => {
-              console.log('🐻 ThreadCub: Cleared used continuation data');
-            });
-            
-            // STREAMLINED: Execute continuation immediately (no modal)
-            setTimeout(() => {
-              executeStreamlinedContinuation(data.prompt, data.shareUrl, data);
-            }, 800); // Quick delay for page load
-          } else {
-            console.log('🐻 ThreadCub: Continuation data too old, ignoring');
-            chrome.storage.local.remove(['threadcubContinuationData']);
+    
+    function attemptCheck() {
+      retryCount++;
+      console.log(`🐻 ThreadCub: Checking Chrome storage (attempt ${retryCount}/${maxRetries})...`);
+      
+      try {
+        chrome.storage.local.get(['threadcubContinuationData'], (result) => {
+          if (chrome.runtime.lastError) {
+            console.log('🐻 ThreadCub: Chrome storage error:', chrome.runtime.lastError);
+            if (retryCount < maxRetries) {
+              console.log(`🐻 ThreadCub: Retrying in ${retryDelay}ms...`);
+              setTimeout(attemptCheck, retryDelay);
+            } else {
+              console.log('🐻 ThreadCub: Max retries reached, falling back to localStorage...');
+              checkLocalStorageFallback();
+            }
+            return;
           }
+          
+          const data = result.threadcubContinuationData;
+          if (data) {
+            console.log('🐻 ThreadCub: ✅ Found continuation data on attempt', retryCount);
+            
+            // Check if data is recent (less than 5 minutes old)
+            const isRecent = (Date.now() - data.timestamp) < 5 * 60 * 1000;
+            
+            if (isRecent) {
+              // Clear the data so it's only used once
+              chrome.storage.local.remove(['threadcubContinuationData'], () => {
+                console.log('🐻 ThreadCub: Cleared used continuation data');
+              });
+              
+              // STREAMLINED: Execute continuation immediately (no modal)
+              setTimeout(() => {
+                executeStreamlinedContinuation(data.prompt, data.shareUrl, data);
+              }, 800); // Quick delay for page load
+            } else {
+              console.log('🐻 ThreadCub: Continuation data too old, ignoring');
+              chrome.storage.local.remove(['threadcubContinuationData']);
+            }
+          } else {
+            // No data found yet
+            if (retryCount < maxRetries) {
+              console.log(`🐻 ThreadCub: No data yet, retrying in ${retryDelay}ms... (${retryCount}/${maxRetries})`);
+              setTimeout(attemptCheck, retryDelay);
+            } else {
+              console.log('🐻 ThreadCub: No continuation data found after', maxRetries, 'attempts');
+              console.log('🐻 ThreadCub: Checking localStorage as fallback...');
+              checkLocalStorageFallback();
+            }
+          }
+        });
+      } catch (error) {
+        console.log('🐻 ThreadCub: Error checking continuation data:', error);
+        if (retryCount < maxRetries) {
+          console.log(`🐻 ThreadCub: Retrying in ${retryDelay}ms...`);
+          setTimeout(attemptCheck, retryDelay);
         } else {
-          console.log('🐻 ThreadCub: No continuation data found in Chrome storage');
-          console.log('🐻 ThreadCub: Checking localStorage as fallback...');
-          checkLocalStorageFallback(); // ✅ Add this fallback call
+          console.log('🐻 ThreadCub: Falling back to localStorage...');
+          checkLocalStorageFallback();
         }
-      });
-    } catch (error) {
-      console.log('🐻 ThreadCub: Error checking continuation data:', error);
-      console.log('🐻 ThreadCub: Falling back to localStorage...');
-      checkLocalStorageFallback(); // ✅ Add this fallback call
+      }
     }
+    
+    // Start checking with a small initial delay
+    setTimeout(() => {
+      console.log('🐻 ThreadCub: Starting continuation data check with retry logic...');
+      attemptCheck();
+    }, 500);
+    
   } else {
-    checkLocalStorageFallback(); // This part is already correct
+    checkLocalStorageFallback();
   }
 
   // Extract the localStorage logic into a separate function
@@ -96,37 +129,39 @@ function executeStreamlinedContinuation(fullPrompt, shareUrl, continuationData) 
   const platform = window.PlatformDetector.detectPlatform();
 
   // Check if this is a file/text-based flow (user needs to review pasted content)
-  // Perplexity has web SEARCH but NOT web FETCH - cannot retrieve URLs directly
+  // Perplexity: Included - works exactly like ChatGPT (auto-fill with file upload instructions)
   const isFileBased = continuationData.chatGPTFlow ||
                       continuationData.geminiFlow ||
                       continuationData.deepseekFlow ||
                       continuationData.perplexityFlow;
 
-  // STEP 1: Auto-populate the input field
-  // Use retry logic for file-based platforms (they may have slower-loading inputs)
+  // STEP 1: Auto-populate the input field with retry logic
   console.log('🔧 Auto-populating input field...');
+  console.log('🔧 Is file-based:', isFileBased);
+  
   if (isFileBased) {
-    // File-based platforms need retry logic for reliable input filling
+    // File-based platforms (ChatGPT, Gemini, DeepSeek, Perplexity) need retry logic
+    console.log('🔧 Using retry logic for file-based platform:', platform);
     fillInputFieldWithRetry(fullPrompt, 5, 500);
-    console.log('🔧 Using retry logic for file-based platform');
   } else {
+    // URL-based platforms (Claude, Grok)
+    console.log('🔧 Using single fill for URL-based platform');
     const populateSuccess = fillInputFieldWithPrompt(fullPrompt);
     console.log('🔧 Population result:', populateSuccess);
   }
 
-  // FIXED: Always show notification and continue (don't rely on populateSuccess return)
   // Show subtle success notification
   showStreamlinedNotification(continuationData);
 
   // Auto-start ONLY for URL-based platforms (Claude, Grok)
-  // File/text-based platforms (ChatGPT, Gemini, DeepSeek, Perplexity) need user to review first
+  // File-based platforms (ChatGPT, Gemini, DeepSeek, Perplexity) - user reviews and uploads file
   if (!isFileBased) {
     setTimeout(() => {
-      console.log('🔧 Auto-starting conversation...');
+      console.log('🔧 Auto-starting conversation for URL-based platform...');
       attemptAutoStart(platform);
-    }, 1500); // Give user moment to see the populated input
+    }, 1500);
   } else {
-    console.log('📁 File/text-based flow - skipping auto-start. User needs to review content first.');
+    console.log('📁 File-based flow - skipping auto-start. User will review prompt and upload file.');
   }
 }
 
@@ -185,7 +220,7 @@ function showStreamlinedNotification(continuationData) {
     notification.style.transform = 'translateX(0)';
   }, 100);
   
-  // Auto-hide after delay
+  // Animate out after 6 seconds
   setTimeout(() => {
     notification.style.opacity = '0';
     notification.style.transform = 'translateX(100%)';
@@ -194,84 +229,219 @@ function showStreamlinedNotification(continuationData) {
         notification.parentNode.removeChild(notification);
       }
     }, 300);
-  }, 4000);
-  
-  console.log('✅ Streamlined notification shown');
+  }, 6000);
 }
 
 // ===== Fill input field with prompt =====
 function fillInputFieldWithPrompt(prompt) {
   const platform = window.PlatformDetector.detectPlatform();
-  console.log('🔧 Filling input field with continuation prompt for:', platform);
+  console.log('🔧 fillInputFieldWithPrompt called for platform:', platform);
+  console.log('🔧 Prompt length:', prompt.length);
 
-  // Get platform-specific selectors from centralized module
-  const platformSelectors = window.PlatformDetector.getInputSelectors(platform);
-  console.log('🔍 Using selectors:', platformSelectors);
+  // Get platform-specific selectors with enhanced Perplexity support
+  let platformSelectors = window.PlatformDetector.getInputSelectors(platform);
+  
+  // ADD PERPLEXITY-SPECIFIC SELECTORS (contenteditable div, NOT textarea!)
+  if (platform === 'perplexity' || platform === window.PlatformDetector.PLATFORMS.PERPLEXITY) {
+    console.log('🔮 Perplexity detected - using contenteditable div selectors');
+    platformSelectors = [
+      'div#ask-input',  // PRIMARY: Perplexity's actual input ID
+      'div[role="textbox"][contenteditable="true"]',  // SECONDARY: Role-based
+      'div[aria-placeholder*="Ask"][contenteditable="true"]',  // TERTIARY: Placeholder-based
+      'div[data-lexical-editor="true"]',  // QUATERNARY: Lexical editor
+      '[contenteditable="true"]',  // FALLBACK: Any contenteditable
+      ...platformSelectors
+    ];
+  }
 
-  // Find input field
+  console.log('🔧 Using selectors:', platformSelectors);
+
+  // Find input field with enhanced visibility checks
   let inputField = null;
-  for (const selector of platformSelectors) {
-    const elements = document.querySelectorAll(selector);
-    console.log('🔍 Checked selector:', selector, 'Found elements:', elements.length);
-    for (const element of elements) {
-      if (element.offsetHeight > 0 && !element.disabled) {
-        inputField = element;
-        break;
+  for (let i = 0; i < platformSelectors.length; i++) {
+    const selector = platformSelectors[i];
+    console.log(`🔧 Trying selector ${i + 1}/${platformSelectors.length}: "${selector}"`);
+    
+    try {
+      const elements = document.querySelectorAll(selector);
+      console.log(`🔧 Found ${elements.length} elements with selector "${selector}"`);
+      
+      for (let j = 0; j < elements.length; j++) {
+        const element = elements[j];
+        const isVisible = element.offsetHeight > 0 && element.offsetWidth > 0;
+        const isDisabled = element.disabled;
+        const isReadOnly = element.readOnly;
+        
+        console.log(`🔧 Element ${j + 1}: visible=${isVisible}, disabled=${isDisabled}, readonly=${isReadOnly}, tagName=${element.tagName}`);
+        
+        if (isVisible && !isDisabled && !isReadOnly) {
+          inputField = element;
+          console.log('✅ Found suitable input field!');
+          break;
+        }
       }
+    } catch (error) {
+      console.log(`⚠️ Error with selector "${selector}":`, error);
     }
+    
     if (inputField) break;
   }
 
   if (inputField) {
-    console.log('🔧 Found input field:', inputField.tagName, inputField.className);
-
-    inputField.focus();
-
-    // Fill based on input type
-    if (inputField.tagName === 'TEXTAREA') {
-      inputField.value = prompt;
-      inputField.dispatchEvent(new Event('input', { bubbles: true }));
-      inputField.dispatchEvent(new Event('change', { bubbles: true }));
-    } else if (inputField.contentEditable === 'true') {
-      inputField.textContent = prompt;
-      inputField.dispatchEvent(new Event('input', { bubbles: true }));
-      inputField.dispatchEvent(new Event('change', { bubbles: true }));
+    console.log('✅ Input field found:', {
+      tagName: inputField.tagName,
+      type: inputField.type,
+      placeholder: inputField.placeholder,
+      contentEditable: inputField.contentEditable,
+      classList: Array.from(inputField.classList || [])
+    });
+    
+    try {
+      // Focus the field
+      inputField.focus();
+      console.log('🔧 Field focused');
+      
+      // Wait a moment for focus to take effect
+      setTimeout(() => {
+        // Fill based on input type
+        if (inputField.tagName === 'TEXTAREA' || inputField.tagName === 'INPUT') {
+          console.log('🔧 Filling TEXTAREA/INPUT field');
+          
+          // Clear existing value
+          inputField.value = '';
+          
+          // Set new value
+          inputField.value = prompt;
+          
+          // Trigger events for React/Vue to detect changes
+          inputField.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+          inputField.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+          inputField.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'a' }));
+          inputField.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, key: 'a' }));
+          
+          console.log('✅ TEXTAREA/INPUT filled successfully');
+          console.log('🔧 Verify value length:', inputField.value.length);
+          
+        } else if (inputField.contentEditable === 'true') {
+          console.log('🔧 Filling contenteditable field (Lexical/React editor)');
+          
+          // Clear existing content
+          inputField.textContent = '';
+          inputField.innerHTML = '';
+          
+          // Set new content with multiple methods for reliability
+          inputField.textContent = prompt;
+          inputField.innerHTML = prompt.replace(/\n/g, '<br>');
+          
+          // Also try innerText for some platforms
+          try {
+            inputField.innerText = prompt;
+          } catch (e) {
+            console.log('🔧 innerText method not available');
+          }
+          
+          // Trigger comprehensive events (including InputEvent for Lexical/React)
+          const events = [
+            new Event('focus', { bubbles: true }),
+            new InputEvent('beforeinput', { bubbles: true, cancelable: true, inputType: 'insertText', data: prompt }),
+            new Event('input', { bubbles: true, cancelable: true }),
+            new InputEvent('input', { bubbles: true, cancelable: true, inputType: 'insertText', data: prompt }),
+            new Event('change', { bubbles: true, cancelable: true }),
+            new KeyboardEvent('keydown', { bubbles: true }),
+            new KeyboardEvent('keyup', { bubbles: true }),
+            new Event('blur', { bubbles: true })
+          ];
+          
+          events.forEach((event, index) => {
+            try {
+              console.log(`🔧 Dispatching event ${index + 1}/${events.length}: ${event.type}`);
+              inputField.dispatchEvent(event);
+            } catch (e) {
+              console.log(`🔧 Could not dispatch ${event.type}:`, e.message);
+            }
+          });
+          
+          // Refocus after blur
+          setTimeout(() => {
+            inputField.focus();
+            console.log('🔧 Refocused input field');
+          }, 50);
+          
+          console.log('✅ Contenteditable filled successfully');
+          console.log('🔧 Final textContent length:', inputField.textContent.length);
+          console.log('🔧 Final innerHTML length:', inputField.innerHTML.length);
+        }
+        
+      }, 100);
+      
+      return true;
+      
+    } catch (error) {
+      console.error('❌ Error filling input field:', error);
+      return false;
     }
-
-    console.log('✅ Input field auto-populated successfully');
-    return true;
+    
   } else {
     console.error('❌ Could not find input field for platform:', platform);
+    console.log('❌ Tried selectors:', platformSelectors);
+    console.log('❌ All textareas on page:', document.querySelectorAll('textarea').length);
+    console.log('❌ All contenteditable:', document.querySelectorAll('[contenteditable="true"]').length);
+    
+    // Debug: Show what textareas exist
+    const allTextareas = document.querySelectorAll('textarea');
+    allTextareas.forEach((ta, i) => {
+      console.log(`Textarea ${i + 1}:`, {
+        placeholder: ta.placeholder,
+        visible: ta.offsetHeight > 0,
+        disabled: ta.disabled
+      });
+    });
+    
     return false;
   }
 }
 
 // ===== Fill input with retry logic (for platforms with slow-loading inputs) =====
-function fillInputFieldWithRetry(prompt, maxAttempts = 5, retryDelay = 500) {
+function fillInputFieldWithRetry(prompt, maxAttempts = 20, retryDelay = 1000) {
   const platform = window.PlatformDetector.detectPlatform();
-  console.log('🔧 Filling input field with retry for:', platform);
+  console.log('🔧 fillInputFieldWithRetry starting for:', platform);
+  console.log('🔧 Max attempts:', maxAttempts, 'Retry delay:', retryDelay + 'ms');
+  console.log('🔧 Prompt preview:', prompt.substring(0, 100) + '...');
 
   let attempts = 0;
 
   function tryFill() {
     attempts++;
-    console.log(`🔧 Input fill attempt ${attempts}/${maxAttempts}`);
+    console.log(`\n🔧 ═══ ATTEMPT ${attempts}/${maxAttempts} ═══`);
+    console.log(`🔧 Time elapsed: ${attempts * retryDelay / 1000} seconds`);
 
     const success = fillInputFieldWithPrompt(prompt);
 
     if (success) {
-      console.log('✅ Input field filled successfully on attempt', attempts);
+      console.log(`\n✅ 🎉 SUCCESS! Input field filled on attempt ${attempts}!`);
+      console.log('✅ You can now upload the JSON file and send the message');
       return true;
     } else if (attempts < maxAttempts) {
-      console.log(`🔧 Input not found, retrying in ${retryDelay}ms...`);
+      console.log(`\n⏱️ Not successful yet, retrying in ${retryDelay}ms...`);
+      console.log(`⏱️ ${maxAttempts - attempts} attempts remaining`);
       setTimeout(tryFill, retryDelay);
     } else {
-      console.error('❌ Failed to fill input after', maxAttempts, 'attempts');
+      console.error(`\n❌ FAILED to fill input after ${maxAttempts} attempts (${maxAttempts * retryDelay / 1000} seconds total)`);
+      console.log('💡 The JSON file has been downloaded. You can manually:');
+      console.log('   1. Copy the prompt from the JSON file');
+      console.log('   2. Paste it into the input field');
+      console.log('   3. Upload the JSON file');
+      console.log('   4. Send the message');
       return false;
     }
   }
 
-  tryFill();
+  // Start with initial delay for page to fully load
+  console.log('🔧 Waiting 2 seconds for page to load before starting retry logic...');
+  setTimeout(() => {
+    console.log('🔧 🚀 Starting retry logic now!');
+    tryFill();
+  }, 2000);
 }
 
 // ===== Auto-start conversation =====
@@ -299,7 +469,7 @@ function attemptClaudeAutoStart() {
       'button[type="submit"]',
       'button:has(svg[data-testid="send-icon"])'
     ];
-    
+
     for (const selector of sendSelectors) {
       const sendButton = document.querySelector(selector);
       if (sendButton && !sendButton.disabled) {
@@ -308,9 +478,9 @@ function attemptClaudeAutoStart() {
         return;
       }
     }
-    
+
     console.log('🔧 No Claude send button found or all disabled');
-    
+
   } catch (error) {
     console.log('🔧 Claude auto-start failed:', error);
   }
@@ -321,10 +491,9 @@ function attemptChatGPTAutoStart() {
     const sendSelectors = [
       'button[data-testid="send-button"]',
       'button[aria-label*="Send"]',
-      'button[type="submit"]',
-      'button:has(svg[data-testid="send-icon"])'
+      'button[type="submit"]'
     ];
-    
+
     for (const selector of sendSelectors) {
       const sendButton = document.querySelector(selector);
       if (sendButton && !sendButton.disabled) {
@@ -333,9 +502,9 @@ function attemptChatGPTAutoStart() {
         return;
       }
     }
-    
+
     console.log('🔧 No ChatGPT send button found or all disabled');
-    
+
   } catch (error) {
     console.log('🔧 ChatGPT auto-start failed:', error);
   }
@@ -369,11 +538,9 @@ function attemptGrokAutoStart() {
 
   // Grok-specific send button selectors - PRIMARY: "Grok something" aria-label
   const sendSelectors = [
-    // PRIMARY: Grok's actual send button uses this aria-label
     'button[aria-label="Grok something"]',
     'button[aria-label*="Grok something"]',
     'button[aria-label*="Grok"]',
-    // FALLBACK: Generic send button selectors
     'button[aria-label="Send message"]',
     'button[aria-label="Send"]',
     'button[aria-label*="Send"]',
@@ -393,172 +560,58 @@ function attemptGrokAutoStart() {
     attempts++;
     console.log(`🤖 ThreadCub: Grok send button attempt ${attempts}/${maxAttempts}`);
 
-    // Try selectors in order (primary first)
     for (const selector of sendSelectors) {
       try {
         const elements = document.querySelectorAll(selector);
-
-        if (elements.length > 0) {
-          console.log(`🔍 Selector "${selector}" found ${elements.length} elements`);
-        }
-
         for (const element of elements) {
           const button = element.tagName === 'BUTTON' ? element : element.closest('button');
-
           if (button && !button.disabled && button.offsetHeight > 0) {
             const ariaLabel = button.getAttribute('aria-label');
-            console.log('🤖 ThreadCub: Found Grok send button!');
-            console.log(`🤖 Matched selector: "${selector}"`);
-            console.log(`🤖 Button aria-label: "${ariaLabel}"`);
-
-            // Focus and click
+            console.log(`🤖 Found Grok send button: "${ariaLabel}"`);
             button.focus();
             button.click();
-            console.log('✅ ThreadCub: Grok send button clicked successfully!');
+            console.log('✅ Grok send button clicked!');
             return true;
           }
         }
       } catch (e) {
-        // Continue to next selector
-      }
-    }
-
-    // Alternative: Find button with "Grok" in aria-label (handles variations)
-    const allButtons = document.querySelectorAll('button');
-    console.log(`🔍 Fallback: Checking ${allButtons.length} buttons for Grok-related aria-label`);
-
-    for (const button of allButtons) {
-      const ariaLabel = button.getAttribute('aria-label') || '';
-
-      // Check for Grok-specific or send-like aria-labels
-      const isGrokButton = ariaLabel.toLowerCase().includes('grok');
-      const isSendButton = ariaLabel.toLowerCase().includes('send');
-
-      if ((isGrokButton || isSendButton) && !button.disabled && button.offsetHeight > 0) {
-        console.log(`🤖 ThreadCub: Found button via fallback search: "${ariaLabel}"`);
-        button.focus();
-        button.click();
-        console.log('✅ ThreadCub: Grok send button clicked (fallback)!');
-        return true;
+        // Continue
       }
     }
 
     // Retry if not found
     if (attempts < maxAttempts) {
-      console.log(`🔄 ThreadCub: Retrying in ${retryDelay}ms...`);
       setTimeout(tryFindAndClick, retryDelay);
       return false;
     }
 
-    console.log('❌ ThreadCub: Could not find Grok send button after all attempts');
-    console.log('💡 Debug: User may need to click send manually');
+    console.log('❌ Could not find Grok send button after all attempts');
     return false;
   }
 
-  // Start the retry loop
   tryFindAndClick();
 }
 
 function attemptPerplexityAutoStart() {
-  console.log('🔮 ThreadCub: Attempting Perplexity auto-start with retry logic...');
-
-  // Perplexity send button selectors - PRIMARY: "Submit" aria-label
-  const sendSelectors = [
-    // PRIMARY: Perplexity's submit button
-    'button[aria-label="Submit"]',
-    'button[aria-label*="Submit"]',
-    // FALLBACK: Generic send button selectors
-    'button[aria-label="Send"]',
-    'button[aria-label*="Send"]',
-    'button[type="submit"]',
-    'button[data-testid="send-button"]'
-  ];
-
-  let attempts = 0;
-  const maxAttempts = 5;
-  const retryDelay = 500;
-
-  function tryFindAndClick() {
-    attempts++;
-    console.log(`🔮 ThreadCub: Perplexity send button attempt ${attempts}/${maxAttempts}`);
-
-    // Try selectors in order (primary first)
-    for (const selector of sendSelectors) {
-      try {
-        const elements = document.querySelectorAll(selector);
-
-        if (elements.length > 0) {
-          console.log(`🔍 Selector "${selector}" found ${elements.length} elements`);
-        }
-
-        for (const element of elements) {
-          const button = element.tagName === 'BUTTON' ? element : element.closest('button');
-
-          if (button && !button.disabled && button.offsetHeight > 0) {
-            const ariaLabel = button.getAttribute('aria-label');
-            console.log('🔮 ThreadCub: Found Perplexity send button!');
-            console.log(`🔮 Matched selector: "${selector}"`);
-            console.log(`🔮 Button aria-label: "${ariaLabel}"`);
-
-            // Focus and click
-            button.focus();
-            button.click();
-            console.log('✅ ThreadCub: Perplexity send button clicked successfully!');
-            return true;
-          }
-        }
-      } catch (e) {
-        // Continue to next selector
-      }
-    }
-
-    // Alternative: Find button with "Submit" in aria-label
-    const allButtons = document.querySelectorAll('button');
-    console.log(`🔍 Fallback: Checking ${allButtons.length} buttons for Submit-related aria-label`);
-
-    for (const button of allButtons) {
-      const ariaLabel = button.getAttribute('aria-label') || '';
-
-      const isSubmitButton = ariaLabel.toLowerCase().includes('submit');
-      const isSendButton = ariaLabel.toLowerCase().includes('send');
-
-      if ((isSubmitButton || isSendButton) && !button.disabled && button.offsetHeight > 0) {
-        console.log(`🔮 ThreadCub: Found button via fallback search: "${ariaLabel}"`);
-        button.focus();
-        button.click();
-        console.log('✅ ThreadCub: Perplexity send button clicked (fallback)!');
-        return true;
-      }
-    }
-
-    // Retry if not found
-    if (attempts < maxAttempts) {
-      console.log(`🔄 ThreadCub: Retrying in ${retryDelay}ms...`);
-      setTimeout(tryFindAndClick, retryDelay);
-      return false;
-    }
-
-    console.log('❌ ThreadCub: Could not find Perplexity send button after all attempts');
-    console.log('💡 Debug: User may need to click send manually');
-    return false;
-  }
-
-  // Start the retry loop
-  tryFindAndClick();
+  // Perplexity uses file upload - no auto-start needed
+  console.log('🔮 Perplexity: Skipping auto-start - user uploads file manually');
 }
-
-// ===== Platform detection (now using centralized module) =====
-// Removed - now using window.PlatformDetector.detectPlatform()
 
 // === END SECTION 2A ===
 
-// Export continuation system to window for global access
+// Export functions to window
 window.ContinuationSystem = {
   checkForContinuationData,
   executeStreamlinedContinuation,
+  showStreamlinedNotification,
   fillInputFieldWithPrompt,
   fillInputFieldWithRetry,
-  attemptAutoStart
+  attemptAutoStart,
+  attemptClaudeAutoStart,
+  attemptChatGPTAutoStart,
+  attemptGeminiAutoStart,
+  attemptGrokAutoStart,
+  attemptPerplexityAutoStart
 };
 
 console.log('🐻 ThreadCub: Continuation system module loaded');

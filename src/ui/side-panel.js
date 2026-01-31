@@ -322,8 +322,11 @@ class ThreadCubSidePanel {
 
         if (hasText) {
           saveBtn.classList.add('active'); // Use class for active state
+          // Inline styles to override Grok's aggressive CSS
+          saveBtn.style.color = 'white';
         } else {
           saveBtn.classList.remove('active'); // Remove class for inactive state
+          saveBtn.style.color = ''; // Reset to CSS default
         }
       });
 

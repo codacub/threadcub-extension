@@ -1,4 +1,4 @@
-console.log('🔧 LOADING: side-panel.js');
+console.log('Loading: side-panel.js');
 
 // ThreadCub Side Panel UI Module
 // Extracted from Section 1H of content.js - all syntax errors fixed
@@ -7,6 +7,7 @@ class ThreadCubSidePanel {
   constructor(taggingSystem) {
     this.taggingSystem = taggingSystem;
     this.sidePanel = null;
+    this.currentFilter = 'all'; // 'all', 'tags', 'anchors'
   }
 
   // ===== MAIN UPDATE METHOD =====
@@ -14,11 +15,147 @@ class ThreadCubSidePanel {
     const tagsList = this.sidePanel.querySelector('#threadcub-tags-container');
     if (!tagsList) return;
 
-    if (this.taggingSystem.tags.length === 0) {
+    // Filter items based on current filter
+    const filteredItems = this.getFilteredItems();
+
+    if (filteredItems.length === 0) {
       tagsList.innerHTML = this.createEmptyState();
     } else {
-      tagsList.innerHTML = this.taggingSystem.tags.map(tag => this.createTagCard(tag)).join('');
+      tagsList.innerHTML = filteredItems.map(item => {
+        // Check if item is an anchor or tag
+        if (item.type === 'anchor') {
+          return this.createAnchorCard(item);
+        }
+        return this.createTagCard(item);
+      }).join('');
       this.setupNewCardListeners();
+    }
+  }
+
+  // Get items based on current filter
+  getFilteredItems() {
+    const items = this.taggingSystem.tags || [];
+
+    switch (this.currentFilter) {
+      case 'tags':
+        return items.filter(item => item.type !== 'anchor');
+      case 'anchors':
+        return items.filter(item => item.type === 'anchor');
+      default:
+        return items;
+    }
+  }
+
+  // Set filter and update list
+  setFilter(filter) {
+    this.currentFilter = filter;
+    this.updateTagsList();
+    this.updateFilterTabs();
+  }
+
+  // Update filter tab active states
+  updateFilterTabs() {
+    const tabs = this.sidePanel?.querySelectorAll('.threadcub-filter-tab');
+    tabs?.forEach(tab => {
+      const tabFilter = tab.getAttribute('data-filter');
+      if (tabFilter === this.currentFilter) {
+        tab.classList.add('active');
+      } else {
+        tab.classList.remove('active');
+      }
+    });
+  }
+
+  // ===== ANCHOR CARD CREATION =====
+  createAnchorCard(anchor) {
+    const hasNote = anchor.note && anchor.note.trim().length > 0;
+
+    return `
+      <div class="threadcub-anchor-card" data-anchor-id="${anchor.id}" data-type="anchor">
+        <div class="card-content">
+          <!-- Anchor type badge -->
+          <div class="anchor-type-badge">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22V8"/>
+              <path d="M5 12H2a10 10 0 0 0 20 0h-3"/>
+              <circle cx="12" cy="5" r="3"/>
+            </svg>
+            ANCHOR
+          </div>
+
+          <!-- Anchor snippet -->
+          <div class="anchor-snippet">${anchor.snippet || anchor.text}</div>
+
+          ${hasNote ? this.createNoteDisplay(anchor.note, anchor.id) : ''}
+
+          <!-- Anchor actions -->
+          <div class="anchor-actions">
+            <button class="anchor-jump-button" data-action="jump-to" data-anchor-id="${anchor.id}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 12h14"/>
+                <path d="m12 5 7 7-7 7"/>
+              </svg>
+              Jump to
+            </button>
+
+            <div style="display: flex; gap: 8px;">
+              ${this.createAnchorActionButton('edit-note', '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg>', anchor.id)}
+              ${this.createAnchorActionButton('delete', '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>', anchor.id)}
+            </div>
+          </div>
+
+          <!-- Anchor metadata -->
+          <div class="anchor-metadata">
+            <div class="anchor-metadata-item">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+                <line x1="16" x2="16" y1="2" y2="6"/>
+                <line x1="8" x2="8" y1="2" y2="6"/>
+                <line x1="3" x2="21" y1="10" y2="10"/>
+              </svg>
+              ${this.formatDate(anchor.createdAt)}
+            </div>
+            ${anchor.platform ? `
+            <div class="anchor-metadata-item">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect width="20" height="14" x="2" y="3" rx="2"/>
+                <line x1="8" x2="16" y1="21" y2="21"/>
+                <line x1="12" x2="12" y1="17" y2="21"/>
+              </svg>
+              ${anchor.platform}
+            </div>
+            ` : ''}
+          </div>
+
+          ${this.createNoteEditingState(anchor)}
+        </div>
+      </div>
+    `;
+  }
+
+  // Create anchor action button
+  createAnchorActionButton(action, iconSvg, anchorId) {
+    const deleteClass = action === 'delete' ? ' delete' : '';
+    return `
+      <button class="anchor-action-button${deleteClass}" data-action="${action}" data-anchor-id="${anchorId}">
+        ${iconSvg}
+      </button>
+    `;
+  }
+
+  // Format date for display
+  formatDate(dateString) {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (e) {
+      return '';
     }
   }
 
@@ -181,27 +318,132 @@ class ThreadCubSidePanel {
 
   // ===== EVENT LISTENERS (Updated to use CSS variables and classes) =====
   setupNewCardListeners() {
-    const cards = this.sidePanel.querySelectorAll('.threadcub-tag-card');
-
-    cards.forEach(card => {
+    // Setup tag card listeners
+    const tagCards = this.sidePanel.querySelectorAll('.threadcub-tag-card');
+    tagCards.forEach(card => {
       const tagId = parseInt(card.getAttribute('data-tag-id'));
+      this.setupTagCardListeners(card, tagId);
+    });
 
-      // Card hover effects: Using CSS classes/pseudo-classes is preferred, but
-      // for direct manipulation requested earlier, using CSS variables.
-      card.addEventListener('mouseenter', () => {
-        card.style.boxShadow = 'var(--shadow-card-hover)'; // Use CSS variable
+    // Setup anchor card listeners
+    const anchorCards = this.sidePanel.querySelectorAll('.threadcub-anchor-card');
+    anchorCards.forEach(card => {
+      const anchorId = parseInt(card.getAttribute('data-anchor-id'));
+      this.setupAnchorCardListeners(card, anchorId);
+    });
+  }
+
+  // Setup listeners for anchor cards
+  setupAnchorCardListeners(card, anchorId) {
+    // Jump-to button
+    const jumpBtn = card.querySelector('[data-action="jump-to"]');
+    if (jumpBtn) {
+      jumpBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        console.log('Anchor: Jump to clicked for anchor', anchorId);
+        if (this.taggingSystem.jumpToAnchor) {
+          this.taggingSystem.jumpToAnchor(anchorId);
+        }
       });
+    }
 
-      card.addEventListener('mouseleave', () => {
-        const currentState = card.getAttribute('data-state');
-        if (currentState === 'default') {
-          card.style.boxShadow = 'var(--shadow-card)'; // Use CSS variable for default
+    // Edit note button
+    const editBtn = card.querySelector('[data-action="edit-note"]');
+    if (editBtn) {
+      editBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.enterNoteEditingStateForAnchor(card, anchorId);
+      });
+    }
+
+    // Delete button
+    const deleteBtn = card.querySelector('[data-action="delete"]');
+    if (deleteBtn) {
+      deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.taggingSystem.deleteTagWithUndo(anchorId);
+      });
+    }
+
+    // Note editing listeners
+    this.setupNoteEditingListenersForAnchor(card, anchorId);
+  }
+
+  // Enter note editing state for anchor
+  enterNoteEditingStateForAnchor(card, anchorId) {
+    const noteEditing = card.querySelector('.note-editing');
+    const anchorActions = card.querySelector('.anchor-actions');
+
+    if (anchorActions) anchorActions.style.display = 'none';
+    if (noteEditing) {
+      noteEditing.style.display = 'block';
+      const textarea = noteEditing.querySelector('.note-textarea');
+      if (textarea) {
+        textarea.focus();
+        textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+      }
+    }
+  }
+
+  // Setup note editing listeners for anchor
+  setupNoteEditingListenersForAnchor(card, anchorId) {
+    const textarea = card.querySelector('.note-textarea');
+    const saveBtn = card.querySelector('.save-note-btn');
+    const cancelBtn = card.querySelector('.cancel-note-btn');
+
+    if (textarea && saveBtn) {
+      textarea.addEventListener('input', () => {
+        const hasText = textarea.value.trim().length > 0;
+        if (hasText) {
+          saveBtn.classList.add('active');
+        } else {
+          saveBtn.classList.remove('active');
         }
       });
 
-      // Action button listeners
-      this.setupCardActionListeners(card, tagId);
+      saveBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (saveBtn.classList.contains('active')) {
+          this.taggingSystem.saveNoteForCard(anchorId, textarea.value.trim());
+          this.exitNoteEditingStateForAnchor(card);
+        }
+      });
+    }
+
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.exitNoteEditingStateForAnchor(card);
+      });
+    }
+  }
+
+  // Exit note editing state for anchor
+  exitNoteEditingStateForAnchor(card) {
+    const noteEditing = card.querySelector('.note-editing');
+    const anchorActions = card.querySelector('.anchor-actions');
+
+    if (noteEditing) noteEditing.style.display = 'none';
+    if (anchorActions) anchorActions.style.display = 'flex';
+  }
+
+  // Setup listeners for tag cards (existing functionality)
+  setupTagCardListeners(card, tagId) {
+    // Card hover effects: Using CSS classes/pseudo-classes is preferred, but
+    // for direct manipulation requested earlier, using CSS variables.
+    card.addEventListener('mouseenter', () => {
+      card.style.boxShadow = 'var(--shadow-card-hover)'; // Use CSS variable
     });
+
+    card.addEventListener('mouseleave', () => {
+      const currentState = card.getAttribute('data-state');
+      if (currentState === 'default') {
+        card.style.boxShadow = 'var(--shadow-card)'; // Use CSS variable for default
+      }
+    });
+
+    // Action button listeners
+    this.setupCardActionListeners(card, tagId);
   }
 
   setupCardActionListeners(card, tagId) {

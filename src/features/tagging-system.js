@@ -1201,6 +1201,7 @@ createContextMenu() {
         position: relative;
         background: transparent;
         border: none;
+        border-right: 1px solid #7C3AED;
         color: #7C3AED;
       ">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1208,6 +1209,27 @@ createContextMenu() {
           <path d="M8 12h.01"/>
           <path d="M12 12h.01"/>
           <path d="M16 12h.01"/>
+        </svg>
+      </div>
+
+      <!-- Create Anchor Button -->
+      <div class="threadcub-icon-button" id="threadcub-anchor-button" data-tooltip="CREATE ANCHOR" style="
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+        background: transparent;
+        border: none;
+        color: #7C3AED;
+      ">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22V8"/>
+          <path d="M5 12H2a10 10 0 0 0 20 0h-3"/>
+          <circle cx="12" cy="5" r="3"/>
         </svg>
       </div>
     </div>
@@ -1234,7 +1256,8 @@ updateSelectionColor(color = '#FFD700') {
 setupSimplifiedIconListeners() {
   const saveButton = this.contextMenu.querySelector('#threadcub-save-button');
   const findoutButton = this.contextMenu.querySelector('#threadcub-findout-button');
-  
+  const anchorButton = this.contextMenu.querySelector('#threadcub-anchor-button');
+
   // Tooltip management variables
   this.tooltipTimeout = null;
   this.currentHoveredButton = null;
@@ -1323,13 +1346,13 @@ setupSimplifiedIconListeners() {
     
     findoutButton.addEventListener('mouseleave', () => {
       findoutButton.style.background = 'transparent';
-      
+
       // Change SVG stroke back to purple
       const svg = findoutButton.querySelector('svg');
       if (svg) svg.setAttribute('stroke', '#7C3AED');
-      
+
       this.currentHoveredButton = null;
-      
+
       // Delay hiding tooltip to allow for button transitions
       this.tooltipTimeout = setTimeout(() => {
         if (!this.currentHoveredButton) {
@@ -1338,7 +1361,57 @@ setupSimplifiedIconListeners() {
       }, 100);
     });
   }
-  
+
+  // Create Anchor button
+  if (anchorButton) {
+    anchorButton.addEventListener('mousedown', (e) => {
+      e.preventDefault(); // Prevents selection from being cleared
+    });
+
+    anchorButton.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      console.log('Anchor: Create Anchor clicked');
+      this.handleCreateAnchor();
+    });
+
+    // Hover effects with custom tooltip
+    anchorButton.addEventListener('mouseenter', (e) => {
+      // Clear any pending hide timeout
+      if (this.tooltipTimeout) {
+        clearTimeout(this.tooltipTimeout);
+        this.tooltipTimeout = null;
+      }
+
+      this.currentHoveredButton = 'anchor';
+      anchorButton.style.background = '#7C3AED';
+
+      // Change SVG stroke to white on hover
+      const svg = anchorButton.querySelector('svg');
+      if (svg) svg.setAttribute('stroke', 'white');
+
+      // Show tooltip immediately
+      this.showCustomTooltip('CREATE ANCHOR', anchorButton);
+    });
+
+    anchorButton.addEventListener('mouseleave', () => {
+      anchorButton.style.background = 'transparent';
+
+      // Change SVG stroke back to purple
+      const svg = anchorButton.querySelector('svg');
+      if (svg) svg.setAttribute('stroke', '#7C3AED');
+
+      this.currentHoveredButton = null;
+
+      // Delay hiding tooltip to allow for button transitions
+      this.tooltipTimeout = setTimeout(() => {
+        if (!this.currentHoveredButton) {
+          this.hideCustomTooltip();
+        }
+      }, 100);
+    });
+  }
+
   // Close on outside click
   document.addEventListener('click', (e) => {
     if (!this.contextMenu.contains(e.target)) {
@@ -1463,23 +1536,239 @@ async handleSaveForLater() {
 
 // Handle "Find Out More" - sends selection to chat input
 handleFindOutMore() {
-  console.log('🏷️ ThreadCub: Find Out More clicked');
-  
+  console.log('ThreadCub: Find Out More clicked');
+
   if (!this.selectedText) {
-    console.log('🏷️ ThreadCub: No selection available');
+    console.log('ThreadCub: No selection available');
     return;
   }
-  
+
   // Use the existing continueTagInChat logic but with current selection
   const success = this.populateChatInputDirectly(this.selectedText);
-  
+
   if (success) {
-    console.log('🏷️ ThreadCub: Selection sent to chat input');
+    console.log('ThreadCub: Selection sent to chat input');
   } else {
-    console.log('🏷️ ThreadCub: Could not find chat input field');
+    console.log('ThreadCub: Could not find chat input field');
   }
-  
+
   this.hideContextMenu();
+}
+
+// Handle "Create Anchor" - creates an anchor with TextQuote-style context
+async handleCreateAnchor() {
+  console.log('Anchor: Create Anchor clicked');
+
+  if (!this.selectedText || !this.selectedRange) {
+    console.log('Anchor: No selection available');
+    return;
+  }
+
+  // Initialize anchor system if needed
+  if (window.anchorSystem) {
+    window.anchorSystem.init();
+  }
+
+  // Get the browser selection
+  const selection = window.getSelection();
+
+  // Create anchor using the anchor system
+  const anchorData = window.anchorSystem
+    ? window.anchorSystem.createAnchorFromSelection(selection)
+    : this.createBasicAnchor(selection);
+
+  if (!anchorData) {
+    console.log('Anchor: Failed to create anchor data');
+    return;
+  }
+
+  // Create anchor item (similar to tag but with type: 'anchor')
+  const anchor = {
+    id: Date.now(),
+    type: 'anchor',
+    text: this.selectedText, // snippet
+    title: this.selectedText.substring(0, 50) + (this.selectedText.length > 50 ? '...' : ''),
+    snippet: this.selectedText,
+    createdAt: new Date().toISOString(),
+    platform: window.PlatformDetector?.detectPlatform() || 'unknown',
+    anchor: anchorData,
+    // Keep compatibility with existing tag structure
+    category: null,
+    categoryLabel: 'Anchor',
+    note: '',
+    timestamp: new Date().toISOString(),
+    rangeInfo: this.captureEnhancedRangeInfo(this.selectedRange)
+  };
+
+  this.tags.push(anchor);
+
+  // Remove temporary highlight before creating permanent one
+  this.removeTemporaryHighlight();
+
+  // Apply anchor-specific highlight (slightly different from tags)
+  this.applyAnchorHighlight(this.selectedRange, anchor.id);
+
+  // Save to persistent storage
+  await this.saveTagsToPersistentStorage();
+
+  // Open side panel (first time) or update (subsequent)
+  if (this.tags.length === 1) {
+    this.showSidePanel();
+  } else {
+    if (this.isPanelOpen) {
+      this.updateTagsList();
+    }
+  }
+
+  this.hideContextMenu();
+
+  console.log('Anchor: Anchor created and persisted:', anchor);
+}
+
+// Create basic anchor without anchor system (fallback)
+createBasicAnchor(selection) {
+  if (!selection || selection.isCollapsed) return null;
+
+  const range = selection.getRangeAt(0);
+  const exact = range.toString().trim();
+
+  if (exact.length < 3) return null;
+
+  // Find container element
+  let container = range.startContainer;
+  if (container.nodeType === Node.TEXT_NODE) {
+    container = container.parentElement;
+  }
+
+  // Get text before and after for context
+  let prefix = '';
+  let suffix = '';
+
+  try {
+    const containerText = container.textContent || '';
+    const exactIndex = containerText.indexOf(exact);
+
+    if (exactIndex !== -1) {
+      prefix = containerText.slice(Math.max(0, exactIndex - 60), exactIndex).trim();
+      suffix = containerText.slice(exactIndex + exact.length, exactIndex + exact.length + 60).trim();
+    }
+  } catch (e) {
+    console.log('Anchor: Could not capture context:', e);
+  }
+
+  return {
+    exact,
+    prefix,
+    suffix,
+    messageSelector: '',
+    messageIndex: -1,
+    url: window.location.href,
+    platform: 'unknown'
+  };
+}
+
+// Apply anchor-specific highlight (purple tint instead of yellow)
+applyAnchorHighlight(range, anchorId) {
+  try {
+    const span = document.createElement('span');
+    span.className = 'threadcub-anchor-highlight';
+    span.setAttribute('data-anchor-id', anchorId);
+
+    // Surround range with highlight span
+    range.surroundContents(span);
+
+    // Store reference for cleanup
+    if (!this.anchorElements) {
+      this.anchorElements = new Map();
+    }
+    this.anchorElements.set(anchorId, span);
+
+    console.log('Anchor: Highlight applied for anchor', anchorId);
+  } catch (error) {
+    console.log('Anchor: Could not apply highlight, using fallback:', error);
+    // Fallback: use smart highlight
+    this.applySmartHighlight(range, anchorId);
+  }
+}
+
+// Jump to an anchor
+async jumpToAnchor(anchorId) {
+  const anchor = this.tags.find(t => t.id === anchorId && t.type === 'anchor');
+
+  if (!anchor || !anchor.anchor) {
+    console.log('Anchor: Anchor not found:', anchorId);
+    this.showJumpFailedNotification();
+    return;
+  }
+
+  console.log('Anchor: Jumping to anchor:', anchor);
+
+  // Use anchor system if available
+  if (window.anchorSystem) {
+    const result = await window.anchorSystem.jumpToAnchor(anchor.anchor);
+
+    if (result.success) {
+      console.log('Anchor: Jump successful via', result.method, 'approximate:', result.approximate);
+    } else {
+      console.log('Anchor: Jump failed');
+      this.showJumpFailedNotification();
+    }
+  } else {
+    // Fallback: try to find and scroll to the text
+    this.fallbackJumpToAnchor(anchor);
+  }
+}
+
+// Fallback jump method
+fallbackJumpToAnchor(anchor) {
+  const targetText = anchor.anchor?.exact || anchor.text;
+
+  // Try to find the text in the page
+  const walker = document.createTreeWalker(
+    document.body,
+    NodeFilter.SHOW_TEXT,
+    null,
+    false
+  );
+
+  let textNode;
+  while ((textNode = walker.nextNode())) {
+    if (textNode.textContent.includes(targetText)) {
+      const element = textNode.parentElement;
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        element.classList.add('threadcub-anchor-flash');
+        setTimeout(() => {
+          element.classList.remove('threadcub-anchor-flash');
+        }, 2000);
+        return;
+      }
+    }
+  }
+
+  this.showJumpFailedNotification();
+}
+
+// Show notification when jump fails
+showJumpFailedNotification() {
+  const notification = document.createElement('div');
+  notification.className = 'threadcub-jump-failed';
+  notification.innerHTML = `
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="10"/>
+      <line x1="12" y1="8" x2="12" y2="12"/>
+      <line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
+    Could not find anchor location - content may have changed
+  `;
+
+  document.body.appendChild(notification);
+
+  setTimeout(() => {
+    notification.style.opacity = '0';
+    notification.style.transition = 'opacity 0.5s ease';
+    setTimeout(() => notification.remove(), 500);
+  }, 3000);
 }
 
 // Direct chat input population (reuse existing logic)
@@ -1643,8 +1932,17 @@ createSidePanel() {
       ">Swiping like a pro!</h2>
     </div>
     
+    <!-- Type Filter Tabs -->
+    <div style="padding: 16px 24px 0; border-bottom: 1px solid rgba(226, 232, 240, 0.6);">
+      <div class="threadcub-filter-tabs">
+        <button class="threadcub-filter-tab active" data-filter="all">All</button>
+        <button class="threadcub-filter-tab" data-filter="tags">Tags</button>
+        <button class="threadcub-filter-tab" data-filter="anchors">Anchors</button>
+      </div>
+    </div>
+
     <!-- Priority Filter Section -->
-    <div style="padding: 20px 24px; border-bottom: 1px solid rgba(226, 232, 240, 0.6);">      
+    <div style="padding: 16px 24px; border-bottom: 1px solid rgba(226, 232, 240, 0.6);">
       <div style="position: relative;">
         <select id="threadcub-priority-filter" style="
           width: 100%;
@@ -1854,7 +2152,28 @@ setupPanelEventListeners() {
     filterSelect.style.borderColor = '#d1d5db';
     filterSelect.style.boxShadow = 'none';
   });
-  
+
+  // Type filter tabs (All / Tags / Anchors)
+  const filterTabs = this.sidePanel.querySelectorAll('.threadcub-filter-tab');
+  filterTabs.forEach(tab => {
+    tab.addEventListener('click', (e) => {
+      const filter = tab.getAttribute('data-filter');
+      console.log('Filter tab clicked:', filter);
+
+      // Update active state on tabs
+      filterTabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+
+      // Update filter in side panel UI if available
+      if (this.sidePanelUI && this.sidePanelUI.setFilter) {
+        this.sidePanelUI.setFilter(filter);
+      } else {
+        // Fallback: filter manually
+        this.filterItemsByType(filter);
+      }
+    });
+  });
+
   // Download button
   const downloadBtn = this.sidePanel.querySelector('#threadcub-download-json');
   downloadBtn.addEventListener('click', () => {
@@ -2952,21 +3271,44 @@ continueTagInChat(tagId) {
 }
 
 filterTagsByPriority(priority) {
-  console.log('🏷️ ThreadCub: Filtering tags by priority:', priority);
-  
-  const allCards = this.sidePanel.querySelectorAll('.threadcub-tag-card');
-  
+  console.log('ThreadCub: Filtering tags by priority:', priority);
+
+  const allCards = this.sidePanel.querySelectorAll('.threadcub-tag-card, .threadcub-anchor-card');
+
   allCards.forEach(card => {
-    const tagId = parseInt(card.getAttribute('data-tag-id'));
+    const tagId = parseInt(card.getAttribute('data-tag-id') || card.getAttribute('data-anchor-id'));
     const tag = this.tags.find(t => t.id === tagId);
-    
+
     let shouldShow = true;
-    
+
     if (priority !== 'all' && tag) {
       const hasPriority = tag.tags && tag.tags.some(t => t.priority === priority);
       shouldShow = hasPriority;
     }
-    
+
+    card.style.display = shouldShow ? 'block' : 'none';
+  });
+}
+
+// Filter items by type (all, tags, anchors)
+filterItemsByType(typeFilter) {
+  console.log('ThreadCub: Filtering items by type:', typeFilter);
+
+  const allCards = this.sidePanel.querySelectorAll('.threadcub-tag-card, .threadcub-anchor-card');
+
+  allCards.forEach(card => {
+    const isAnchor = card.classList.contains('threadcub-anchor-card');
+    const isTag = card.classList.contains('threadcub-tag-card');
+
+    let shouldShow = true;
+
+    if (typeFilter === 'tags') {
+      shouldShow = isTag;
+    } else if (typeFilter === 'anchors') {
+      shouldShow = isAnchor;
+    }
+    // 'all' shows everything
+
     card.style.display = shouldShow ? 'block' : 'none';
   });
 }

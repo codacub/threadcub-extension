@@ -74,17 +74,20 @@
     "css": [
       "assets/tokens.css",
       "assets/floating-button.css",
-      "assets/side-panel.css"
+      "assets/side-panel.css",
+      "assets/anchor.css"
     ],
     "js": [
       "src/utils/platform-detector.js",
       "src/utils/utilities.js",
       "src/services/storage-service.js",
       "src/services/api-service.js",
+      "src/adapters/platform-adapters.js",
       "src/core/conversation-extractor.js",
       "src/ui/ui-components.js",
       "src/ui/side-panel.js",
       "src/core/floating-button.js",
+      "src/features/anchor-system.js",
       "src/features/tagging-system.js",
       "src/features/continuation-system.js",
       "src/features/platform-autostart.js",

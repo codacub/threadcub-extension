@@ -258,18 +258,6 @@
   fill: none !important;
 }
 
-/* Grok platform fix: Ensure new-btn and close-btn icons are white */
-/* These buttons need white icons for visibility on Grok platforms */
-.threadcub-new-btn,
-.threadcub-close-btn {
-  color: white !important;
-}
-
-.threadcub-new-btn svg,
-.threadcub-close-btn svg {
-  stroke: white !important;
-}
-
 /* Action Button Hover States */
 .threadcub-new-btn:hover {
   background: var(--color-action-btn-new-bg-hover) !important;

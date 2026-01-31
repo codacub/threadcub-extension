@@ -55,8 +55,10 @@
   gap: var(--spacing-4) !important;
 }
 
-/* Action Button specific styles */
-.action-button {
+/* Action Button specific styles - high specificity for X.com/Grok override */
+.action-button,
+.threadcub-tag-card .action-button,
+.action-button[data-action] {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -66,12 +68,18 @@
   cursor: pointer !important;
   transition: background var(--transition-base), color var(--transition-base) !important;
   border-radius: var(--border-radius-base) !important;
+  line-height: 1 !important;
+  text-align: center !important;
+  box-sizing: border-box !important;
 }
 
 /* Ensure SVG icons inherit color correctly on all platforms */
-.action-button svg {
+.action-button svg,
+.threadcub-tag-card .action-button svg,
+.action-button[data-action] svg {
   stroke: currentColor !important;
   fill: none !important;
+  display: block !important;
 }
 
 /* ===== PRIORITY TAGS STYLES ===== */

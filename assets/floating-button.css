@@ -241,7 +241,7 @@
   cursor: pointer !important;
   backdrop-filter: blur(10px) !important; /* Fixed value */
   box-shadow: var(--shadow-action-btn-default) !important;
-  transform: scale(0.7) !important; /* Smaller when hidden */
+  transform: scale(0.7); /* Smaller when hidden - no !important allows hover override */
   pointer-events: auto !important; /* Allow clicks when visible */
   border: var(--border-width-action-btn) solid var(--color-action-btn-border) !important;
   background: var(--color-action-btn-bg) !important;
@@ -256,6 +256,18 @@
   height: var(--icon-size-action-btn) !important;
   stroke: currentColor !important;
   fill: none !important;
+}
+
+/* Grok platform fix: Ensure new-btn and close-btn icons are white */
+/* These buttons need white icons for visibility on Grok platforms */
+.threadcub-new-btn,
+.threadcub-close-btn {
+  color: white !important;
+}
+
+.threadcub-new-btn svg,
+.threadcub-close-btn svg {
+  stroke: white !important;
 }
 
 /* Action Button Hover States */
@@ -322,7 +334,7 @@
 #threadcub-edge-btn:hover .threadcub-download-btn,
 #threadcub-edge-btn:hover .threadcub-tag-btn,
 #threadcub-edge-btn:hover .threadcub-close-btn {
-  transform: scale(1); /* Return to normal size */
+  transform: scale(1) !important; /* Return to normal size */
 }
 
 /* Grip icon visibility on hover */

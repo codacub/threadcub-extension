@@ -231,29 +231,31 @@
 .threadcub-download-btn,
 .threadcub-tag-btn,
 .threadcub-close-btn {
-  width: var(--action-button-size);
-  height: var(--action-button-size);
-  border-radius: var(--border-radius-full);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all var(--transition-action-buttons);
-  cursor: pointer;
-  backdrop-filter: blur(10px); /* Fixed value */
-  box-shadow: var(--shadow-action-btn-default);
-  transform: scale(0.7); /* Smaller when hidden */
-  pointer-events: auto; /* Allow clicks when visible */
-  border: var(--border-width-action-btn) solid var(--color-action-btn-border);
-  background: var(--color-action-btn-bg);
-  color: var(--color-action-btn-text);
+  width: var(--action-button-size) !important;
+  height: var(--action-button-size) !important;
+  border-radius: var(--border-radius-full) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all var(--transition-action-buttons) !important;
+  cursor: pointer !important;
+  backdrop-filter: blur(10px) !important; /* Fixed value */
+  box-shadow: var(--shadow-action-btn-default) !important;
+  transform: scale(0.7) !important; /* Smaller when hidden */
+  pointer-events: auto !important; /* Allow clicks when visible */
+  border: var(--border-width-action-btn) solid var(--color-action-btn-border) !important;
+  background: var(--color-action-btn-bg) !important;
+  color: var(--color-action-btn-text) !important;
 }
 
 .threadcub-new-btn svg,
 .threadcub-download-btn svg,
 .threadcub-tag-btn svg,
 .threadcub-close-btn svg {
-  width: var(--icon-size-action-btn);
-  height: var(--icon-size-action-btn);
+  width: var(--icon-size-action-btn) !important;
+  height: var(--icon-size-action-btn) !important;
+  stroke: currentColor !important;
+  fill: none !important;
 }
 
 /* Action Button Hover States */

@@ -50,22 +50,28 @@
 }
 
 .action-buttons {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-4);
+  display: flex !important;
+  align-items: center !important;
+  gap: var(--spacing-4) !important;
 }
 
 /* Action Button specific styles */
 .action-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--icon-size-base);
-  height: var(--icon-size-base);
-  color: var(--color-gray-500); /* Default icon color */
-  cursor: pointer;
-  transition: background var(--transition-base), color var(--transition-base);
-  border-radius: var(--border-radius-base);
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: var(--icon-size-base) !important;
+  height: var(--icon-size-base) !important;
+  color: var(--color-gray-500) !important; /* Default icon color */
+  cursor: pointer !important;
+  transition: background var(--transition-base), color var(--transition-base) !important;
+  border-radius: var(--border-radius-base) !important;
+}
+
+/* Ensure SVG icons inherit color correctly on all platforms */
+.action-button svg {
+  stroke: currentColor !important;
+  fill: none !important;
 }
 
 /* ===== PRIORITY TAGS STYLES ===== */

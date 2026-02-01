@@ -2037,56 +2037,7 @@ createSidePanel() {
         margin: 0;
       ">Swiping like a pro!</h2>
     </div>
-    
-    <!-- Type Filter Tabs -->
-    <div style="padding: 16px 24px 0; border-bottom: 1px solid rgba(226, 232, 240, 0.6);">
-      <div class="threadcub-filter-tabs">
-        <button class="threadcub-filter-tab active" data-filter="all">All</button>
-        <button class="threadcub-filter-tab" data-filter="tags">Tags</button>
-        <button class="threadcub-filter-tab" data-filter="anchors">Anchors</button>
-      </div>
-    </div>
 
-    <!-- Priority Filter Section -->
-    <div style="padding: 16px 24px; border-bottom: 1px solid rgba(226, 232, 240, 0.6);">
-      <div style="position: relative;">
-        <select id="threadcub-priority-filter" style="
-          width: 100%;
-          padding: 12px 16px;
-          padding-right: 40px;
-          background: white;
-          border: 1px solid #d1d5db;
-          border-radius: 8px;
-          font-size: 14px;
-          font-weight: 500;
-          color: #374151;
-          cursor: pointer;
-          appearance: none;
-          transition: all 0.2s ease;
-          outline: none;
-        " class="focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-          <option value="all">All priorities</option>
-          <option value="high">High priority</option>
-          <option value="medium">Medium priority</option>
-          <option value="low">Low priority</option>
-        </select>
-        
-        <!-- Custom dropdown arrow with Lucide ChevronDown -->
-        <div style="
-          position: absolute;
-          right: 12px;
-          top: 50%;
-          transform: translateY(-50%);
-          pointer-events: none;
-          color: #94a3b8;
-        ">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="m6 9 6 6 6-6"/>
-          </svg>
-        </div>
-      </div>
-    </div>
-    
     <!-- Tags Container -->
     <div id="threadcub-tags-container" style="
       flex: 1;

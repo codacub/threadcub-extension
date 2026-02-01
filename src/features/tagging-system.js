@@ -2184,52 +2184,6 @@ setupPanelEventListeners() {
       // REMOVED: Any highlight cleanup calls
     }
   });
-  
-  // Priority filter dropdown
-  const filterSelect = this.sidePanel.querySelector('#threadcub-priority-filter');
-  filterSelect.addEventListener('change', (e) => {
-    this.filterTagsByPriority(e.target.value);
-  });
-  
-  // Filter hover effects
-  filterSelect.addEventListener('mouseenter', () => {
-    filterSelect.style.borderColor = '#3b82f6';
-  });
-  
-  filterSelect.addEventListener('mouseleave', () => {
-    filterSelect.style.borderColor = '#d1d5db';
-  });
-  
-  filterSelect.addEventListener('focus', () => {
-    filterSelect.style.borderColor = '#3b82f6';
-    filterSelect.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-  });
-  
-  filterSelect.addEventListener('blur', () => {
-    filterSelect.style.borderColor = '#d1d5db';
-    filterSelect.style.boxShadow = 'none';
-  });
-
-  // Type filter tabs (All / Tags / Anchors)
-  const filterTabs = this.sidePanel.querySelectorAll('.threadcub-filter-tab');
-  filterTabs.forEach(tab => {
-    tab.addEventListener('click', (e) => {
-      const filter = tab.getAttribute('data-filter');
-      console.log('Filter tab clicked:', filter);
-
-      // Update active state on tabs
-      filterTabs.forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-
-      // Update filter in side panel UI if available
-      if (this.sidePanelUI && this.sidePanelUI.setFilter) {
-        this.sidePanelUI.setFilter(filter);
-      } else {
-        // Fallback: filter manually
-        this.filterItemsByType(filter);
-      }
-    });
-  });
 
   // Download button
   const downloadBtn = this.sidePanel.querySelector('#threadcub-download-json');

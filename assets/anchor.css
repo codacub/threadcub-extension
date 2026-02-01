@@ -5,7 +5,7 @@
 
 /* ===== ANCHOR FLASH HIGHLIGHT ===== */
 .threadcub-anchor-flash {
-  background-color: rgba(124, 58, 237, 0.4) !important; /* Primary purple with transparency */
+  background-color: rgba(124, 58, 237, 0.4) !important;
   animation: anchor-flash 2s ease-out forwards;
   border-radius: 2px;
   transition: background-color 0.3s ease;
@@ -49,148 +49,22 @@
   opacity: 0;
 }
 
-/* ===== ANCHOR CARD STYLES ===== */
-.threadcub-anchor-card {
-  background: var(--color-white);
-  border: var(--border-width-thin) solid rgba(124, 58, 237, 0.3); /* Purple tint */
-  border-radius: var(--border-radius-lg);
-  padding: var(--spacing-4);
-  margin-bottom: var(--spacing-3);
-  position: relative;
-  transition: all var(--transition-base);
-  cursor: pointer;
-  box-shadow: var(--shadow-card);
-}
-
-.threadcub-anchor-card:hover {
-  box-shadow: var(--shadow-card-hover);
-  border-color: rgba(124, 58, 237, 0.5);
-}
-
-/* Anchor type indicator badge */
-.anchor-type-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  background: rgba(124, 58, 237, 0.1);
-  border: 1px solid rgba(124, 58, 237, 0.2);
-  border-radius: 12px;
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: #7C3AED;
-  margin-bottom: var(--spacing-2);
-}
-
-.anchor-type-badge svg {
-  width: 12px;
-  height: 12px;
-}
-
-/* Anchor snippet text */
-.anchor-snippet {
-  font-size: var(--font-size-sm);
-  line-height: var(--line-height-normal);
-  color: var(--color-gray-700);
-  margin-bottom: var(--spacing-3);
-  font-family: var(--font-family-primary);
-  /* Limit to 3 lines with ellipsis */
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-/* Jump to button */
-.anchor-jump-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  background: #7C3AED;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.anchor-jump-button:hover {
-  background: #6D28D9;
-  transform: translateY(-1px);
-}
-
-.anchor-jump-button svg {
-  width: 14px;
-  height: 14px;
-}
-
-/* Anchor metadata */
-.anchor-metadata {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-3);
-  margin-top: var(--spacing-3);
-  padding-top: var(--spacing-3);
-  border-top: 1px solid var(--color-gray-200);
-  font-size: 11px;
-  color: var(--color-gray-500);
-}
-
-.anchor-metadata-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.anchor-metadata-item svg {
-  width: 12px;
-  height: 12px;
-}
-
-/* ===== ANCHOR CONTEXT MENU BUTTON ===== */
-.threadcub-anchor-button {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  position: relative;
-  background: transparent;
-  border: none;
-  border-left: 1px solid #7C3AED;
-  color: #7C3AED;
-}
-
-.threadcub-anchor-button:hover {
-  background: #7C3AED;
-}
-
-.threadcub-anchor-button:hover svg {
-  stroke: white;
-}
-
 /* ===== SIDE PANEL FILTER TABS ===== */
 .threadcub-filter-tabs {
   display: flex;
   gap: 8px;
-  padding: 0 24px;
-  margin-bottom: 16px;
+  padding: 0;
+  margin-bottom: 0;
 }
 
 .threadcub-filter-tab {
   padding: 8px 16px;
   background: transparent;
-  border: 1px solid var(--color-gray-200);
+  border: 1px solid var(--color-gray-200, #e2e8f0);
   border-radius: 20px;
   font-size: 13px;
   font-weight: 500;
-  color: var(--color-gray-600);
+  color: var(--color-gray-600, #475569);
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -204,62 +78,6 @@
   background: #7C3AED;
   border-color: #7C3AED;
   color: white;
-}
-
-/* ===== ANCHOR ACTION BUTTONS ===== */
-.anchor-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: var(--spacing-2);
-}
-
-.anchor-action-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  color: var(--color-gray-500);
-  cursor: pointer;
-  transition: background var(--transition-base), color var(--transition-base);
-  border-radius: var(--border-radius-base);
-  border: none;
-  background: transparent;
-}
-
-.anchor-action-button:hover {
-  background: var(--color-gray-100);
-  color: var(--color-primary);
-}
-
-.anchor-action-button.delete:hover {
-  background: var(--color-error-light, rgba(239, 68, 68, 0.1));
-  color: var(--color-error, #ef4444);
-}
-
-/* ===== EMPTY STATE FOR ANCHORS ===== */
-.anchor-empty-state {
-  text-align: center;
-  padding: 40px 20px;
-  color: var(--color-gray-500);
-}
-
-.anchor-empty-icon {
-  width: 64px;
-  height: 64px;
-  margin: 0 auto 16px;
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.1) 0%, rgba(124, 58, 237, 0.2) 100%);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #7C3AED;
-}
-
-.anchor-empty-icon svg {
-  width: 32px;
-  height: 32px;
 }
 
 /* ===== ANCHOR HIGHLIGHT IN PAGE ===== */

@@ -67,96 +67,36 @@ class ThreadCubSidePanel {
   }
 
   // ===== ANCHOR CARD CREATION =====
+  // Anchor cards now match tag card structure for visual consistency
   createAnchorCard(anchor) {
     const hasNote = anchor.note && anchor.note.trim().length > 0;
+    const hasTags = anchor.tags && anchor.tags.length > 0;
 
     return `
-      <div class="threadcub-anchor-card" data-anchor-id="${anchor.id}" data-type="anchor">
+      <div class="threadcub-tag-card threadcub-anchor-card" data-tag-id="${anchor.id}" data-anchor-id="${anchor.id}" data-state="default" data-type="anchor">
         <div class="card-content">
-          <!-- Anchor type badge -->
-          <div class="anchor-type-badge">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 22V8"/>
-              <path d="M5 12H2a10 10 0 0 0 20 0h-3"/>
-              <circle cx="12" cy="5" r="3"/>
-            </svg>
-            ANCHOR
-          </div>
+          <div class="tag-text">${anchor.snippet || anchor.text}</div>
 
-          <!-- Anchor snippet -->
-          <div class="anchor-snippet">${anchor.snippet || anchor.text}</div>
-
+          ${hasTags ? this.createPriorityTags(anchor.tags) : ''}
           ${hasNote ? this.createNoteDisplay(anchor.note, anchor.id) : ''}
 
-          <!-- Anchor actions -->
-          <div class="anchor-actions">
-            <button class="anchor-jump-button" data-action="jump-to" data-anchor-id="${anchor.id}">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M5 12h14"/>
-                <path d="m12 5 7 7-7 7"/>
-              </svg>
-              Jump to
-            </button>
-
-            <div style="display: flex; gap: 8px;">
-              ${this.createAnchorActionButton('edit-note', '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg>', anchor.id)}
-              ${this.createAnchorActionButton('delete', '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>', anchor.id)}
+          <div class="default-state">
+            <div class="card-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="4" r="2"/><circle cx="18" cy="8" r="2"/><circle cx="20" cy="16" r="2"/><path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z"/></svg>
             </div>
-          </div>
-
-          <!-- Anchor metadata -->
-          <div class="anchor-metadata">
-            <div class="anchor-metadata-item">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
-                <line x1="16" x2="16" y1="2" y2="6"/>
-                <line x1="8" x2="8" y1="2" y2="6"/>
-                <line x1="3" x2="21" y1="10" y2="10"/>
-              </svg>
-              ${this.formatDate(anchor.createdAt)}
+            <div class="action-buttons">
+              ${this.createActionButton('jump-to', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22V8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/><circle cx="12" cy="5" r="3"/></svg>', anchor.id)}
+              ${this.createActionButton('edit-note', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg>', anchor.id)}
+              ${this.createActionButton('add-tag', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></svg>', anchor.id)}
+              ${this.createActionButton('delete', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>', anchor.id)}
             </div>
-            ${anchor.platform ? `
-            <div class="anchor-metadata-item">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect width="20" height="14" x="2" y="3" rx="2"/>
-                <line x1="8" x2="16" y1="21" y2="21"/>
-                <line x1="12" x2="12" y1="17" y2="21"/>
-              </svg>
-              ${anchor.platform}
-            </div>
-            ` : ''}
           </div>
 
           ${this.createNoteEditingState(anchor)}
+          ${this.createTagEditingState(anchor)}
         </div>
       </div>
     `;
-  }
-
-  // Create anchor action button
-  createAnchorActionButton(action, iconSvg, anchorId) {
-    const deleteClass = action === 'delete' ? ' delete' : '';
-    return `
-      <button class="anchor-action-button${deleteClass}" data-action="${action}" data-anchor-id="${anchorId}">
-        ${iconSvg}
-      </button>
-    `;
-  }
-
-  // Format date for display
-  formatDate(dateString) {
-    if (!dateString) return '';
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch (e) {
-      return '';
-    }
   }
 
   // ===== EMPTY STATE =====
@@ -333,9 +273,21 @@ class ThreadCubSidePanel {
     });
   }
 
-  // Setup listeners for anchor cards
+  // Setup listeners for anchor cards (now uses same pattern as tag cards)
   setupAnchorCardListeners(card, anchorId) {
-    // Jump-to button
+    // Card hover effects - same as tags
+    card.addEventListener('mouseenter', () => {
+      card.style.boxShadow = 'var(--shadow-card-hover)';
+    });
+
+    card.addEventListener('mouseleave', () => {
+      const currentState = card.getAttribute('data-state');
+      if (currentState === 'default') {
+        card.style.boxShadow = 'var(--shadow-card)';
+      }
+    });
+
+    // Jump-to action icon
     const jumpBtn = card.querySelector('[data-action="jump-to"]');
     if (jumpBtn) {
       jumpBtn.addEventListener('click', (e) => {
@@ -352,7 +304,16 @@ class ThreadCubSidePanel {
     if (editBtn) {
       editBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        this.enterNoteEditingStateForAnchor(card, anchorId);
+        this.enterNoteEditingState(card, anchorId);
+      });
+    }
+
+    // Add tag/priority button
+    const tagBtn = card.querySelector('[data-action="add-tag"]');
+    if (tagBtn) {
+      tagBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.enterTagEditingState(card, anchorId);
       });
     }
 
@@ -365,66 +326,11 @@ class ThreadCubSidePanel {
       });
     }
 
-    // Note editing listeners
-    this.setupNoteEditingListenersForAnchor(card, anchorId);
-  }
+    // Note editing listeners - use same as tags
+    this.setupNoteEditingListeners(card, anchorId);
 
-  // Enter note editing state for anchor
-  enterNoteEditingStateForAnchor(card, anchorId) {
-    const noteEditing = card.querySelector('.note-editing');
-    const anchorActions = card.querySelector('.anchor-actions');
-
-    if (anchorActions) anchorActions.style.display = 'none';
-    if (noteEditing) {
-      noteEditing.style.display = 'block';
-      const textarea = noteEditing.querySelector('.note-textarea');
-      if (textarea) {
-        textarea.focus();
-        textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-      }
-    }
-  }
-
-  // Setup note editing listeners for anchor
-  setupNoteEditingListenersForAnchor(card, anchorId) {
-    const textarea = card.querySelector('.note-textarea');
-    const saveBtn = card.querySelector('.save-note-btn');
-    const cancelBtn = card.querySelector('.cancel-note-btn');
-
-    if (textarea && saveBtn) {
-      textarea.addEventListener('input', () => {
-        const hasText = textarea.value.trim().length > 0;
-        if (hasText) {
-          saveBtn.classList.add('active');
-        } else {
-          saveBtn.classList.remove('active');
-        }
-      });
-
-      saveBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (saveBtn.classList.contains('active')) {
-          this.taggingSystem.saveNoteForCard(anchorId, textarea.value.trim());
-          this.exitNoteEditingStateForAnchor(card);
-        }
-      });
-    }
-
-    if (cancelBtn) {
-      cancelBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.exitNoteEditingStateForAnchor(card);
-      });
-    }
-  }
-
-  // Exit note editing state for anchor
-  exitNoteEditingStateForAnchor(card) {
-    const noteEditing = card.querySelector('.note-editing');
-    const anchorActions = card.querySelector('.anchor-actions');
-
-    if (noteEditing) noteEditing.style.display = 'none';
-    if (anchorActions) anchorActions.style.display = 'flex';
+    // Tag editing listeners - use same as tags
+    this.setupTagEditingListeners(card, anchorId);
   }
 
   // Setup listeners for tag cards (existing functionality)

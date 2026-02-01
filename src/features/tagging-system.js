@@ -1596,6 +1596,7 @@ async handleCreateAnchor() {
     category: null,
     categoryLabel: 'Anchor',
     note: '',
+    tags: [], // Priority tags support (same as regular tags)
     timestamp: new Date().toISOString(),
     rangeInfo: this.captureEnhancedRangeInfo(this.selectedRange)
   };
@@ -1677,6 +1678,36 @@ applyAnchorHighlight(range, anchorId) {
     // Surround range with highlight span
     range.surroundContents(span);
 
+    // Add click listener to open side panel and switch to anchors tab
+    span.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.showSidePanel();
+      // Switch to anchors tab after a short delay for panel to open
+      setTimeout(() => {
+        if (this.sidePanelUI && this.sidePanelUI.setFilter) {
+          this.sidePanelUI.setFilter('anchors');
+        }
+        // Update tab UI
+        const tabs = this.sidePanel?.querySelectorAll('.threadcub-filter-tab');
+        tabs?.forEach(tab => {
+          const filter = tab.getAttribute('data-filter');
+          if (filter === 'anchors') {
+            tab.classList.add('active');
+          } else {
+            tab.classList.remove('active');
+          }
+        });
+      }, 100);
+    });
+
+    // Add hover effects
+    span.addEventListener('mouseenter', () => {
+      span.style.backgroundColor = 'rgba(124, 58, 237, 0.25)';
+    });
+    span.addEventListener('mouseleave', () => {
+      span.style.backgroundColor = 'rgba(124, 58, 237, 0.15)';
+    });
+
     // Store reference for cleanup
     if (!this.anchorElements) {
       this.anchorElements = new Map();
@@ -1686,8 +1717,69 @@ applyAnchorHighlight(range, anchorId) {
     console.log('Anchor: Highlight applied for anchor', anchorId);
   } catch (error) {
     console.log('Anchor: Could not apply highlight, using fallback:', error);
-    // Fallback: use smart highlight
-    this.applySmartHighlight(range, anchorId);
+    // Fallback: use smart highlight with anchor class
+    this.applySmartAnchorHighlight(range, anchorId);
+  }
+}
+
+// Smart anchor highlight fallback (similar to tag but with anchor styling and click handler)
+applySmartAnchorHighlight(range, anchorId) {
+  try {
+    const textNodes = this.getTextNodesInRange(range);
+
+    if (textNodes.length === 0) {
+      // Simple fallback
+      const contents = range.extractContents();
+      const span = document.createElement('span');
+      span.className = 'threadcub-anchor-highlight';
+      span.setAttribute('data-anchor-id', anchorId);
+      span.appendChild(contents);
+      range.insertNode(span);
+
+      // Add click listener
+      span.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.showSidePanel();
+        setTimeout(() => {
+          if (this.sidePanelUI && this.sidePanelUI.setFilter) {
+            this.sidePanelUI.setFilter('anchors');
+          }
+        }, 100);
+      });
+
+      if (!this.anchorElements) this.anchorElements = new Map();
+      this.anchorElements.set(anchorId, [span]);
+      return;
+    }
+
+    // Wrap each text node
+    const highlightElements = [];
+    textNodes.forEach(textNode => {
+      if (!textNode.textContent || textNode.textContent.trim().length === 0) return;
+
+      const span = document.createElement('span');
+      span.className = 'threadcub-anchor-highlight';
+      span.setAttribute('data-anchor-id', anchorId);
+      span.textContent = textNode.textContent;
+      textNode.parentNode.replaceChild(span, textNode);
+
+      span.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.showSidePanel();
+        setTimeout(() => {
+          if (this.sidePanelUI && this.sidePanelUI.setFilter) {
+            this.sidePanelUI.setFilter('anchors');
+          }
+        }, 100);
+      });
+
+      highlightElements.push(span);
+    });
+
+    if (!this.anchorElements) this.anchorElements = new Map();
+    this.anchorElements.set(anchorId, highlightElements);
+  } catch (error) {
+    console.log('Anchor: Smart anchor highlight failed:', error);
   }
 }
 

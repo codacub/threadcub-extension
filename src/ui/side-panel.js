@@ -390,9 +390,19 @@ class ThreadCubSidePanel {
   jumpToTagViaRangeInfo(tag) {
     const rangeInfo = tag.rangeInfo;
 
-    // Try exact text search with context
+    // Try adapter-based search first, then fallback to broad search
     const adapter = window.PlatformAdapters?.getAdapter();
-    const messages = adapter ? adapter.getMessageElements() : document.querySelectorAll('div, p, article');
+    let messages = adapter ? adapter.getMessageElements() : [];
+
+    // If adapter returns nothing, use broad DOM search
+    if (!messages || messages.length === 0) {
+      messages = document.querySelectorAll('div[class*="message"], div[class*="prose"], div[class*="markdown"], article, [data-message]');
+    }
+
+    // Final fallback
+    if (!messages || messages.length === 0) {
+      messages = document.querySelectorAll('div, p, article');
+    }
 
     for (const message of messages) {
       const messageText = message.textContent || '';
@@ -404,17 +414,19 @@ class ThreadCubSidePanel {
       const exactIndex = messageText.indexOf(tag.text);
       let score = 0.5;
 
-      if (rangeInfo.prefix) {
+      if (rangeInfo?.prefix || rangeInfo?.beforeText) {
+        const prefix = rangeInfo.prefix || rangeInfo.beforeText;
         const beforeText = messageText.slice(0, exactIndex);
-        if (beforeText.includes(rangeInfo.prefix)) score += 0.25;
+        if (beforeText.includes(prefix)) score += 0.25;
       }
 
-      if (rangeInfo.suffix) {
+      if (rangeInfo?.suffix || rangeInfo?.afterText) {
+        const suffix = rangeInfo.suffix || rangeInfo.afterText;
         const afterText = messageText.slice(exactIndex + tag.text.length);
-        if (afterText.includes(rangeInfo.suffix)) score += 0.25;
+        if (afterText.includes(suffix)) score += 0.25;
       }
 
-      if (score >= 0.7) {
+      if (score >= 0.5) { // Lower threshold for better matching
         // Found good match - scroll and flash
         message.scrollIntoView({ behavior: 'smooth', block: 'center' });
         this.flashElement(message);
@@ -427,8 +439,14 @@ class ThreadCubSidePanel {
 
   // Jump using text search fallback
   jumpToTagViaTextSearch(tag) {
+    // Try adapter-based search first
     const adapter = window.PlatformAdapters?.getAdapter();
-    const messages = adapter ? adapter.getMessageElements() : document.querySelectorAll('div, p, article');
+    let messages = adapter ? adapter.getMessageElements() : [];
+
+    // If adapter returns nothing, use broad DOM search
+    if (!messages || messages.length === 0) {
+      messages = document.querySelectorAll('div[class*="message"], div[class*="prose"], div[class*="markdown"], article, [data-message]');
+    }
 
     for (const message of messages) {
       const messageText = message.textContent || '';
@@ -440,8 +458,48 @@ class ThreadCubSidePanel {
       }
     }
 
+    // Final fallback: Full DOM text node search
+    const result = this.jumpViaFullTextSearch(tag.text);
+    if (result.success) return result;
+
     // Show failure notification
     this.showJumpFailedNotification();
+    return { success: false };
+  }
+
+  // Full DOM text search (walks all text nodes)
+  jumpViaFullTextSearch(searchText) {
+    console.log('Attempting full DOM text search for:', searchText);
+
+    const walker = document.createTreeWalker(
+      document.body,
+      NodeFilter.SHOW_TEXT,
+      {
+        acceptNode: (node) => {
+          const parent = node.parentElement;
+          if (!parent) return NodeFilter.FILTER_REJECT;
+          const tagName = parent.tagName.toLowerCase();
+          if (tagName === 'script' || tagName === 'style' || tagName === 'noscript') {
+            return NodeFilter.FILTER_REJECT;
+          }
+          return NodeFilter.FILTER_ACCEPT;
+        }
+      }
+    );
+
+    let textNode;
+    while ((textNode = walker.nextNode())) {
+      const nodeText = textNode.textContent;
+      if (nodeText.includes(searchText)) {
+        const element = textNode.parentElement;
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          this.flashElement(element);
+          return { success: true, method: 'fullTextSearch' };
+        }
+      }
+    }
+
     return { success: false };
   }
 

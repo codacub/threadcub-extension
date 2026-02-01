@@ -155,13 +155,68 @@ class AnchorSystem {
     result = await this.jumpViaMessageSearch(anchor);
     if (result.success) return result;
 
-    // Strategy C: Fallback to messageIndex
+    // Strategy C: Full DOM text search (walks all text nodes)
+    result = await this.jumpViaFullTextSearch(anchor);
+    if (result.success) return result;
+
+    // Strategy D: Fallback to messageIndex
     result = await this.jumpViaMessageIndex(anchor);
     if (result.success) return result;
 
-    // Strategy D: Failure
+    // Strategy E: Failure
     console.log('All anchor resolution strategies failed');
     return { success: false, method: 'none', approximate: false };
+  }
+
+  /**
+   * Strategy C: Full DOM text search (walks all text nodes)
+   */
+  async jumpViaFullTextSearch(anchor) {
+    console.log('Attempting full DOM text search for:', anchor.exact);
+
+    const walker = document.createTreeWalker(
+      document.body,
+      NodeFilter.SHOW_TEXT,
+      {
+        acceptNode: (node) => {
+          // Skip script, style, and hidden elements
+          const parent = node.parentElement;
+          if (!parent) return NodeFilter.FILTER_REJECT;
+          const tagName = parent.tagName.toLowerCase();
+          if (tagName === 'script' || tagName === 'style' || tagName === 'noscript') {
+            return NodeFilter.FILTER_REJECT;
+          }
+          const style = window.getComputedStyle(parent);
+          if (style.display === 'none' || style.visibility === 'hidden') {
+            return NodeFilter.FILTER_REJECT;
+          }
+          return NodeFilter.FILTER_ACCEPT;
+        }
+      }
+    );
+
+    let textNode;
+    while ((textNode = walker.nextNode())) {
+      const nodeText = textNode.textContent;
+      const exactIndex = nodeText.indexOf(anchor.exact);
+
+      if (exactIndex !== -1) {
+        try {
+          const range = document.createRange();
+          range.setStart(textNode, exactIndex);
+          range.setEnd(textNode, exactIndex + anchor.exact.length);
+
+          const element = textNode.parentElement;
+          this.scrollToElement(element);
+          this.flashElement(element);
+          return { success: true, method: 'full-text-search', approximate: false };
+        } catch (e) {
+          console.log('Error creating range in full text search:', e);
+        }
+      }
+    }
+
+    return { success: false, method: 'full-text-search', approximate: false };
   }
 
   /**
@@ -201,17 +256,28 @@ class AnchorSystem {
    * Strategy B: Search all message containers
    */
   async jumpViaMessageSearch(anchor) {
-    const messages = this.adapter
+    // Try adapter-based search first
+    let messages = this.adapter
       ? this.adapter.getMessageElements()
-      : document.querySelectorAll('div, p, article');
+      : [];
+
+    // If adapter returns nothing, use broad DOM search
+    if (!messages || messages.length === 0) {
+      console.log('Adapter returned no messages, using broad DOM search');
+      messages = document.querySelectorAll('div[class*="message"], div[class*="prose"], div[class*="markdown"], article, [data-message], [data-testid*="conversation"]');
+    }
+
+    // Final fallback: search all text-containing divs
+    if (!messages || messages.length === 0) {
+      console.log('Broad search returned nothing, using all divs');
+      messages = document.querySelectorAll('div, p, article');
+    }
 
     let bestMatch = null;
     let bestScore = 0;
 
     for (const message of messages) {
-      const messageText = this.adapter
-        ? this.adapter.getMessageText(message)
-        : this.normalizeWhitespace(message.textContent || '');
+      const messageText = this.normalizeWhitespace(message.textContent || '');
 
       // Check if exact text appears in this message
       if (!messageText.includes(anchor.exact)) continue;
@@ -221,6 +287,17 @@ class AnchorSystem {
       if (score > bestScore && score >= ANCHOR_CONFIG.MATCH_THRESHOLD) {
         bestScore = score;
         bestMatch = message;
+      }
+    }
+
+    // If no good match found with scoring, try simple text search
+    if (!bestMatch) {
+      for (const message of messages) {
+        const messageText = message.textContent || '';
+        if (messageText.includes(anchor.exact)) {
+          bestMatch = message;
+          break;
+        }
       }
     }
 

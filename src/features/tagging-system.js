@@ -431,6 +431,16 @@ window.ThreadCubTagging = class ThreadCubTagging {
   // NEW: Enhanced capture of range info with text context
   captureEnhancedRangeInfo(range) {
     try {
+      // Get message index using platform adapter
+      let messageIndex = -1;
+      const adapter = window.PlatformAdapters?.getAdapter();
+      if (adapter) {
+        const messageContainer = adapter.findMessageContainer(range.startContainer);
+        if (messageContainer) {
+          messageIndex = adapter.getMessageIndex(messageContainer);
+        }
+      }
+
       const rangeInfo = {
         startXPath: this.getXPathForElement(range.startContainer),
         endXPath: this.getXPathForElement(range.endContainer),
@@ -440,16 +450,20 @@ window.ThreadCubTagging = class ThreadCubTagging {
         // NEW: Add text content and context for better matching
         selectedText: range.toString().trim(),
         textLength: range.toString().trim().length,
-        // Store surrounding context for better matching
+        // Store surrounding context for better matching (prefix/suffix for jump-to)
         beforeText: this.getTextBefore(range, 50),
         afterText: this.getTextAfter(range, 50),
+        prefix: this.getTextBefore(range, 60), // TextQuote-style prefix
+        suffix: this.getTextAfter(range, 60),  // TextQuote-style suffix
         // Store parent element text for backup matching
-        parentText: range.commonAncestorContainer.textContent?.substring(0, 200) || ''
+        parentText: range.commonAncestorContainer.textContent?.substring(0, 200) || '',
+        // Message index for section assignment
+        messageIndex: messageIndex
       };
-      
+
       console.log('🏷️ ThreadCub: Enhanced range info captured:', rangeInfo);
       return rangeInfo;
-      
+
     } catch (error) {
       console.log('🏷️ ThreadCub: Could not capture enhanced range info:', error);
       return this.captureRangeInfo(range); // Fallback to original method

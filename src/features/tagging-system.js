@@ -2038,6 +2038,39 @@ createSidePanel() {
       ">Swiping like a pro!</h2>
     </div>
 
+    <!-- Tab Navigation -->
+    <div class="threadcub-tabs" style="
+      display: flex;
+      padding: 0 24px;
+      border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+      gap: 0;
+    ">
+      <button class="threadcub-tab active" data-tab="tags" style="
+        flex: 1;
+        padding: 12px 16px;
+        background: transparent;
+        border: none;
+        border-bottom: 2px solid #7C3AED;
+        font-size: 14px;
+        font-weight: 600;
+        color: #7C3AED;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      ">Tags</button>
+      <button class="threadcub-tab" data-tab="anchors" style="
+        flex: 1;
+        padding: 12px 16px;
+        background: transparent;
+        border: none;
+        border-bottom: 2px solid transparent;
+        font-size: 14px;
+        font-weight: 500;
+        color: #64748b;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      ">Anchors</button>
+    </div>
+
     <!-- Tags Container -->
     <div id="threadcub-tags-container" style="
       flex: 1;
@@ -3153,10 +3186,35 @@ initializeSidePanelUI() {
   if (typeof window.ThreadCubSidePanel !== 'undefined') {
     this.sidePanelUI = new window.ThreadCubSidePanel(this);
     this.sidePanelUI.setSidePanel(this.sidePanel);
+    this.sidePanelUI.setupTabListeners();
+    this.setupTabStyling();
     console.log('🏷️ ThreadCub: Side panel UI manager initialized');
   } else {
     console.warn('🏷️ ThreadCub: ThreadCubSidePanel class not found');
   }
+}
+
+// Setup tab styling updates when clicked
+setupTabStyling() {
+  const tabs = this.sidePanel.querySelectorAll('.threadcub-tab');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      // Update styles for all tabs
+      tabs.forEach(t => {
+        if (t.getAttribute('data-tab') === this.sidePanelUI.currentTab) {
+          t.style.borderBottomColor = '#7C3AED';
+          t.style.color = '#7C3AED';
+          t.style.fontWeight = '600';
+          t.classList.add('active');
+        } else {
+          t.style.borderBottomColor = 'transparent';
+          t.style.color = '#64748b';
+          t.style.fontWeight = '500';
+          t.classList.remove('active');
+        }
+      });
+    });
+  });
 }
 
 // NEW: Updated tags list method that uses the modular side panel

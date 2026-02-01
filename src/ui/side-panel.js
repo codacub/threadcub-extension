@@ -7,8 +7,8 @@ class ThreadCubSidePanel {
   constructor(taggingSystem) {
     this.taggingSystem = taggingSystem;
     this.sidePanel = null;
-    this.currentFilter = 'all'; // 'all', 'tags', 'anchors'
-    this.expandedSections = new Set(); // Track which sections are expanded (all collapsed by default)
+    this.currentTab = 'tags'; // 'tags' or 'anchors'
+    this.currentPriorityFilter = 'all'; // 'all', 'high', 'medium', 'low'
   }
 
   // ===== MAIN UPDATE METHOD =====
@@ -16,243 +16,115 @@ class ThreadCubSidePanel {
     const tagsList = this.sidePanel.querySelector('#threadcub-tags-container');
     if (!tagsList) return;
 
-    const items = this.taggingSystem.tags || [];
+    // Render based on current tab
+    if (this.currentTab === 'anchors') {
+      this.renderAnchorsView(tagsList);
+    } else {
+      this.renderTagsView(tagsList);
+    }
+  }
 
-    if (items.length === 0) {
-      tagsList.innerHTML = this.createEmptyState();
+  // Render Tags view with priority filter
+  renderTagsView(container) {
+    const items = this.taggingSystem.tags || [];
+    const tags = items.filter(item => item.type !== 'anchor');
+
+    // Apply priority filter
+    const filteredTags = this.filterByPriority(tags);
+
+    if (tags.length === 0) {
+      container.innerHTML = this.createEmptyState('tags');
       return;
     }
 
-    // Organize items into sections
-    const sections = this.organizeItemsIntoSections(items);
+    container.innerHTML = `
+      ${this.createPriorityFilterDropdown()}
+      <div class="threadcub-items-list">
+        ${filteredTags.map(tag => this.createTagCard(tag)).join('')}
+      </div>
+    `;
 
-    // Render sections
-    tagsList.innerHTML = this.renderSections(sections);
+    this.setupPriorityFilterListener();
     this.setupNewCardListeners();
-    this.setupSectionListeners();
   }
 
-  // Organize items into sections based on messageIndex
-  organizeItemsIntoSections(items) {
-    // Separate anchors and tags
+  // Render Anchors view (simple list with delete and jump-to)
+  renderAnchorsView(container) {
+    const items = this.taggingSystem.tags || [];
     const anchors = items.filter(item => item.type === 'anchor');
-    const tags = items.filter(item => item.type !== 'anchor');
 
-    // Sort anchors by messageIndex (or createdAt as fallback)
-    anchors.sort((a, b) => {
-      const aIndex = a.anchor?.messageIndex ?? a.messageIndex ?? Infinity;
-      const bIndex = b.anchor?.messageIndex ?? b.messageIndex ?? Infinity;
-      if (aIndex !== bIndex) return aIndex - bIndex;
-      return (a.createdAt || 0) - (b.createdAt || 0);
-    });
-
-    // Sort tags by messageIndex (or createdAt as fallback)
-    tags.sort((a, b) => {
-      const aIndex = a.rangeInfo?.messageIndex ?? a.messageIndex ?? Infinity;
-      const bIndex = b.rangeInfo?.messageIndex ?? b.messageIndex ?? Infinity;
-      if (aIndex !== bIndex) return aIndex - bIndex;
-      return (a.createdAt || 0) - (b.createdAt || 0);
-    });
-
-    // Build sections array
-    const sections = [];
-
-    // Root section: "Start of Chat" - tags before first anchor
-    const firstAnchorIndex = anchors.length > 0
-      ? (anchors[0].anchor?.messageIndex ?? anchors[0].messageIndex ?? Infinity)
-      : Infinity;
-
-    const rootTags = tags.filter(tag => {
-      const tagIndex = tag.rangeInfo?.messageIndex ?? tag.messageIndex ?? -1;
-      return tagIndex < firstAnchorIndex;
-    });
-
-    sections.push({
-      type: 'root',
-      id: 'root',
-      title: 'Start of Chat',
-      tags: rootTags
-    });
-
-    // Anchor sections: each anchor with its tags
-    anchors.forEach((anchor, i) => {
-      const anchorIndex = anchor.anchor?.messageIndex ?? anchor.messageIndex ?? Infinity;
-      const nextAnchorIndex = i < anchors.length - 1
-        ? (anchors[i + 1].anchor?.messageIndex ?? anchors[i + 1].messageIndex ?? Infinity)
-        : Infinity;
-
-      const sectionTags = tags.filter(tag => {
-        const tagIndex = tag.rangeInfo?.messageIndex ?? tag.messageIndex ?? -1;
-        return tagIndex >= anchorIndex && tagIndex < nextAnchorIndex;
-      });
-
-      sections.push({
-        type: 'anchor',
-        id: anchor.id,
-        anchor: anchor,
-        tags: sectionTags
-      });
-    });
-
-    return sections;
-  }
-
-  // Render all sections
-  renderSections(sections) {
-    return sections.map(section => {
-      if (section.type === 'root') {
-        return this.createRootSection(section);
-      }
-      return this.createAnchorSection(section);
-    }).join('');
-  }
-
-  // Create root "Start of Chat" section
-  createRootSection(section) {
-    const isExpanded = this.expandedSections.has('root');
-    const hasContent = section.tags.length > 0;
-
-    if (!hasContent) {
-      return ''; // Don't show empty root section
+    if (anchors.length === 0) {
+      container.innerHTML = this.createEmptyState('anchors');
+      return;
     }
 
-    const filteredTags = this.filterSectionTags(section.tags);
-
-    return `
-      <div class="threadcub-section" data-section-id="root" data-expanded="${isExpanded}">
-        <div class="section-header" data-section-id="root">
-          <div class="section-header-left">
-            <div class="section-chevron">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-            </div>
-            <div class="section-title">${section.title}</div>
-            <div class="section-count">(${section.tags.length})</div>
-          </div>
-        </div>
-        <div class="section-content" style="display: ${isExpanded ? 'block' : 'none'};">
-          ${this.createSectionFilter(section.id)}
-          <div class="section-tags">
-            ${filteredTags.map(tag => this.createSectionTagCard(tag)).join('')}
-          </div>
-        </div>
+    container.innerHTML = `
+      <div class="threadcub-items-list">
+        ${anchors.map(anchor => this.createSimpleAnchorCard(anchor)).join('')}
       </div>
     `;
+
+    this.setupAnchorListListeners();
   }
 
-  // Create anchor section with header and nested tags
-  createAnchorSection(section) {
-    const isExpanded = this.expandedSections.has(section.id);
-    const anchor = section.anchor;
-    const hasNote = anchor.note && anchor.note.trim().length > 0;
-    const hasTags = anchor.tags && anchor.tags.length > 0;
-
-    const filteredTags = this.filterSectionTags(section.tags);
-
-    return `
-      <div class="threadcub-section" data-section-id="${section.id}" data-expanded="${isExpanded}">
-        <div class="section-header section-header-anchor" data-section-id="${section.id}" data-anchor-id="${anchor.id}">
-          <div class="section-header-left">
-            <div class="section-chevron">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-            </div>
-            <div class="section-anchor-text">${anchor.snippet || anchor.text}</div>
-            <div class="section-count">(${section.tags.length})</div>
-          </div>
-          <div class="section-header-actions">
-            <div class="section-action jump-to-anchor" data-anchor-id="${anchor.id}" title="Jump to anchor">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22V8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/><circle cx="12" cy="5" r="3"/></svg>
-            </div>
-            <div class="section-action edit-anchor" data-anchor-id="${anchor.id}" title="Edit anchor">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg>
-            </div>
-            <div class="section-action delete-anchor" data-anchor-id="${anchor.id}" title="Delete anchor">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-            </div>
-          </div>
-        </div>
-        ${hasTags || hasNote ? `
-          <div class="section-anchor-meta">
-            ${hasTags ? this.createPriorityTags(anchor.tags) : ''}
-            ${hasNote ? `<div class="section-anchor-note">${anchor.note}</div>` : ''}
-          </div>
-        ` : ''}
-        <div class="section-content" style="display: ${isExpanded ? 'block' : 'none'};">
-          ${section.tags.length > 0 ? this.createSectionFilter(section.id) : ''}
-          <div class="section-tags">
-            ${filteredTags.map(tag => this.createSectionTagCard(tag)).join('')}
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  // Create priority filter inside a section
-  createSectionFilter(sectionId) {
-    return `
-      <div class="section-filter" data-section-id="${sectionId}">
-        <button class="section-filter-btn active" data-priority="all">All</button>
-        <button class="section-filter-btn" data-priority="high">High</button>
-        <button class="section-filter-btn" data-priority="medium">Med</button>
-        <button class="section-filter-btn" data-priority="low">Low</button>
-      </div>
-    `;
-  }
-
-  // Filter section tags by priority (currently shows all - will be enhanced with state)
-  filterSectionTags(tags) {
-    // For now, return all tags - priority filtering will be handled by section filter buttons
-    return tags;
-  }
-
-  // Create tag card for inside sections (with jump-to icon)
-  createSectionTagCard(tag) {
-    const hasNote = tag.note && tag.note.trim().length > 0;
-    const hasTags = tag.tags && tag.tags.length > 0;
-
-    return `
-      <div class="threadcub-tag-card threadcub-section-tag" data-tag-id="${tag.id}" data-state="default">
-        <div class="card-content">
-          <div class="tag-text">${tag.text}</div>
-
-          ${hasTags ? this.createPriorityTags(tag.tags) : ''}
-          ${hasNote ? this.createNoteDisplay(tag.note, tag.id) : ''}
-
-          <div class="default-state">
-            <div class="card-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="4" r="2"/><circle cx="18" cy="8" r="2"/><circle cx="20" cy="16" r="2"/><path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z"/></svg>
-            </div>
-            <div class="action-buttons">
-              ${this.createActionButton('continue-chat', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>', tag.id)}
-              ${this.createActionButton('jump-to-tag', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>', tag.id)}
-              ${this.createActionButton('edit-note', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg>', tag.id)}
-              ${this.createActionButton('add-tag', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></svg>', tag.id)}
-              ${this.createActionButton('delete', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>', tag.id)}
-            </div>
-          </div>
-
-          ${this.createNoteEditingState(tag)}
-          ${this.createTagEditingState(tag)}
-        </div>
-      </div>
-    `;
-  }
-
-  // Setup section expand/collapse and action listeners
-  setupSectionListeners() {
-    // Section header click for expand/collapse
-    const sectionHeaders = this.sidePanel.querySelectorAll('.section-header');
-    sectionHeaders.forEach(header => {
-      header.addEventListener('click', (e) => {
-        // Don't toggle if clicking on action buttons
-        if (e.target.closest('.section-header-actions')) return;
-
-        const sectionId = header.getAttribute('data-section-id');
-        this.toggleSection(sectionId);
-      });
+  // Filter tags by priority
+  filterByPriority(tags) {
+    if (this.currentPriorityFilter === 'all') {
+      return tags;
+    }
+    return tags.filter(tag => {
+      return tag.tags?.some(t => t.priority === this.currentPriorityFilter);
     });
+  }
 
-    // Jump to anchor buttons
-    const jumpBtns = this.sidePanel.querySelectorAll('.jump-to-anchor');
+  // Create priority filter dropdown
+  createPriorityFilterDropdown() {
+    return `
+      <div class="threadcub-priority-filter-wrapper">
+        <select class="threadcub-priority-select" id="threadcub-priority-filter">
+          <option value="all" ${this.currentPriorityFilter === 'all' ? 'selected' : ''}>All priorities</option>
+          <option value="high" ${this.currentPriorityFilter === 'high' ? 'selected' : ''}>High priority</option>
+          <option value="medium" ${this.currentPriorityFilter === 'medium' ? 'selected' : ''}>Medium priority</option>
+          <option value="low" ${this.currentPriorityFilter === 'low' ? 'selected' : ''}>Low priority</option>
+        </select>
+      </div>
+    `;
+  }
+
+  // Setup priority filter listener
+  setupPriorityFilterListener() {
+    const select = this.sidePanel.querySelector('#threadcub-priority-filter');
+    if (select) {
+      select.addEventListener('change', (e) => {
+        this.currentPriorityFilter = e.target.value;
+        this.updateTagsList();
+      });
+    }
+  }
+
+  // Create simple anchor card (just delete and jump-to)
+  createSimpleAnchorCard(anchor) {
+    return `
+      <div class="threadcub-anchor-item" data-anchor-id="${anchor.id}">
+        <div class="anchor-item-content">
+          <div class="anchor-item-text">${anchor.snippet || anchor.text}</div>
+        </div>
+        <div class="anchor-item-actions">
+          <button class="anchor-action-btn jump-to-btn" data-anchor-id="${anchor.id}" title="Jump to">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22V8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/><circle cx="12" cy="5" r="3"/></svg>
+          </button>
+          <button class="anchor-action-btn delete-btn" data-anchor-id="${anchor.id}" title="Delete">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  // Setup anchor list listeners
+  setupAnchorListListeners() {
+    // Jump to buttons
+    const jumpBtns = this.sidePanel.querySelectorAll('.jump-to-btn');
     jumpBtns.forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -263,19 +135,8 @@ class ThreadCubSidePanel {
       });
     });
 
-    // Edit anchor buttons
-    const editBtns = this.sidePanel.querySelectorAll('.edit-anchor');
-    editBtns.forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const anchorId = parseInt(btn.getAttribute('data-anchor-id'));
-        // TODO: Implement anchor editing UI
-        console.log('Edit anchor:', anchorId);
-      });
-    });
-
-    // Delete anchor buttons
-    const deleteBtns = this.sidePanel.querySelectorAll('.delete-anchor');
+    // Delete buttons
+    const deleteBtns = this.sidePanel.querySelectorAll('.anchor-item-actions .delete-btn');
     deleteBtns.forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -283,81 +144,42 @@ class ThreadCubSidePanel {
         this.taggingSystem.deleteTagWithUndo(anchorId);
       });
     });
-
-    // Section filter buttons
-    const filterBtns = this.sidePanel.querySelectorAll('.section-filter-btn');
-    filterBtns.forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const filter = this.sidePanel.querySelector('.section-filter');
-        const sectionId = filter?.getAttribute('data-section-id');
-        const priority = btn.getAttribute('data-priority');
-
-        // Update active state
-        const siblings = btn.parentElement.querySelectorAll('.section-filter-btn');
-        siblings.forEach(s => s.classList.remove('active'));
-        btn.classList.add('active');
-
-        // Filter tags within section
-        this.filterSectionByPriority(sectionId, priority);
-      });
-    });
-
-    // Jump to tag buttons
-    const jumpTagBtns = this.sidePanel.querySelectorAll('[data-action="jump-to-tag"]');
-    jumpTagBtns.forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const tagId = parseInt(btn.getAttribute('data-tag-id'));
-        this.jumpToTag(tagId);
-      });
-    });
   }
 
-  // Toggle section expand/collapse
-  toggleSection(sectionId) {
-    const section = this.sidePanel.querySelector(`[data-section-id="${sectionId}"]`);
-    if (!section) return;
-
-    const isExpanded = this.expandedSections.has(sectionId);
-
-    if (isExpanded) {
-      this.expandedSections.delete(sectionId);
-    } else {
-      this.expandedSections.add(sectionId);
-    }
-
-    // Update UI
-    section.setAttribute('data-expanded', !isExpanded);
-    const content = section.querySelector('.section-content');
-    const chevron = section.querySelector('.section-chevron');
-
-    if (content) {
-      content.style.display = isExpanded ? 'none' : 'block';
-    }
-    if (chevron) {
-      chevron.style.transform = isExpanded ? 'rotate(0deg)' : 'rotate(90deg)';
-    }
+  // Switch tab
+  switchTab(tab) {
+    this.currentTab = tab;
+    this.updateTabStyles();
+    this.updateTagsList();
   }
 
-  // Filter tags within a section by priority
-  filterSectionByPriority(sectionId, priority) {
-    const section = this.sidePanel.querySelector(`[data-section-id="${sectionId}"]`);
-    if (!section) return;
+  // Update tab button styles
+  updateTabStyles() {
+    const tagsTab = this.sidePanel.querySelector('[data-tab="tags"]');
+    const anchorsTab = this.sidePanel.querySelector('[data-tab="anchors"]');
 
-    const tagCards = section.querySelectorAll('.threadcub-section-tag');
-
-    tagCards.forEach(card => {
-      const tagId = parseInt(card.getAttribute('data-tag-id'));
-      const tag = this.taggingSystem.tags.find(t => t.id === tagId);
-
-      if (priority === 'all') {
-        card.style.display = 'block';
+    if (tagsTab && anchorsTab) {
+      if (this.currentTab === 'tags') {
+        tagsTab.classList.add('active');
+        anchorsTab.classList.remove('active');
       } else {
-        const hasPriority = tag?.tags?.some(t => t.priority === priority);
-        card.style.display = hasPriority ? 'block' : 'none';
+        tagsTab.classList.remove('active');
+        anchorsTab.classList.add('active');
       }
-    });
+    }
+  }
+
+  // Setup tab listeners (called from tagging-system after panel creation)
+  setupTabListeners() {
+    const tagsTab = this.sidePanel.querySelector('[data-tab="tags"]');
+    const anchorsTab = this.sidePanel.querySelector('[data-tab="anchors"]');
+
+    if (tagsTab) {
+      tagsTab.addEventListener('click', () => this.switchTab('tags'));
+    }
+    if (anchorsTab) {
+      anchorsTab.addEventListener('click', () => this.switchTab('anchors'));
+    }
   }
 
   // Jump to a tag location in the conversation
@@ -589,13 +411,23 @@ class ThreadCubSidePanel {
   }
 
   // ===== EMPTY STATE =====
-  createEmptyState() {
+  createEmptyState(type = 'tags') {
+    if (type === 'anchors') {
+      return `
+        <div id="threadcub-empty-state">
+          <div class="empty-state-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22V8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/><circle cx="12" cy="5" r="3"/></svg>
+          </div>
+          <h3 class="empty-state-title">No anchors yet</h3>
+          <p class="empty-state-description">Highlight text and click the anchor icon to create a bookmark point.</p>
+        </div>
+      `;
+    }
+
     return `
       <div id="threadcub-empty-state">
         <div class="empty-state-icon">🏷️</div>
-
         <h3 class="empty-state-title">No tags yet</h3>
-
         <p class="empty-state-description">Highlight text to get started with your first swipe!</p>
       </div>
     `;

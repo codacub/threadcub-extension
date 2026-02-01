@@ -3233,8 +3233,12 @@ updateTagsList() {
 updateTagsListFallback() {
   const tagsList = this.sidePanel.querySelector('#threadcub-tags-container');
   if (!tagsList) return;
-  
-  if (this.tags.length === 0) {
+
+  // Split tags vs anchors if your data contains anchors (type === 'anchor')
+  const items = Array.isArray(this.tags) ? this.tags : [];
+  const tagsOnly = items.filter(item => item.type !== 'anchor');
+
+  if (tagsOnly.length === 0) {
     tagsList.innerHTML = `
       <div id="threadcub-empty-state" style="
         text-align: center;
@@ -3252,14 +3256,14 @@ updateTagsListFallback() {
           justify-content: center;
           font-size: 32px;
         ">🏷️</div>
-        
+
         <h3 style="
           font-size: 18px;
           font-weight: 600;
           margin: 0 0 8px;
           color: #374151;
         ">No tags yet</h3>
-        
+
         <p style="
           font-size: 14px;
           line-height: 1.5;
@@ -3269,19 +3273,86 @@ updateTagsListFallback() {
         ">Highlight text to get started with your first swipe!</p>
       </div>
     `;
-  } else {
-    tagsList.innerHTML = this.tags.map(tag => `
-      <div class="threadcub-tag-card" data-tag-id="${tag.id}" style="
-        background: white;
-        border: 1px solid #E5E7EB;
-        border-radius: 8px;
-        padding: 16px;
-        margin-bottom: 12px;
-        transition: all 0.2s ease;
-      ">
-        <div style="font-size: 14px; color: #374151;">${tag.text}</div>
+    return;
+  }
+
+  // Priority filter (fallback UI only)
+  tagsList.innerHTML = `
+    <div style="padding: 16px 0 12px; border-bottom: 1px solid rgba(226, 232, 240, 0.6); margin-bottom: 16px;">
+      <div style="position: relative;">
+        <select id="threadcub-priority-filter" style="
+          width: 100%;
+          padding: 10px 12px;
+          padding-right: 36px;
+          background: white;
+          border: 1px solid #d1d5db;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: 500;
+          color: #374151;
+          cursor: pointer;
+          appearance: none;
+          transition: all 0.2s ease;
+          outline: none;
+        ">
+          <option value="all">All priorities</option>
+          <option value="high">High priority</option>
+          <option value="medium">Medium priority</option>
+          <option value="low">Low priority</option>
+        </select>
+
+        <!-- Custom dropdown arrow (Lucide ChevronDown) -->
+        <div style="
+          position: absolute;
+          right: 12px;
+          top: 50%;
+          transform: translateY(-50%);
+          pointer-events: none;
+          color: #94a3b8;
+        ">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m6 9 6 6 6-6"/>
+          </svg>
+        </div>
       </div>
-    `).join('');
+    </div>
+
+    <div>
+      ${tagsOnly.map(tag => `
+        <div class="threadcub-tag-card" data-tag-id="${tag.id}" style="
+          background: white;
+          border: 1px solid #E5E7EB;
+          border-radius: 8px;
+          padding: 16px;
+          margin-bottom: 12px;
+          transition: all 0.2s ease;
+        ">
+          <div style="font-size: 14px; color: #374151;">${tag.text}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  // Wire up filter behaviour (reuses filterTagsByPriority)
+  const filterSelect = this.sidePanel.querySelector('#threadcub-priority-filter');
+  if (filterSelect) {
+    filterSelect.addEventListener('change', (e) => {
+      this.filterTagsByPriority(e.target.value);
+    });
+
+    // Light focus/hover affordances (kept minimal to avoid host overrides)
+    filterSelect.addEventListener('mouseenter', () => {
+      filterSelect.style.borderColor = '#3b82f6';
+    });
+    filterSelect.addEventListener('mouseleave', () => {
+      filterSelect.style.borderColor = '#d1d5db';
+    });
+    filterSelect.addEventListener('focus', () => {
+      filterSelect.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+    });
+    filterSelect.addEventListener('blur', () => {
+      filterSelect.style.boxShadow = 'none';
+    });
   }
 }
 

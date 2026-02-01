@@ -12,22 +12,18 @@
   position: relative;
   transition: all var(--transition-base);
   cursor: pointer;
-  box-shadow: var(--shadow-card); /* Default shadow from token */
+  box-shadow: var(--shadow-card);
 }
 
-/* Note: JS handles adding/removing box-shadow on hover for specific states.
-   A pure CSS approach would use :hover, but given the JS logic, this aligns. */
 .threadcub-tag-card:hover {
   box-shadow: var(--shadow-card-hover);
 }
 
-.card-content {
-  /* No styles needed for the container itself */
-}
+.card-content {}
 
 .tag-text {
   font-size: var(--font-size-sm);
-  line-height: var(--line-height-normal); /* Changed from 1.4 to use token */
+  line-height: var(--line-height-normal);
   color: var(--color-gray-700);
   margin-bottom: var(--spacing-4);
   font-family: var(--font-family-primary);
@@ -55,20 +51,45 @@
   gap: var(--spacing-4);
 }
 
-/* Action Button specific styles */
+/* ===== ACTION BUTTON (Grok hardened) ===== */
 .action-button {
   display: flex;
   align-items: center;
   justify-content: center;
   width: var(--icon-size-base);
   height: var(--icon-size-base);
-  color: var(--color-gray-500); /* Default icon color */
+
+  /* Grok / X reset */
+  background: transparent;
+  border: none;
+  padding: 0;
+  appearance: none;
+  -webkit-appearance: none;
+
+  color: var(--color-gray-500);
   cursor: pointer;
-  transition: background var(--transition-base), color var(--transition-base);
   border-radius: var(--border-radius-base);
+  transition: background var(--transition-base), color var(--transition-base);
 }
 
-/* ===== PRIORITY TAGS STYLES ===== */
+.action-button:hover {
+  background: var(--color-gray-100);
+  color: var(--color-gray-700);
+}
+
+.action-button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Ensure SVGs behave consistently on Grok */
+.action-button svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+/* ===== PRIORITY TAGS ===== */
 .priority-tags {
   display: flex;
   gap: var(--spacing-1);
@@ -78,7 +99,7 @@
 
 .priority-tag {
   padding: var(--spacing-1) var(--spacing-2);
-  border-radius: 12px; /* Fixed value, not a direct token */
+  border-radius: 12px;
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-extrabold);
   text-transform: uppercase;
@@ -99,19 +120,19 @@
   color: var(--color-priority-low-text);
 }
 
-/* ===== NOTE DISPLAY STYLES ===== */
+/* ===== NOTE DISPLAY ===== */
 .note-display {
   background: var(--color-gray-100);
-  border: var(--border-width-thin) solid var(--color-gray-200); /* Changed from 1px to use token */
-  border-radius: 6px; /* Fixed value, not a direct token */
+  border: var(--border-width-thin) solid var(--color-gray-200);
+  border-radius: 6px;
   padding: var(--spacing-3);
   margin-bottom: var(--spacing-3);
   font-size: var(--font-size-sm);
-  line-height: var(--line-height-normal); /* Changed from 1.4 to use token */
+  line-height: var(--line-height-normal);
   color: var(--color-gray-700);
 }
 
-/* ===== EMPTY STATE STYLES (Moved from JS inline) ===== */
+/* ===== EMPTY STATE ===== */
 #threadcub-empty-state {
   text-align: center;
   padding: var(--spacing-8) var(--spacing-5);
@@ -119,15 +140,19 @@
 }
 
 .empty-state-icon {
-  width: var(--logo-size); /* Re-used logo-size for consistency if appropriate, or make new token if different semantic meaning */
+  width: var(--logo-size);
   height: var(--logo-size);
   margin: 0 auto var(--spacing-5);
-  background: linear-gradient(135deg, var(--color-gray-100) 0%, var(--color-gray-200) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-gray-100) 0%,
+    var(--color-gray-200) 100%
+  );
   border-radius: var(--border-radius-full);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: var(--font-size-2xl); /* Used 2xl for 32px equivalent */
+  font-size: var(--font-size-2xl);
 }
 
 .empty-state-title {
@@ -140,29 +165,24 @@
 .empty-state-description {
   font-size: var(--font-size-sm);
   line-height: var(--line-height-normal);
-  margin: 0;
-  max-width: 200px; /* Fixed value */
+  max-width: 200px;
   margin: 0 auto;
 }
 
-/* ===== NOTE EDITING STATE STYLES (Moved from JS inline) ===== */
-.note-editing {
-  /* display is handled by JS based on data-state attribute */
-}
-
+/* ===== NOTE EDITING ===== */
 .note-textarea {
   width: 100%;
-  min-height: 80px; /* Fixed value */
+  min-height: 80px;
   padding: var(--spacing-3);
-  border: 2px solid var(--color-primary); /* Fixed 2px, not a direct token for border-width */
-  border-radius: 6px; /* Fixed value */
+  border: 2px solid var(--color-primary);
+  border-radius: 6px;
   font-size: var(--font-size-sm);
   line-height: var(--line-height-normal);
   color: var(--color-gray-700);
   resize: vertical;
   font-family: var(--font-family-primary);
   margin-bottom: var(--spacing-3);
-  box-sizing: border-box; /* Ensures padding is included in element's total width/height */
+  box-sizing: border-box;
   outline: none;
 }
 
@@ -171,7 +191,6 @@
   gap: var(--spacing-2);
 }
 
-/* Save and Cancel Buttons */
 .save-note-btn,
 .cancel-note-btn {
   border: none;
@@ -185,16 +204,16 @@
 }
 
 .save-note-btn {
-  background: var(--color-gray-300); /* Inactive state color */
+  background: var(--color-gray-300);
   color: var(--color-white);
   opacity: 0.5;
-  pointer-events: none; /* Prevents clicks when inactive */
+  pointer-events: none;
 }
 
 .save-note-btn.active {
   background: var(--color-primary);
   opacity: 1;
-  pointer-events: auto; /* Allows clicks when active */
+  pointer-events: auto;
 }
 
 .cancel-note-btn {
@@ -202,11 +221,7 @@
   color: var(--color-gray-500);
 }
 
-/* ===== TAG EDITING STATE STYLES (Moved from JS inline) ===== */
-.tag-editing {
-  /* display is handled by JS based on data-state attribute */
-}
-
+/* ===== TAG EDITING ===== */
 .priority-options {
   display: flex;
   gap: var(--spacing-2);
@@ -214,11 +229,10 @@
   flex-wrap: wrap;
 }
 
-/* Priority Buttons (shared styles with priority-tag, but these are buttons) */
 .priority-btn {
   border: none;
   padding: var(--spacing-1) var(--spacing-3);
-  border-radius: 12px; /* Fixed value */
+  border-radius: 12px;
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-extrabold);
   text-transform: uppercase;
@@ -226,7 +240,6 @@
   transition: all var(--transition-base);
 }
 
-/* Specific priority button colors are handled by data-priority attribute */
 .priority-btn[data-priority="high"] {
   background: var(--color-priority-high-bg);
   color: var(--color-priority-high-text);
@@ -251,7 +264,7 @@
 }
 
 .add-tag-plus {
-  font-size: 10px; /* Fixed value */
+  font-size: 10px;
 }
 
 .tag-actions {

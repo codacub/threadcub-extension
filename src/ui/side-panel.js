@@ -490,11 +490,12 @@ class ThreadCubSidePanel {
     `;
   }
 
+  // ✅ FIX: make action elements real <button>s (better alignment + behavior on Grok/X)
   createActionButton(action, iconSvg, tagId) {
     return `
-      <div class="action-button" data-action="${action}" data-tag-id="${tagId}">
+      <button class="action-button" data-action="${action}" data-tag-id="${tagId}" type="button">
         ${iconSvg}
-      </div>
+      </button>
     `;
   }
 
@@ -531,13 +532,13 @@ class ThreadCubSidePanel {
   // ===== HELPER COMPONENTS (Simplified to use CSS classes and variables) =====
   createPriorityButton(priority) { // Removed 'tokens' parameter
     return `
-      <button class="priority-btn" data-priority="${priority}">${priority.toUpperCase()}</button>
+      <button class="priority-btn" data-priority="${priority}" type="button">${priority.toUpperCase()}</button>
     `;
   }
 
   createAddTagButton() { // Removed 'tokens' parameter
     return `
-      <button class="priority-btn add-tag-btn">
+      <button class="priority-btn add-tag-btn" type="button">
         <span class="add-tag-plus">+</span> ADD TAG
       </button>
     `;
@@ -545,19 +546,19 @@ class ThreadCubSidePanel {
 
   createSaveButton(tagId) { // Removed 'tokens' parameter
     return `
-      <button class="save-note-btn" data-tag-id="${tagId}">SAVE</button>
+      <button class="save-note-btn" data-tag-id="${tagId}" type="button">SAVE</button>
     `;
   }
 
   createCancelButton(tagId) { // Removed 'tokens' parameter
     return `
-      <button class="cancel-note-btn" data-tag-id="${tagId}">CANCEL</button>
+      <button class="cancel-note-btn" data-tag-id="${tagId}" type="button">CANCEL</button>
     `;
   }
 
   createCancelTagButton(tagId) { // Removed 'tokens' parameter
     return `
-      <button class="cancel-tag-btn" data-tag-id="${tagId}">CANCEL</button>
+      <button class="cancel-tag-btn" data-tag-id="${tagId}" type="button">CANCEL</button>
     `;
   }
 
@@ -754,8 +755,6 @@ class ThreadCubSidePanel {
         e.stopPropagation();
         this.taggingSystem.continueTagInChat(tagId);
       });
-
-      /* this.addButtonHoverEffects(continueBtn, 'var(--color-gray-100)', 'var(--color-primary)'); */ // Use CSS variables
     }
 
     // Edit note
@@ -765,8 +764,6 @@ class ThreadCubSidePanel {
         e.stopPropagation();
         this.enterNoteEditingState(card, tagId);
       });
-
-      /*this.addButtonHoverEffects(editBtn, 'var(--color-gray-100)', 'var(--color-primary)'); */ // Use CSS variables
     }
 
     // Add tag
@@ -776,8 +773,6 @@ class ThreadCubSidePanel {
         e.stopPropagation();
         this.enterTagEditingState(card, tagId);
       });
-
-      /*this.addButtonHoverEffects(tagBtn, 'var(--color-gray-100)', 'var(--color-primary)');*/ // Use CSS variables
     }
 
     // Delete
@@ -787,8 +782,6 @@ class ThreadCubSidePanel {
         e.stopPropagation();
         this.taggingSystem.deleteTagWithUndo(tagId);
       });
-
-     /* this.addButtonHoverEffects(deleteBtn, 'var(--color-error-light)', 'var(--color-error)');*/ // Use CSS variables
     }
 
     // Note editing listeners
@@ -796,18 +789,6 @@ class ThreadCubSidePanel {
 
     // Tag editing listeners
     this.setupTagEditingListeners(card, tagId);
-  }
-
-  addButtonHoverEffects(button, hoverBg, hoverColor) {
-    button.addEventListener('mouseenter', () => {
-      button.style.background = hoverBg;
-      button.style.color = hoverColor;
-    });
-
-    button.addEventListener('mouseleave', () => {
-      button.style.background = 'transparent';
-      button.style.color = 'var(--color-gray-500)'; // Use CSS variable
-    });
   }
 
   // ===== STATE MANAGEMENT =====
@@ -863,10 +844,13 @@ class ThreadCubSidePanel {
         const hasText = textarea.value.trim().length > 0;
 
         if (hasText) {
-          saveBtn.classList.add('active'); // Use class for active state
-        } else {
-          saveBtn.classList.remove('active'); // Remove class for inactive state
-        }
+  saveBtn.classList.add('active');
+  // Inline styles to override Grok's aggressive CSS
+  saveBtn.style.color = 'white';
+} else {
+  saveBtn.classList.remove('active');
+  saveBtn.style.color = ''; // Reset to CSS default
+}
       });
 
       saveBtn.addEventListener('click', (e) => {

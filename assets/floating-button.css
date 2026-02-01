@@ -62,8 +62,8 @@
   object-fit: contain; /* Ensures image scales down to fit while maintaining aspect ratio */
   transition: all var(--transition-base);
   display: block;
-  padding: var(--spacing-1); /* ADD THIS LINE: Adds a consistent 4px padding around the image */
-  box-sizing: border-box; /* ADD THIS LINE: Ensures padding is included in the width/height */
+  padding: var(--spacing-1); /* Adds a consistent 4px padding around the image */
+  box-sizing: border-box; /* Ensures padding is included in the width/height */
 }
 
 .threadcub-bear-face .bear-emoji {
@@ -124,21 +124,6 @@
   top: 50% !important;
   transform: translate(-50%, -50%) scale(1) !important;
 }
-
-/* CORRECTED POSITIONING - FIXED VERSION: 
-   Button: 60px diameter, Bear: 48px (centered), Padding: 6px on each side
-   Gripper: 16px, needs 4px clearance from bear's edge, 8px from button edge
-   
-   Calculation:
-   - Button radius: 30px
-   - Bear radius: 24px  
-   - Space from center to bear edge: 24px
-   - Space from bear edge to gripper center: 4px + 8px = 12px
-   - Total distance from button center: 24px + 12px = 36px
-   - But we want INNER placement, so: 30px - 14px = 16px from center
-*/
-
-/* FINE-TUNED POSITIONING - Match exact diagram requirements */
 
 /* LEFT edge of screen = gripper goes on LEFT side of button */
 #threadcub-edge-btn.edge-left .threadcub-grip-icon {
@@ -214,7 +199,7 @@
   width: var(--shadow-button-size);
   height: var(--shadow-button-size);
   background: var(--color-shadow-btn-bg);
-  border: var(--border-width-btn) dashed var(--color-shadow-btn-border); /* Dashed border from original */
+  border: var(--border-width-btn) dashed var(--color-shadow-btn-border);
   border-radius: var(--border-radius-full);
   pointer-events: none;
   z-index: 999997;
@@ -239,10 +224,10 @@
   justify-content: center;
   transition: all var(--transition-action-buttons);
   cursor: pointer;
-  backdrop-filter: blur(10px); /* Fixed value */
+  backdrop-filter: blur(10px);
   box-shadow: var(--shadow-action-btn-default);
-  transform: scale(0.7); /* Smaller when hidden */
-  pointer-events: auto; /* Allow clicks when visible */
+  transform: scale(0.7);
+  pointer-events: auto;
   border: var(--border-width-action-btn) solid var(--color-action-btn-border);
   background: var(--color-action-btn-bg);
   color: var(--color-action-btn-text);
@@ -288,29 +273,29 @@
 /* Layout for Action Buttons based on edge */
 #threadcub-edge-btn.edge-right .threadcub-action-buttons,
 #threadcub-edge-btn.edge-left .threadcub-action-buttons {
-  top: 70px; /* Offset from center of button */
+  top: 70px;
   left: 50%;
-  transform: translateX(-50%); /* Center horizontally */
-  flex-direction: column; /* Vertical stack */
+  transform: translateX(-50%);
+  flex-direction: column;
 }
 
 #threadcub-edge-btn.edge-top .threadcub-action-buttons {
-  top: 70px; /* Offset from center of button */
+  top: 70px;
   left: 50%;
-  transform: translateX(-50%); /* Center horizontally */
-  flex-direction: column; /* Vertical stack */
+  transform: translateX(-50%);
+  flex-direction: column;
 }
 
 #threadcub-edge-btn.edge-bottom .threadcub-action-buttons {
-  bottom: 70px; /* Offset from center of button */
+  bottom: 70px;
   left: 50%;
-  transform: translateX(-50%); /* Center horizontally */
-  flex-direction: column; /* Vertical stack */
+  transform: translateX(-50%);
+  flex-direction: column;
 }
 
 /* Visibility on hover */
 #threadcub-edge-btn:hover .threadcub-action-buttons,
-#threadcub-edge-btn .threadcub-action-buttons:hover { /* Allow hover on buttons themselves to keep visible */
+#threadcub-edge-btn .threadcub-action-buttons:hover {
   opacity: 1;
   pointer-events: auto;
 }
@@ -320,7 +305,7 @@
 #threadcub-edge-btn:hover .threadcub-download-btn,
 #threadcub-edge-btn:hover .threadcub-tag-btn,
 #threadcub-edge-btn:hover .threadcub-close-btn {
-  transform: scale(1); /* Return to normal size */
+  transform: scale(1);
 }
 
 /* Grip icon visibility on hover */
@@ -340,7 +325,7 @@
   right: auto !important;
   top: 50% !important;
   bottom: auto !important;
-  transform: translate(-50%, -50%) scale(1) !important; /* Center and enlarge grip icon */
+  transform: translate(-50%, -50%) scale(1) !important;
 }
 
 /* ===== Border Overlay ===== */
@@ -353,17 +338,16 @@
   border: var(--border-width-overlay) solid var(--color-border-overlay);
   pointer-events: none;
   z-index: 999998;
-  /* Opacity controlled by JS */
-  transition: opacity var(--transition-base); /* Transition for overlay fade */
+  transition: opacity var(--transition-base);
 }
 
 /* ===== Tooltip Styles ===== */
 .threadcub-tooltip {
-  position: fixed !important; /* Ensure it stays on top */
+  position: fixed !important;
   background: var(--color-tooltip-bg) !important;
   color: var(--color-tooltip-text) !important;
-  padding: var(--spacing-gap-xs) var(--spacing-3) !important; /* 6px 12px */
-  border-radius: var(--border-radius-base) !important; /* 6px */
+  padding: var(--spacing-gap-xs) var(--spacing-3) !important;
+  border-radius: var(--border-radius-base) !important;
   font-family: var(--font-family-primary) !important;
   font-size: var(--font-size-tooltip) !important;
   font-weight: var(--font-weight-tooltip) !important;
@@ -387,15 +371,15 @@
 /* ===== Toast Notification Styles ===== */
 .threadcub-toast {
   position: fixed;
-  bottom: 80px; /* Fixed value from original */
+  bottom: 80px;
   left: 50%;
-  transform: translateX(-50%) translateY(var(--spacing-2)); /* Initial hidden state, 10px from original */
+  transform: translateX(-50%) translateY(var(--spacing-2));
   height: var(--toast-height);
-  border-radius: var(--border-radius-lg); /* 8px */
+  border-radius: var(--border-radius-lg);
   display: flex;
   align-items: center;
-  gap: var(--spacing-2); /* 8px */
-  padding: 0 var(--spacing-4); /* 0 16px */
+  gap: var(--spacing-2);
+  padding: 0 var(--spacing-4);
   font-family: var(--font-family-primary);
   font-weight: var(--font-weight-toast);
   font-size: var(--font-size-toast);
@@ -420,5 +404,5 @@
 
 .threadcub-toast.show {
   opacity: 1;
-  transform: translateX(-50%) translateY(0); /* Final visible state */
+  transform: translateX(-50%) translateY(0);
 }

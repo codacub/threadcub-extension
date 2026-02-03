@@ -1156,7 +1156,19 @@ addTaggingStyles() {
 createContextMenu() {
   this.contextMenu = document.createElement('div');
   this.contextMenu.className = 'threadcub-context-menu';
-  
+
+  // Detect if current platform has native "find out more" functionality
+  // ChatGPT, Claude.ai, and Grok have native buttons that do the same thing,
+  // so we hide the "Find Out More" button on these platforms
+  const hostname = window.location.hostname;
+  const hideFindOutMore = hostname.includes('chatgpt.com') ||
+                          hostname.includes('claude.ai') ||
+                          hostname.includes('grok.com') ||
+                          (hostname.includes('x.com') && window.location.pathname.includes('/i/grok'));
+
+  // When Find Out More is hidden, remove the border-right divider from Save button
+  const saveBorderStyle = hideFindOutMore ? '' : 'border-right: 1px solid #7C3AED;';
+
   // Connected button layout with border-right divider
   this.contextMenu.innerHTML = `
     <div style="
@@ -1170,7 +1182,7 @@ createContextMenu() {
       position: relative;
       font-family: 'Karla', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     ">
-      <!-- Save for Later Button with right border divider -->
+      <!-- Save for Later Button with right border divider (only when Find Out More is shown) -->
       <div class="threadcub-icon-button" id="threadcub-save-button" data-tooltip="SAVE FOR LATER" style="
         width: 40px;
         height: 40px;
@@ -1182,14 +1194,17 @@ createContextMenu() {
         position: relative;
         background: transparent;
         border: none;
-        border-right: 1px solid #7C3AED;
+        ${saveBorderStyle}
       ">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>
         </svg>
       </div>
-      
+
+      ${hideFindOutMore ? '' : `
       <!-- Find Out More Button -->
+      <!-- NOTE: This button is HIDDEN on ChatGPT, Claude.ai, and Grok platforms -->
+      <!-- because these AI platforms have native buttons that do the same thing -->
       <div class="threadcub-icon-button" id="threadcub-findout-button" data-tooltip="FIND OUT MORE" style="
         width: 40px;
         height: 40px;
@@ -1210,9 +1225,10 @@ createContextMenu() {
           <path d="M16 12h.01"/>
         </svg>
       </div>
+      `}
     </div>
   `;
-  
+
   document.body.appendChild(this.contextMenu);
   this.setupSimplifiedIconListeners();
   this.updateSelectionColor();
@@ -1745,10 +1761,11 @@ createSidePanel() {
         cursor: pointer;
         transition: all 0.2s ease;
         backdrop-filter: blur(10px);
+        text-align: center;
       ">
         CLOSE
       </button>
-      
+
       <button id="threadcub-download-json" style="
         flex: 1;
         padding: 12px 16px;
@@ -1761,6 +1778,7 @@ createSidePanel() {
         cursor: pointer;
         transition: all 0.2s ease;
         backdrop-filter: blur(10px);
+        text-align: center;
       ">
         DOWNLOAD
       </button>
@@ -2027,8 +2045,8 @@ handleTextSelection(e) {
     const selection = window.getSelection();
     const selectedText = selection.toString().trim();
     
-    // Check if we have a reasonable text selection
-    if (selectedText.length > 3 && selectedText.length < 5000) {
+    // Check if we have a reasonable text selection (2+ characters minimum)
+    if (selectedText.length > 1 && selectedText.length < 5000) {
       // Additional check: make sure we're not selecting input field content
       if (selection.rangeCount > 0) {
         const range = selection.getRangeAt(0);

@@ -50,22 +50,70 @@
 }
 
 .action-buttons {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-4);
+  display: flex !important;
+  align-items: center !important;
+  gap: var(--spacing-4) !important;
 }
 
-/* Action Button specific styles */
-.action-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--icon-size-base);
-  height: var(--icon-size-base);
-  color: var(--color-gray-500); /* Default icon color */
-  cursor: pointer;
-  transition: background var(--transition-base), color var(--transition-base);
-  border-radius: var(--border-radius-base);
+/* Action Button specific styles - high specificity for X.com/Grok override */
+/* Using <button> element for better centering on X.com */
+.action-button,
+button.action-button,
+.threadcub-tag-card .action-button,
+.action-button[data-action] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: var(--icon-size-base) !important;
+  height: var(--icon-size-base) !important;
+  color: var(--color-gray-500) !important; /* Default icon color */
+  cursor: pointer !important;
+  transition: background var(--transition-base), color var(--transition-base) !important;
+  border-radius: var(--border-radius-base) !important;
+  line-height: 1 !important;
+  text-align: center !important;
+  box-sizing: border-box !important;
+  /* Button reset styles */
+  background: none !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Ensure SVG icons inherit color correctly on all platforms */
+.action-button svg,
+.threadcub-tag-card .action-button svg,
+.action-button[data-action] svg {
+  stroke: currentColor !important;
+  fill: none !important;
+  display: block !important;
+}
+
+/* X.com/Grok side panel button text centering - ultra high specificity */
+/* X.com uses aggressive CSS that requires targeting all child elements */
+.threadcub-tag-card .action-buttons .action-button,
+.threadcub-tag-card .action-button[data-action],
+div.threadcub-tag-card .action-button {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  vertical-align: middle !important;
+}
+
+/* Force ALL content inside buttons to center */
+.threadcub-tag-card .action-buttons .action-button *,
+.threadcub-tag-card .action-button[data-action] *,
+div.threadcub-tag-card .action-button * {
+  text-align: center !important;
+  margin: 0 auto !important;
+}
+
+.threadcub-tag-card .action-buttons .action-button svg,
+.threadcub-tag-card .action-button[data-action] svg,
+div.threadcub-tag-card .action-button svg {
+  margin: 0 auto !important;
+  display: block !important;
 }
 
 /* ===== PRIORITY TAGS STYLES ===== */
@@ -193,6 +241,7 @@
 
 .save-note-btn.active {
   background: var(--color-primary);
+  color: var(--color-white) !important; /* White text on purple background */
   opacity: 1;
   pointer-events: auto; /* Allows clicks when active */
 }

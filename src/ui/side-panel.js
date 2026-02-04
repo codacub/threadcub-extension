@@ -492,9 +492,9 @@ class ThreadCubSidePanel {
 
   createActionButton(action, iconSvg, tagId) {
     return `
-      <div class="action-button" data-action="${action}" data-tag-id="${tagId}">
+      <button class="action-button" data-action="${action}" data-tag-id="${tagId}">
         ${iconSvg}
-      </div>
+      </button>
     `;
   }
 
@@ -864,8 +864,11 @@ class ThreadCubSidePanel {
 
         if (hasText) {
           saveBtn.classList.add('active'); // Use class for active state
+          // Use setProperty with 'important' to override Grok's !important CSS
+          saveBtn.style.setProperty('color', 'white', 'important');
         } else {
           saveBtn.classList.remove('active'); // Remove class for inactive state
+          saveBtn.style.removeProperty('color'); // Reset to CSS default
         }
       });
 

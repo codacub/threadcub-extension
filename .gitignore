@@ -1,1 +1,6 @@
 .DS_Store
+<<<<<<< HEAD
+=======
+package-lock.json
+node_modules/
+>>>>>>> consolidated-work-pre-anchors

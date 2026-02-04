@@ -431,6 +431,16 @@ window.ThreadCubTagging = class ThreadCubTagging {
   // NEW: Enhanced capture of range info with text context
   captureEnhancedRangeInfo(range) {
     try {
+      // Get message index using platform adapter
+      let messageIndex = -1;
+      const adapter = window.PlatformAdapters?.getAdapter();
+      if (adapter) {
+        const messageContainer = adapter.findMessageContainer(range.startContainer);
+        if (messageContainer) {
+          messageIndex = adapter.getMessageIndex(messageContainer);
+        }
+      }
+
       const rangeInfo = {
         startXPath: this.getXPathForElement(range.startContainer),
         endXPath: this.getXPathForElement(range.endContainer),
@@ -440,16 +450,20 @@ window.ThreadCubTagging = class ThreadCubTagging {
         // NEW: Add text content and context for better matching
         selectedText: range.toString().trim(),
         textLength: range.toString().trim().length,
-        // Store surrounding context for better matching
+        // Store surrounding context for better matching (prefix/suffix for jump-to)
         beforeText: this.getTextBefore(range, 50),
         afterText: this.getTextAfter(range, 50),
+        prefix: this.getTextBefore(range, 60), // TextQuote-style prefix
+        suffix: this.getTextAfter(range, 60),  // TextQuote-style suffix
         // Store parent element text for backup matching
-        parentText: range.commonAncestorContainer.textContent?.substring(0, 200) || ''
+        parentText: range.commonAncestorContainer.textContent?.substring(0, 200) || '',
+        // Message index for section assignment
+        messageIndex: messageIndex
       };
-      
+
       console.log('🏷️ ThreadCub: Enhanced range info captured:', rangeInfo);
       return rangeInfo;
-      
+
     } catch (error) {
       console.log('🏷️ ThreadCub: Could not capture enhanced range info:', error);
       return this.captureRangeInfo(range); // Fallback to original method
@@ -1226,6 +1240,24 @@ createContextMenu() {
         </svg>
       </div>
       `}
+
+      <!-- Create Anchor Button -->
+      <div class="threadcub-icon-button" id="threadcub-anchor-button" data-tooltip="CREATE ANCHOR" style="
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+        background: transparent;
+        border: none;
+      ">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22V8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/><circle cx="12" cy="5" r="3"/>
+        </svg>
+      </div>
     </div>
   `;
 
@@ -1339,13 +1371,13 @@ setupSimplifiedIconListeners() {
     
     findoutButton.addEventListener('mouseleave', () => {
       findoutButton.style.background = 'transparent';
-      
+
       // Change SVG stroke back to purple
       const svg = findoutButton.querySelector('svg');
       if (svg) svg.setAttribute('stroke', '#7C3AED');
-      
+
       this.currentHoveredButton = null;
-      
+
       // Delay hiding tooltip to allow for button transitions
       this.tooltipTimeout = setTimeout(() => {
         if (!this.currentHoveredButton) {
@@ -1354,7 +1386,58 @@ setupSimplifiedIconListeners() {
       }, 100);
     });
   }
-  
+
+  // Create Anchor button
+  const anchorButton = this.contextMenu.querySelector('#threadcub-anchor-button');
+  if (anchorButton) {
+    anchorButton.addEventListener('mousedown', (e) => {
+      e.preventDefault(); // Prevents selection from being cleared
+    });
+
+    anchorButton.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      console.log('Anchor: Create Anchor clicked');
+      this.handleCreateAnchor();
+    });
+
+    // Hover effects with custom tooltip
+    anchorButton.addEventListener('mouseenter', (e) => {
+      // Clear any pending hide timeout
+      if (this.tooltipTimeout) {
+        clearTimeout(this.tooltipTimeout);
+        this.tooltipTimeout = null;
+      }
+
+      this.currentHoveredButton = 'anchor';
+      anchorButton.style.background = '#7C3AED';
+
+      // Change SVG stroke to white on hover
+      const svg = anchorButton.querySelector('svg');
+      if (svg) svg.setAttribute('stroke', 'white');
+
+      // Show tooltip immediately
+      this.showCustomTooltip('CREATE ANCHOR', anchorButton);
+    });
+
+    anchorButton.addEventListener('mouseleave', () => {
+      anchorButton.style.background = 'transparent';
+
+      // Change SVG stroke back to purple
+      const svg = anchorButton.querySelector('svg');
+      if (svg) svg.setAttribute('stroke', '#7C3AED');
+
+      this.currentHoveredButton = null;
+
+      // Delay hiding tooltip to allow for button transitions
+      this.tooltipTimeout = setTimeout(() => {
+        if (!this.currentHoveredButton) {
+          this.hideCustomTooltip();
+        }
+      }, 100);
+    });
+  }
+
   // Close on outside click
   document.addEventListener('click', (e) => {
     if (!this.contextMenu.contains(e.target)) {
@@ -2971,22 +3054,252 @@ continueTagInChat(tagId) {
 
 filterTagsByPriority(priority) {
   console.log('🏷️ ThreadCub: Filtering tags by priority:', priority);
-  
+
   const allCards = this.sidePanel.querySelectorAll('.threadcub-tag-card');
-  
+
   allCards.forEach(card => {
     const tagId = parseInt(card.getAttribute('data-tag-id'));
     const tag = this.tags.find(t => t.id === tagId);
-    
+
     let shouldShow = true;
-    
+
     if (priority !== 'all' && tag) {
       const hasPriority = tag.tags && tag.tags.some(t => t.priority === priority);
       shouldShow = hasPriority;
     }
-    
+
     card.style.display = shouldShow ? 'block' : 'none';
   });
+}
+
+// ===== ANCHOR SYSTEM METHODS =====
+
+async handleCreateAnchor() {
+  console.log('Anchor: Create Anchor clicked');
+
+  if (!this.selectedText || !this.selectedRange) {
+    console.log('Anchor: No selection available');
+    return;
+  }
+
+  // Initialize anchor system if needed
+  if (window.anchorSystem) {
+    window.anchorSystem.init();
+  }
+
+  // Get the browser selection
+  const selection = window.getSelection();
+
+  // Create anchor using the anchor system
+  const anchorData = window.anchorSystem
+    ? window.anchorSystem.createAnchorFromSelection(selection)
+    : this.createBasicAnchor(selection);
+
+  if (!anchorData) {
+    console.log('Anchor: Failed to create anchor data');
+    return;
+  }
+
+  // Create anchor item (similar to tag but with type: 'anchor')
+  const anchor = {
+    id: Date.now(),
+    type: 'anchor',
+    text: this.selectedText,
+    title: this.selectedText.substring(0, 50) + (this.selectedText.length > 50 ? '...' : ''),
+    snippet: this.selectedText,
+    createdAt: new Date().toISOString(),
+    platform: window.PlatformDetector?.detectPlatform() || 'unknown',
+    anchor: anchorData,
+    category: null,
+    categoryLabel: 'Anchor',
+    note: '',
+    tags: [],
+    timestamp: new Date().toISOString(),
+    rangeInfo: this.captureEnhancedRangeInfo(this.selectedRange)
+  };
+
+  this.tags.push(anchor);
+
+  // Remove temporary highlight before creating permanent one
+  this.removeTemporaryHighlight();
+
+  // Apply anchor-specific highlight
+  this.applyAnchorHighlight(this.selectedRange, anchor.id);
+
+  // Save to persistent storage
+  await this.saveTagsToPersistentStorage();
+
+  // Open side panel and switch to anchors tab
+  if (this.tags.length === 1) {
+    this.showSidePanel();
+  } else {
+    if (this.isPanelOpen) {
+      this.updateTagsList();
+    }
+  }
+
+  // Switch to anchors tab if side panel UI is available
+  if (this.sidePanelUI && this.sidePanelUI.switchTab) {
+    this.sidePanelUI.switchTab('anchors');
+  }
+
+  this.hideContextMenu();
+
+  console.log('Anchor: Anchor created and persisted:', anchor);
+}
+
+// Create basic anchor without anchor system (fallback)
+createBasicAnchor(selection) {
+  if (!selection || selection.isCollapsed) return null;
+
+  const range = selection.getRangeAt(0);
+  const exact = range.toString().trim();
+
+  if (exact.length < 3) return null;
+
+  return {
+    exact,
+    prefix: '',
+    suffix: '',
+    messageSelector: '',
+    messageIndex: -1,
+    url: window.location.href,
+    platform: 'unknown'
+  };
+}
+
+// Apply anchor highlight with click handler to open side panel
+applyAnchorHighlight(range, anchorId) {
+  try {
+    const highlightSpan = document.createElement('span');
+    highlightSpan.className = 'threadcub-anchor-highlight';
+    highlightSpan.setAttribute('data-anchor-id', anchorId);
+    highlightSpan.style.cssText = `
+      background: rgba(124, 58, 237, 0.15) !important;
+      border-bottom: 2px solid #7C3AED;
+      cursor: pointer !important;
+    `;
+
+    // Add click handler to open side panel and switch to anchors tab
+    highlightSpan.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.showSidePanel();
+      if (this.sidePanelUI && this.sidePanelUI.switchTab) {
+        this.sidePanelUI.switchTab('anchors');
+      }
+    });
+
+    range.surroundContents(highlightSpan);
+    console.log('Anchor: Applied anchor highlight for ID:', anchorId);
+  } catch (error) {
+    console.log('Anchor: Could not apply simple highlight, using smart method:', error);
+    this.applySmartAnchorHighlight(range, anchorId);
+  }
+}
+
+// Smart anchor highlight for complex selections
+applySmartAnchorHighlight(range, anchorId) {
+  try {
+    const fragment = range.extractContents();
+    const wrapper = document.createElement('span');
+    wrapper.className = 'threadcub-anchor-highlight';
+    wrapper.setAttribute('data-anchor-id', anchorId);
+    wrapper.style.cssText = `
+      background: rgba(124, 58, 237, 0.15) !important;
+      border-bottom: 2px solid #7C3AED;
+      cursor: pointer !important;
+    `;
+
+    wrapper.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.showSidePanel();
+      if (this.sidePanelUI && this.sidePanelUI.switchTab) {
+        this.sidePanelUI.switchTab('anchors');
+      }
+    });
+
+    wrapper.appendChild(fragment);
+    range.insertNode(wrapper);
+    console.log('Anchor: Applied smart anchor highlight for ID:', anchorId);
+  } catch (error) {
+    console.log('Anchor: Smart highlight also failed:', error);
+  }
+}
+
+// Jump to anchor location
+async jumpToAnchor(anchorId) {
+  const anchor = this.tags.find(t => t.id === anchorId && t.type === 'anchor');
+
+  if (!anchor || !anchor.anchor) {
+    console.log('Anchor: Anchor not found:', anchorId);
+    this.showJumpFailedNotification();
+    return;
+  }
+
+  console.log('Anchor: Jumping to anchor:', anchor);
+
+  // Use anchor system if available
+  if (window.anchorSystem) {
+    const result = await window.anchorSystem.jumpToAnchor(anchor.anchor);
+
+    if (result.success) {
+      console.log('Anchor: Jump successful via', result.method, 'approximate:', result.approximate);
+    } else {
+      console.log('Anchor: Jump failed');
+      this.showJumpFailedNotification();
+    }
+  } else {
+    // Fallback: try to find and scroll to the text
+    this.fallbackJumpToAnchor(anchor);
+  }
+}
+
+// Fallback jump method
+fallbackJumpToAnchor(anchor) {
+  const targetText = anchor.anchor?.exact || anchor.text;
+
+  const walker = document.createTreeWalker(
+    document.body,
+    NodeFilter.SHOW_TEXT,
+    null,
+    false
+  );
+
+  let textNode;
+  while ((textNode = walker.nextNode())) {
+    if (textNode.textContent.includes(targetText)) {
+      const element = textNode.parentElement;
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        element.classList.add('threadcub-anchor-flash');
+        setTimeout(() => element.classList.remove('threadcub-anchor-flash'), 2000);
+        return;
+      }
+    }
+  }
+
+  this.showJumpFailedNotification();
+}
+
+// Show notification when jump fails
+showJumpFailedNotification() {
+  const notification = document.createElement('div');
+  notification.className = 'threadcub-jump-failed';
+  notification.innerHTML = `
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="10"/>
+      <line x1="12" y1="8" x2="12" y2="12"/>
+      <line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
+    Could not find anchor location - content may have changed
+  `;
+
+  document.body.appendChild(notification);
+
+  setTimeout(() => {
+    notification.style.opacity = '0';
+    setTimeout(() => notification.remove(), 500);
+  }, 3000);
 }
 
 } // END of ThreadCubTagging class

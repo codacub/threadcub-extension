@@ -7,6 +7,8 @@ class ThreadCubSidePanel {
   constructor(taggingSystem) {
     this.taggingSystem = taggingSystem;
     this.sidePanel = null;
+    this.currentTab = 'tags'; // 'tags' or 'anchors'
+    this.currentPriorityFilter = 'all'; // 'all', 'high', 'medium', 'low'
   }
 
   // ===== MAIN UPDATE METHOD =====
@@ -14,22 +16,202 @@ class ThreadCubSidePanel {
     const tagsList = this.sidePanel.querySelector('#threadcub-tags-container');
     if (!tagsList) return;
 
-    if (this.taggingSystem.tags.length === 0) {
-      tagsList.innerHTML = this.createEmptyState();
+    // Render based on current tab
+    if (this.currentTab === 'anchors') {
+      this.renderAnchorsView(tagsList);
     } else {
-      tagsList.innerHTML = this.taggingSystem.tags.map(tag => this.createTagCard(tag)).join('');
-      this.setupNewCardListeners();
+      this.renderTagsView(tagsList);
+    }
+  }
+
+  // Render Tags view with priority filter
+  renderTagsView(container) {
+    const items = this.taggingSystem.tags || [];
+    const tags = items.filter(item => item.type !== 'anchor');
+
+    // Apply priority filter
+    const filteredTags = this.filterByPriority(tags);
+
+    if (tags.length === 0) {
+      container.innerHTML = this.createEmptyState('tags');
+      return;
+    }
+
+    container.innerHTML = `
+      ${this.createPriorityFilterDropdown()}
+      <div class="threadcub-items-list">
+        ${filteredTags.map(tag => this.createTagCard(tag)).join('')}
+      </div>
+    `;
+
+    this.setupPriorityFilterListener();
+    this.setupNewCardListeners();
+  }
+
+  // Render Anchors view (simple list with delete and jump-to)
+  renderAnchorsView(container) {
+    const items = this.taggingSystem.tags || [];
+    const anchors = items.filter(item => item.type === 'anchor');
+
+    if (anchors.length === 0) {
+      container.innerHTML = this.createEmptyState('anchors');
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="threadcub-items-list">
+        ${anchors.map(anchor => this.createSimpleAnchorCard(anchor)).join('')}
+      </div>
+    `;
+
+    this.setupAnchorListListeners();
+  }
+
+  // Filter tags by priority
+  filterByPriority(tags) {
+    if (this.currentPriorityFilter === 'all') {
+      return tags;
+    }
+    return tags.filter(tag => {
+      return tag.tags?.some(t => t.priority === this.currentPriorityFilter);
+    });
+  }
+
+  // Create priority filter dropdown
+  createPriorityFilterDropdown() {
+    return `
+      <div class="threadcub-priority-filter-wrapper">
+        <select class="threadcub-priority-select" id="threadcub-priority-filter">
+          <option value="all" ${this.currentPriorityFilter === 'all' ? 'selected' : ''}>All priorities</option>
+          <option value="high" ${this.currentPriorityFilter === 'high' ? 'selected' : ''}>High priority</option>
+          <option value="medium" ${this.currentPriorityFilter === 'medium' ? 'selected' : ''}>Medium priority</option>
+          <option value="low" ${this.currentPriorityFilter === 'low' ? 'selected' : ''}>Low priority</option>
+        </select>
+      </div>
+    `;
+  }
+
+  // Setup priority filter listener
+  setupPriorityFilterListener() {
+    const select = this.sidePanel.querySelector('#threadcub-priority-filter');
+    if (select) {
+      select.addEventListener('change', (e) => {
+        this.currentPriorityFilter = e.target.value;
+        this.updateTagsList();
+      });
+    }
+  }
+
+  // Create simple anchor card (just delete and jump-to)
+  createSimpleAnchorCard(anchor) {
+    return `
+      <div class="threadcub-anchor-item" data-anchor-id="${anchor.id}">
+        <div class="anchor-item-content">
+          <div class="anchor-item-text">${anchor.snippet || anchor.text}</div>
+        </div>
+        <div class="anchor-item-actions">
+          <button class="anchor-action-btn jump-to-btn" data-anchor-id="${anchor.id}" title="Jump to">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22V8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/><circle cx="12" cy="5" r="3"/></svg>
+          </button>
+          <button class="anchor-action-btn delete-btn" data-anchor-id="${anchor.id}" title="Delete">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  // Setup anchor list listeners
+  setupAnchorListListeners() {
+    // Jump to buttons
+    const jumpBtns = this.sidePanel.querySelectorAll('.jump-to-btn');
+    jumpBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const anchorId = parseInt(btn.getAttribute('data-anchor-id'));
+        if (this.taggingSystem.jumpToAnchor) {
+          this.taggingSystem.jumpToAnchor(anchorId);
+        }
+      });
+    });
+
+    // Delete buttons
+    const deleteBtns = this.sidePanel.querySelectorAll('.anchor-item-actions .delete-btn');
+    deleteBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const anchorId = parseInt(btn.getAttribute('data-anchor-id'));
+        this.taggingSystem.deleteTagWithUndo(anchorId);
+      });
+    });
+  }
+
+  // Switch tab
+  switchTab(tab) {
+    this.currentTab = tab;
+    this.updateTabStyles();
+    this.updateTagsList();
+  }
+
+  // Update tab button styles
+  updateTabStyles() {
+    const tagsTab = this.sidePanel.querySelector('[data-tab="tags"]');
+    const anchorsTab = this.sidePanel.querySelector('[data-tab="anchors"]');
+
+    if (tagsTab && anchorsTab) {
+      if (this.currentTab === 'tags') {
+        tagsTab.classList.add('active');
+        tagsTab.style.borderBottomColor = '#7C3AED';
+        tagsTab.style.color = '#7C3AED';
+        tagsTab.style.fontWeight = '600';
+        anchorsTab.classList.remove('active');
+        anchorsTab.style.borderBottomColor = 'transparent';
+        anchorsTab.style.color = '#64748b';
+        anchorsTab.style.fontWeight = '500';
+      } else {
+        tagsTab.classList.remove('active');
+        tagsTab.style.borderBottomColor = 'transparent';
+        tagsTab.style.color = '#64748b';
+        tagsTab.style.fontWeight = '500';
+        anchorsTab.classList.add('active');
+        anchorsTab.style.borderBottomColor = '#7C3AED';
+        anchorsTab.style.color = '#7C3AED';
+        anchorsTab.style.fontWeight = '600';
+      }
+    }
+  }
+
+  // Setup tab listeners (called from tagging-system after panel creation)
+  setupTabListeners() {
+    const tagsTab = this.sidePanel.querySelector('[data-tab="tags"]');
+    const anchorsTab = this.sidePanel.querySelector('[data-tab="anchors"]');
+
+    if (tagsTab) {
+      tagsTab.addEventListener('click', () => this.switchTab('tags'));
+    }
+    if (anchorsTab) {
+      anchorsTab.addEventListener('click', () => this.switchTab('anchors'));
     }
   }
 
   // ===== EMPTY STATE =====
-  createEmptyState() {
+  createEmptyState(type = 'tags') {
+    if (type === 'anchors') {
+      return `
+        <div id="threadcub-empty-state">
+          <div class="empty-state-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22V8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/><circle cx="12" cy="5" r="3"/></svg>
+          </div>
+          <h3 class="empty-state-title">No anchors yet</h3>
+          <p class="empty-state-description">Highlight text and click the anchor icon to create a bookmark point.</p>
+        </div>
+      `;
+    }
+
     return `
       <div id="threadcub-empty-state">
         <div class="empty-state-icon">🏷️</div>
-
         <h3 class="empty-state-title">No tags yet</h3>
-
         <p class="empty-state-description">Highlight text to get started with your first swipe!</p>
       </div>
     `;

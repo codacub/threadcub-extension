@@ -1393,7 +1393,6 @@ setupSimplifiedIconListeners() {
   }
 
   // Create Anchor button
-  const anchorButton = this.contextMenu.querySelector('#threadcub-anchor-button');
   if (anchorButton) {
     anchorButton.addEventListener('mousedown', (e) => {
       e.preventDefault(); // Prevents selection from being cleared

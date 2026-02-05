@@ -60,9 +60,6 @@ window.ThreadCubTagging = class ThreadCubTagging {
     // Setup URL monitoring for storage key changes
     this.setupUrlMonitoring();
 
-    // Setup cache clearing detection
-    this.setupCacheClearingDetection();
-
     // NEW: Load persisted tags with delay for DOM stabilization
     setTimeout(async () => {
       await this.loadPersistedTags();
@@ -130,81 +127,7 @@ window.ThreadCubTagging = class ThreadCubTagging {
     };
   }
 
-  // Setup cache clearing detection - clears Chrome storage when localStorage is cleared
-  setupCacheClearingDetection() {
-    const markerKey = 'threadcub-cache-marker';
-
-    // Check on init if localStorage was cleared but Chrome storage still has data
-    this.checkForCacheClearing(markerKey);
-
-    // Listen for storage events (fired when localStorage is modified from another context)
-    window.addEventListener('storage', (event) => {
-      if (event.key === null) {
-        // All localStorage was cleared
-        console.log('🏷️ ThreadCub: localStorage cleared, syncing Chrome storage...');
-        this.clearChromeStorageForCurrentPage();
-      } else if (event.key === markerKey && event.newValue === null) {
-        // Our marker was specifically removed
-        console.log('🏷️ ThreadCub: Cache marker removed, syncing Chrome storage...');
-        this.clearChromeStorageForCurrentPage();
-      }
-    });
-
-    // Set the marker to indicate localStorage is intact
-    localStorage.setItem(markerKey, Date.now().toString());
-  }
-
-  // Check if localStorage was cleared (marker missing) but we have Chrome storage data
-  async checkForCacheClearing(markerKey) {
-    const marker = localStorage.getItem(markerKey);
-
-    if (!marker && this.canUseChromStorage()) {
-      // Marker is missing - localStorage was likely cleared
-      // Check if Chrome storage has data for this page
-      const storageKey = this.currentStorageKey || this.generateConversationKey();
-
-      try {
-        const data = await this.loadFromChromStorage(storageKey);
-        if (data && data.tags && data.tags.length > 0) {
-          console.log('🏷️ ThreadCub: Cache cleared detected - clearing Chrome storage for consistency');
-          await this.clearChromeStorageForCurrentPage();
-        }
-      } catch (e) {
-        console.log('🏷️ ThreadCub: Error checking Chrome storage during cache clear detection:', e);
-      }
-    }
-
-    // Restore the marker
-    localStorage.setItem(markerKey, Date.now().toString());
-  }
-
-  // Clear Chrome storage data for the current page
-  async clearChromeStorageForCurrentPage() {
-    if (!this.canUseChromStorage()) return;
-
-    const storageKey = this.currentStorageKey || this.generateConversationKey();
-
-    try {
-      await new Promise((resolve) => {
-        chrome.storage.local.remove([storageKey], () => {
-          console.log('🏷️ ThreadCub: Chrome storage cleared for key:', storageKey);
-          resolve();
-        });
-      });
-
-      // Clear local state
-      this.tags = [];
-
-      // Update UI if panel is open
-      if (this.isPanelOpen) {
-        this.updateTagsList();
-      }
-    } catch (e) {
-      console.log('🏷️ ThreadCub: Error clearing Chrome storage:', e);
-    }
-  }
-
-  // NEW: Handle URL changes and transfer tags if needed
+  // Handle URL changes and transfer tags if needed
   async handleUrlChange(newUrl) {
     console.log('🔍 Handling URL change to:', newUrl);
     

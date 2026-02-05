@@ -3837,6 +3837,7 @@ wrapTextNodeSafely(textNode, tagId) {
       padding: 0 !important;
       margin: 0 !important;
       border: none !important;
+      position: relative !important;
     `;
     
     // Move text content to span
@@ -3845,10 +3846,12 @@ wrapTextNodeSafely(textNode, tagId) {
     // Replace text node with highlighted span
     textNode.parentNode.replaceChild(span, textNode);
 
-    // Add click listener to open side panel to tags tab
+    // Add click listener to open side panel to tags tab (but not when clicking copy button)
     span.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.showSidePanel('tags');
+      if (!e.target.closest('.threadcub-copy-btn')) {
+        e.stopPropagation();
+        this.showSidePanel('tags');
+      }
     });
 
     // Add hover effects

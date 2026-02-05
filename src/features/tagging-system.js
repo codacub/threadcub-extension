@@ -337,22 +337,31 @@ window.ThreadCubTagging = class ThreadCubTagging {
       console.log(`🔍 DEBUG: Saving ${this.tags.length} tags with key:`, storageKey);
       console.log('🔍 DEBUG: Tags data:', tagsData);
       
-      // Try Chrome storage first
+      // Try Chrome storage first, with fallback to localStorage
+      let savedToChrome = false;
       if (this.canUseChromStorage()) {
-        await this.saveToChromStorage(storageKey, tagsData);
-        console.log('🔍 DEBUG: ✅ Tags saved to Chrome storage successfully');
-        
-        // Verify the save worked
-        const verification = await this.loadFromChromStorage(storageKey);
-        console.log('🔍 DEBUG: Verification - data retrieved:', !!verification);
-        if (verification) {
-          console.log('🔍 DEBUG: Verification - tag count:', verification.tags?.length || 0);
+        try {
+          await this.saveToChromStorage(storageKey, tagsData);
+          console.log('🔍 DEBUG: ✅ Tags saved to Chrome storage successfully');
+          savedToChrome = true;
+
+          // Verify the save worked
+          const verification = await this.loadFromChromStorage(storageKey);
+          console.log('🔍 DEBUG: Verification - data retrieved:', !!verification);
+          if (verification) {
+            console.log('🔍 DEBUG: Verification - tag count:', verification.tags?.length || 0);
+          }
+        } catch (chromeError) {
+          console.log('🏷️ ThreadCub: Chrome storage failed, falling back to localStorage:', chromeError.message);
+          savedToChrome = false;
         }
-      } else {
-        // Fallback to localStorage
+      }
+
+      // Fallback to localStorage if Chrome storage unavailable or failed
+      if (!savedToChrome) {
         localStorage.setItem(storageKey, JSON.stringify(tagsData));
         console.log('🔍 DEBUG: ✅ Tags saved to localStorage');
-        
+
         // Verify the save worked
         const verification = localStorage.getItem(storageKey);
         console.log('🔍 DEBUG: Verification - localStorage data exists:', !!verification);
@@ -374,13 +383,23 @@ window.ThreadCubTagging = class ThreadCubTagging {
       console.log('🔍 DEBUG: Loading tags with key:', storageKey);
       
       let tagsData = null;
-      
-      // Try Chrome storage first
+      let loadedFromChrome = false;
+
+      // Try Chrome storage first, with fallback to localStorage
       if (this.canUseChromStorage()) {
-        console.log('🔍 DEBUG: Attempting Chrome storage load...');
-        tagsData = await this.loadFromChromStorage(storageKey);
-        console.log('🔍 DEBUG: Chrome storage result:', !!tagsData);
-      } else {
+        try {
+          console.log('🔍 DEBUG: Attempting Chrome storage load...');
+          tagsData = await this.loadFromChromStorage(storageKey);
+          console.log('🔍 DEBUG: Chrome storage result:', !!tagsData);
+          loadedFromChrome = true;
+        } catch (chromeError) {
+          console.log('🏷️ ThreadCub: Chrome storage load failed, trying localStorage:', chromeError.message);
+          loadedFromChrome = false;
+        }
+      }
+
+      // Fallback to localStorage if Chrome storage unavailable or failed
+      if (!loadedFromChrome) {
         console.log('🔍 DEBUG: Attempting localStorage load...');
         const stored = localStorage.getItem(storageKey);
         console.log('🔍 DEBUG: localStorage raw data exists:', !!stored);
@@ -983,11 +1002,22 @@ window.ThreadCubTagging = class ThreadCubTagging {
 
   canUseChromStorage() {
     try {
-      return typeof chrome !== 'undefined' && 
-             chrome.runtime && 
-             chrome.storage && 
-             chrome.storage.local &&
-             !chrome.runtime.lastError;
+      // Check if chrome APIs exist
+      if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.storage || !chrome.storage.local) {
+        return false;
+      }
+
+      // Check for extension context invalidation by testing chrome.runtime.id
+      // When context is invalidated, accessing chrome.runtime.id will throw
+      try {
+        const _ = chrome.runtime.id;
+        if (!_) return false;
+      } catch (e) {
+        console.log('🏷️ ThreadCub: Extension context invalidated, falling back to localStorage');
+        return false;
+      }
+
+      return !chrome.runtime.lastError;
     } catch (error) {
       return false;
     }
@@ -996,6 +1026,12 @@ window.ThreadCubTagging = class ThreadCubTagging {
   async saveToChromStorage(key, data) {
     return new Promise((resolve, reject) => {
       try {
+        // Double-check context is still valid before attempting storage operation
+        if (!this.canUseChromStorage()) {
+          reject(new Error('Extension context invalidated'));
+          return;
+        }
+
         chrome.storage.local.set({ [key]: data }, () => {
           if (chrome.runtime.lastError) {
             reject(new Error(chrome.runtime.lastError.message));
@@ -1012,6 +1048,12 @@ window.ThreadCubTagging = class ThreadCubTagging {
   async loadFromChromStorage(key) {
     return new Promise((resolve, reject) => {
       try {
+        // Double-check context is still valid before attempting storage operation
+        if (!this.canUseChromStorage()) {
+          reject(new Error('Extension context invalidated'));
+          return;
+        }
+
         chrome.storage.local.get([key], (result) => {
           if (chrome.runtime.lastError) {
             reject(new Error(chrome.runtime.lastError.message));
@@ -1178,6 +1220,7 @@ createContextMenu() {
   const hideFindOutMore = hostname.includes('chatgpt.com') ||
                           hostname.includes('claude.ai') ||
                           hostname.includes('grok.com') ||
+                          hostname.includes('perplexity.ai') ||
                           (hostname.includes('x.com') && window.location.pathname.includes('/i/grok'));
 
   // When Find Out More is hidden, remove the border-right divider from Save button
@@ -1642,10 +1685,14 @@ async handleCreateAnchor() {
   // Save to persistent storage
   await this.saveTagsToPersistentStorage();
 
-  // Open side panel (first time) or update (subsequent)
+  // Open side panel to Anchors tab
   if (this.tags.length === 1) {
-    this.showSidePanel();
+    this.showSidePanel('anchors');
   } else {
+    // Switch to anchors tab if panel is open
+    if (this.sidePanelUI && this.sidePanelUI.switchTab) {
+      this.sidePanelUI.switchTab('anchors');
+    }
     if (this.isPanelOpen) {
       this.updateTagsList();
     }
@@ -1711,23 +1758,7 @@ applyAnchorHighlight(range, anchorId) {
     // Add click listener to open side panel and switch to anchors tab
     span.addEventListener('click', (e) => {
       e.stopPropagation();
-      this.showSidePanel();
-      // Switch to anchors tab after a short delay for panel to open
-      setTimeout(() => {
-        if (this.sidePanelUI && this.sidePanelUI.setFilter) {
-          this.sidePanelUI.setFilter('anchors');
-        }
-        // Update tab UI
-        const tabs = this.sidePanel?.querySelectorAll('.threadcub-filter-tab');
-        tabs?.forEach(tab => {
-          const filter = tab.getAttribute('data-filter');
-          if (filter === 'anchors') {
-            tab.classList.add('active');
-          } else {
-            tab.classList.remove('active');
-          }
-        });
-      }, 100);
+      this.showSidePanel('anchors');
     });
 
     // Add hover effects
@@ -1769,12 +1800,7 @@ applySmartAnchorHighlight(range, anchorId) {
       // Add click listener
       span.addEventListener('click', (e) => {
         e.stopPropagation();
-        this.showSidePanel();
-        setTimeout(() => {
-          if (this.sidePanelUI && this.sidePanelUI.setFilter) {
-            this.sidePanelUI.setFilter('anchors');
-          }
-        }, 100);
+        this.showSidePanel('anchors');
       });
 
       if (!this.anchorElements) this.anchorElements = new Map();
@@ -1795,12 +1821,7 @@ applySmartAnchorHighlight(range, anchorId) {
 
       span.addEventListener('click', (e) => {
         e.stopPropagation();
-        this.showSidePanel();
-        setTimeout(() => {
-          if (this.sidePanelUI && this.sidePanelUI.setFilter) {
-            this.sidePanelUI.setFilter('anchors');
-          }
-        }, 100);
+        this.showSidePanel('anchors');
       });
 
       highlightElements.push(span);
@@ -2170,6 +2191,23 @@ createSidePanel() {
       ">
         DOWNLOAD
       </button>
+
+      <button id="threadcub-clear-all" style="
+        flex: 1;
+        padding: 12px 16px;
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid #ef4444;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #ef4444;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        backdrop-filter: blur(10px);
+        text-align: center;
+      ">
+        CLEAR ALL
+      </button>
     </div>
   `;
   
@@ -2275,6 +2313,70 @@ setupPanelEventListeners() {
     closeBtn.style.color = '#374151';
     closeBtn.style.transform = 'translateY(0)';
   });
+
+  // Clear All button
+  const clearBtn = this.sidePanel.querySelector('#threadcub-clear-all');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      this.clearAllTagsAndAnchors();
+    });
+
+    // Clear button hover effects
+    clearBtn.addEventListener('mouseenter', () => {
+      clearBtn.style.background = '#ef4444';
+      clearBtn.style.color = '#ffffff';
+      clearBtn.style.transform = 'translateY(-1px)';
+    });
+
+    clearBtn.addEventListener('mouseleave', () => {
+      clearBtn.style.background = 'rgba(255, 255, 255, 0.9)';
+      clearBtn.style.color = '#ef4444';
+      clearBtn.style.transform = 'translateY(0)';
+    });
+  }
+}
+
+// Clear all tags and anchors for this page
+async clearAllTagsAndAnchors() {
+  if (this.tags.length === 0) {
+    console.log('🏷️ ThreadCub: No tags to clear');
+    return;
+  }
+
+  // Confirm with user
+  const confirmed = confirm(`Are you sure you want to clear all ${this.tags.length} tags and anchors for this page? This cannot be undone.`);
+  if (!confirmed) return;
+
+  console.log('🏷️ ThreadCub: Clearing all tags and anchors...');
+
+  // Remove all highlights from the page
+  const highlights = document.querySelectorAll('.threadcub-highlight, .threadcub-anchor-highlight');
+  highlights.forEach(el => {
+    const text = el.textContent;
+    const textNode = document.createTextNode(text);
+    el.parentNode.replaceChild(textNode, el);
+  });
+
+  // Clear the tags array
+  this.tags = [];
+
+  // Clear from storage
+  const storageKey = this.currentStorageKey || this.generateConversationKey();
+  if (this.canUseChromStorage()) {
+    try {
+      await new Promise((resolve) => {
+        chrome.storage.local.remove([storageKey], resolve);
+      });
+    } catch (e) {
+      console.log('🏷️ ThreadCub: Chrome storage clear failed, trying localStorage');
+    }
+  }
+  localStorage.removeItem(storageKey);
+
+  // Update the side panel
+  this.updateTagsList();
+
+  console.log('🏷️ ThreadCub: All tags and anchors cleared');
 }
 
 // Download tags as JSON
@@ -2632,20 +2734,26 @@ hideContextMenu() {
 }
 
 // Side panel methods
-showSidePanel() {
+showSidePanel(openToTab = null) {
   if (this.sidePanel && this.panelOverlay) {
     // Show overlay first
     this.panelOverlay.style.opacity = '1';
     this.panelOverlay.style.visibility = 'visible';
-    
+
     // Then slide in panel
     setTimeout(() => {
       this.sidePanel.style.right = '0px';
       this.isPanelOpen = true;
+
+      // Switch to specific tab if requested
+      if (openToTab && this.sidePanelUI) {
+        this.sidePanelUI.switchTab(openToTab);
+      }
+
       this.updateTagsList();
     }, 50);
-    
-    console.log('🏷️ ThreadCub: Side panel opened');
+
+    console.log('🏷️ ThreadCub: Side panel opened' + (openToTab ? ` to ${openToTab} tab` : ''));
   }
 }
 
@@ -2858,21 +2966,21 @@ applySmartHighlight(range, tagId) {
         span.appendChild(contents);
         workingRange.insertNode(span);
         
-        // Add click listener
+        // Add click listener to open side panel to tags tab
         span.addEventListener('click', (e) => {
           e.stopPropagation();
-          this.showSidePanel();
+          this.showSidePanel('tags');
         });
-        
+
         // Store for cleanup
         if (!this.highlightElements) {
           this.highlightElements = new Map();
         }
         this.highlightElements.set(tagId, [span]);
-        
+
         console.log('🏷️ ThreadCub: ✅ Claude fallback highlighting applied');
         return;
-        
+
       } catch (error) {
         console.log('🏷️ ThreadCub: Claude fallback failed:', error);
       }
@@ -2993,13 +3101,13 @@ wrapTextNodeSafely(textNode, tagId) {
     
     // Replace text node with highlighted span
     textNode.parentNode.replaceChild(span, textNode);
-    
-    // Add click listener
+
+    // Add click listener to open side panel to tags tab
     span.addEventListener('click', (e) => {
       e.stopPropagation();
-      this.showSidePanel();
+      this.showSidePanel('tags');
     });
-    
+
     // Add hover effects
     span.addEventListener('mouseenter', () => {
       span.style.backgroundColor = '#FFE55C';
@@ -3375,236 +3483,6 @@ filterTagsByPriority(priority) {
 
     card.style.display = shouldShow ? 'block' : 'none';
   });
-}
-
-// ===== ANCHOR SYSTEM METHODS =====
-
-async handleCreateAnchor() {
-  console.log('Anchor: Create Anchor clicked');
-
-  if (!this.selectedText || !this.selectedRange) {
-    console.log('Anchor: No selection available');
-    return;
-  }
-
-  // Initialize anchor system if needed
-  if (window.anchorSystem) {
-    window.anchorSystem.init();
-  }
-
-  // Get the browser selection
-  const selection = window.getSelection();
-
-  // Create anchor using the anchor system
-  const anchorData = window.anchorSystem
-    ? window.anchorSystem.createAnchorFromSelection(selection)
-    : this.createBasicAnchor(selection);
-
-  if (!anchorData) {
-    console.log('Anchor: Failed to create anchor data');
-    return;
-  }
-
-  // Create anchor item (similar to tag but with type: 'anchor')
-  const anchor = {
-    id: Date.now(),
-    type: 'anchor',
-    text: this.selectedText,
-    title: this.selectedText.substring(0, 50) + (this.selectedText.length > 50 ? '...' : ''),
-    snippet: this.selectedText,
-    createdAt: new Date().toISOString(),
-    platform: window.PlatformDetector?.detectPlatform() || 'unknown',
-    anchor: anchorData,
-    category: null,
-    categoryLabel: 'Anchor',
-    note: '',
-    tags: [],
-    timestamp: new Date().toISOString(),
-    rangeInfo: this.captureEnhancedRangeInfo(this.selectedRange)
-  };
-
-  this.tags.push(anchor);
-
-  // Remove temporary highlight before creating permanent one
-  this.removeTemporaryHighlight();
-
-  // Apply anchor-specific highlight
-  this.applyAnchorHighlight(this.selectedRange, anchor.id);
-
-  // Save to persistent storage
-  await this.saveTagsToPersistentStorage();
-
-  // Open side panel and switch to anchors tab
-  if (this.tags.length === 1) {
-    this.showSidePanel();
-  } else {
-    if (this.isPanelOpen) {
-      this.updateTagsList();
-    }
-  }
-
-  // Switch to anchors tab if side panel UI is available
-  if (this.sidePanelUI && this.sidePanelUI.switchTab) {
-    this.sidePanelUI.switchTab('anchors');
-  }
-
-  this.hideContextMenu();
-
-  console.log('Anchor: Anchor created and persisted:', anchor);
-}
-
-// Create basic anchor without anchor system (fallback)
-createBasicAnchor(selection) {
-  if (!selection || selection.isCollapsed) return null;
-
-  const range = selection.getRangeAt(0);
-  const exact = range.toString().trim();
-
-  if (exact.length < 3) return null;
-
-  return {
-    exact,
-    prefix: '',
-    suffix: '',
-    messageSelector: '',
-    messageIndex: -1,
-    url: window.location.href,
-    platform: 'unknown'
-  };
-}
-
-// Apply anchor highlight with click handler to open side panel
-applyAnchorHighlight(range, anchorId) {
-  try {
-    const highlightSpan = document.createElement('span');
-    highlightSpan.className = 'threadcub-anchor-highlight';
-    highlightSpan.setAttribute('data-anchor-id', anchorId);
-    highlightSpan.style.cssText = `
-      background: rgba(124, 58, 237, 0.15) !important;
-      border-bottom: 2px solid #7C3AED;
-      cursor: pointer !important;
-    `;
-
-    // Add click handler to open side panel and switch to anchors tab
-    highlightSpan.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.showSidePanel();
-      if (this.sidePanelUI && this.sidePanelUI.switchTab) {
-        this.sidePanelUI.switchTab('anchors');
-      }
-    });
-
-    range.surroundContents(highlightSpan);
-    console.log('Anchor: Applied anchor highlight for ID:', anchorId);
-  } catch (error) {
-    console.log('Anchor: Could not apply simple highlight, using smart method:', error);
-    this.applySmartAnchorHighlight(range, anchorId);
-  }
-}
-
-// Smart anchor highlight for complex selections
-applySmartAnchorHighlight(range, anchorId) {
-  try {
-    const fragment = range.extractContents();
-    const wrapper = document.createElement('span');
-    wrapper.className = 'threadcub-anchor-highlight';
-    wrapper.setAttribute('data-anchor-id', anchorId);
-    wrapper.style.cssText = `
-      background: rgba(124, 58, 237, 0.15) !important;
-      border-bottom: 2px solid #7C3AED;
-      cursor: pointer !important;
-    `;
-
-    wrapper.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.showSidePanel();
-      if (this.sidePanelUI && this.sidePanelUI.switchTab) {
-        this.sidePanelUI.switchTab('anchors');
-      }
-    });
-
-    wrapper.appendChild(fragment);
-    range.insertNode(wrapper);
-    console.log('Anchor: Applied smart anchor highlight for ID:', anchorId);
-  } catch (error) {
-    console.log('Anchor: Smart highlight also failed:', error);
-  }
-}
-
-// Jump to anchor location
-async jumpToAnchor(anchorId) {
-  const anchor = this.tags.find(t => t.id === anchorId && t.type === 'anchor');
-
-  if (!anchor || !anchor.anchor) {
-    console.log('Anchor: Anchor not found:', anchorId);
-    this.showJumpFailedNotification();
-    return;
-  }
-
-  console.log('Anchor: Jumping to anchor:', anchor);
-
-  // Use anchor system if available
-  if (window.anchorSystem) {
-    const result = await window.anchorSystem.jumpToAnchor(anchor.anchor);
-
-    if (result.success) {
-      console.log('Anchor: Jump successful via', result.method, 'approximate:', result.approximate);
-    } else {
-      console.log('Anchor: Jump failed');
-      this.showJumpFailedNotification();
-    }
-  } else {
-    // Fallback: try to find and scroll to the text
-    this.fallbackJumpToAnchor(anchor);
-  }
-}
-
-// Fallback jump method
-fallbackJumpToAnchor(anchor) {
-  const targetText = anchor.anchor?.exact || anchor.text;
-
-  const walker = document.createTreeWalker(
-    document.body,
-    NodeFilter.SHOW_TEXT,
-    null,
-    false
-  );
-
-  let textNode;
-  while ((textNode = walker.nextNode())) {
-    if (textNode.textContent.includes(targetText)) {
-      const element = textNode.parentElement;
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        element.classList.add('threadcub-anchor-flash');
-        setTimeout(() => element.classList.remove('threadcub-anchor-flash'), 2000);
-        return;
-      }
-    }
-  }
-
-  this.showJumpFailedNotification();
-}
-
-// Show notification when jump fails
-showJumpFailedNotification() {
-  const notification = document.createElement('div');
-  notification.className = 'threadcub-jump-failed';
-  notification.innerHTML = `
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <circle cx="12" cy="12" r="10"/>
-      <line x1="12" y1="8" x2="12" y2="12"/>
-      <line x1="12" y1="16" x2="12.01" y2="16"/>
-    </svg>
-    Could not find anchor location - content may have changed
-  `;
-
-  document.body.appendChild(notification);
-
-  setTimeout(() => {
-    notification.style.opacity = '0';
-    setTimeout(() => notification.remove(), 500);
-  }, 3000);
 }
 
 } // END of ThreadCubTagging class

@@ -1267,10 +1267,81 @@ addTaggingStyles() {
     background: #FFD700 !important;
     cursor: pointer !important;
     transition: background-color 0.2s ease !important;
+    position: relative !important;
   }
-  
+
   .threadcub-highlight:hover {
     background-color: #ffeb3b !important;
+  }
+
+  /* Copy button for highlights */
+  .threadcub-copy-btn {
+    position: absolute !important;
+    top: -8px !important;
+    right: -8px !important;
+    width: 24px !important;
+    height: 24px !important;
+    background: white !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    transition: all 0.15s ease !important;
+    z-index: 10000001 !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+    padding: 0 !important;
+  }
+
+  .threadcub-highlight:hover .threadcub-copy-btn,
+  .threadcub-anchor-highlight:hover .threadcub-copy-btn {
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+
+  .threadcub-copy-btn:hover {
+    background: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
+  }
+
+  .threadcub-copy-btn svg {
+    width: 14px !important;
+    height: 14px !important;
+    stroke: #64748b !important;
+  }
+
+  .threadcub-copy-btn:hover svg {
+    stroke: #475569 !important;
+  }
+
+  /* Copied feedback toast */
+  .threadcub-copied-toast {
+    position: fixed !important;
+    background: #1e293b !important;
+    color: white !important;
+    padding: 8px 16px !important;
+    border-radius: 6px !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    z-index: 10000003 !important;
+    pointer-events: none !important;
+    opacity: 0 !important;
+    transform: translateY(4px) !important;
+    transition: all 0.2s ease !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  }
+
+  .threadcub-copied-toast.visible {
+    opacity: 1 !important;
+    transform: translateY(0) !important;
+  }
+
+  /* Anchor highlight */
+  .threadcub-anchor-highlight {
+    position: relative !important;
   }
 
   .threadcub-tag-item:hover {
@@ -1634,13 +1705,148 @@ hideCustomTooltip() {
   if (this.activeTooltip) {
     this.activeTooltip.style.opacity = '0';
     this.activeTooltip.style.transform = 'translateY(-4px)';
-    
+
     setTimeout(() => {
       if (this.activeTooltip && this.activeTooltip.parentNode) {
         this.activeTooltip.parentNode.removeChild(this.activeTooltip);
       }
       this.activeTooltip = null;
     }, 200);
+  }
+}
+
+// Create copy button for highlight spans
+createCopyButton(textContent) {
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'threadcub-copy-btn';
+  copyBtn.setAttribute('data-tooltip', 'Copy');
+  copyBtn.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+    </svg>
+  `;
+
+  // Copy functionality
+  copyBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    this.copyToClipboard(textContent, copyBtn);
+  });
+
+  // Tooltip on hover
+  let tooltipTimeout;
+  copyBtn.addEventListener('mouseenter', () => {
+    tooltipTimeout = setTimeout(() => {
+      this.showCopyTooltip('Copy', copyBtn);
+    }, 300);
+  });
+
+  copyBtn.addEventListener('mouseleave', () => {
+    clearTimeout(tooltipTimeout);
+    this.hideCopyTooltip();
+  });
+
+  return copyBtn;
+}
+
+// Copy text to clipboard with feedback
+async copyToClipboard(text, buttonElement) {
+  try {
+    await navigator.clipboard.writeText(text);
+    this.showCopiedFeedback(buttonElement);
+    console.log('🏷️ ThreadCub: Text copied to clipboard');
+  } catch (error) {
+    // Fallback for older browsers
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-9999px';
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textArea);
+    this.showCopiedFeedback(buttonElement);
+    console.log('🏷️ ThreadCub: Text copied to clipboard (fallback)');
+  }
+}
+
+// Show "Copied!" feedback toast
+showCopiedFeedback(buttonElement) {
+  // Remove any existing toast
+  const existingToast = document.querySelector('.threadcub-copied-toast');
+  if (existingToast) existingToast.remove();
+
+  const toast = document.createElement('div');
+  toast.className = 'threadcub-copied-toast';
+  toast.textContent = 'Copied!';
+  document.body.appendChild(toast);
+
+  // Position near the button
+  const rect = buttonElement.getBoundingClientRect();
+  toast.style.left = (rect.left + rect.width / 2 - toast.offsetWidth / 2) + 'px';
+  toast.style.top = (rect.top - 36) + 'px';
+
+  // Animate in
+  requestAnimationFrame(() => {
+    toast.classList.add('visible');
+  });
+
+  // Remove after delay
+  setTimeout(() => {
+    toast.classList.remove('visible');
+    setTimeout(() => toast.remove(), 200);
+  }, 1500);
+}
+
+// Show tooltip for copy button
+showCopyTooltip(text, buttonElement) {
+  this.hideCopyTooltip();
+
+  this.copyTooltip = document.createElement('div');
+  this.copyTooltip.className = 'threadcub-custom-tooltip';
+  this.copyTooltip.style.cssText = `
+    position: fixed;
+    height: 24px;
+    background: #475569;
+    color: white;
+    padding: 0 10px;
+    border-radius: 4px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    z-index: 10000002;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: all 0.15s ease;
+  `;
+  this.copyTooltip.textContent = text;
+  document.body.appendChild(this.copyTooltip);
+
+  // Position above the button
+  const rect = buttonElement.getBoundingClientRect();
+  const tooltipWidth = this.copyTooltip.offsetWidth;
+  this.copyTooltip.style.left = (rect.left + rect.width / 2 - tooltipWidth / 2) + 'px';
+  this.copyTooltip.style.top = (rect.top - 32) + 'px';
+
+  requestAnimationFrame(() => {
+    if (this.copyTooltip) {
+      this.copyTooltip.style.opacity = '1';
+      this.copyTooltip.style.transform = 'translateY(0)';
+    }
+  });
+}
+
+// Hide copy tooltip
+hideCopyTooltip() {
+  if (this.copyTooltip) {
+    this.copyTooltip.remove();
+    this.copyTooltip = null;
   }
 }
 
@@ -1829,17 +2035,30 @@ createBasicAnchor(selection) {
 // Apply anchor-specific highlight (purple tint instead of yellow)
 applyAnchorHighlight(range, anchorId) {
   try {
+    const textContent = range.toString(); // Get text before surrounding
     const span = document.createElement('span');
     span.className = 'threadcub-anchor-highlight';
     span.setAttribute('data-anchor-id', anchorId);
+    span.style.cssText = `
+      background-color: rgba(124, 58, 237, 0.15) !important;
+      cursor: pointer !important;
+      transition: background-color 0.2s ease !important;
+      position: relative !important;
+    `;
 
     // Surround range with highlight span
     range.surroundContents(span);
 
+    // Add copy button
+    const copyBtn = this.createCopyButton(textContent);
+    span.appendChild(copyBtn);
+
     // Add click listener to open side panel and switch to anchors tab
     span.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.showSidePanel('anchors');
+      if (!e.target.closest('.threadcub-copy-btn')) {
+        e.stopPropagation();
+        this.showSidePanel('anchors');
+      }
     });
 
     // Add hover effects
@@ -1872,22 +2091,38 @@ applySmartAnchorHighlight(range, anchorId) {
     if (textNodes.length === 0) {
       // Simple fallback
       const contents = range.extractContents();
+      const textContent = contents.textContent;
       const span = document.createElement('span');
       span.className = 'threadcub-anchor-highlight';
       span.setAttribute('data-anchor-id', anchorId);
+      span.style.cssText = `
+        background-color: rgba(124, 58, 237, 0.15) !important;
+        cursor: pointer !important;
+        position: relative !important;
+      `;
       span.appendChild(contents);
+
+      // Add copy button
+      const copyBtn = this.createCopyButton(textContent);
+      span.appendChild(copyBtn);
+
       range.insertNode(span);
 
       // Add click listener
       span.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.showSidePanel('anchors');
+        if (!e.target.closest('.threadcub-copy-btn')) {
+          e.stopPropagation();
+          this.showSidePanel('anchors');
+        }
       });
 
       if (!this.anchorElements) this.anchorElements = new Map();
       this.anchorElements.set(anchorId, [span]);
       return;
     }
+
+    // Collect full text content for copy
+    const fullTextContent = textNodes.map(node => node.textContent).join('');
 
     // Wrap each text node
     const highlightElements = [];
@@ -1897,16 +2132,30 @@ applySmartAnchorHighlight(range, anchorId) {
       const span = document.createElement('span');
       span.className = 'threadcub-anchor-highlight';
       span.setAttribute('data-anchor-id', anchorId);
+      span.style.cssText = `
+        background-color: rgba(124, 58, 237, 0.15) !important;
+        cursor: pointer !important;
+      `;
       span.textContent = textNode.textContent;
       textNode.parentNode.replaceChild(span, textNode);
 
       span.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.showSidePanel('anchors');
+        if (!e.target.closest('.threadcub-copy-btn')) {
+          e.stopPropagation();
+          this.showSidePanel('anchors');
+        }
       });
 
       highlightElements.push(span);
     });
+
+    // Add copy button to first element
+    if (highlightElements.length > 0) {
+      const firstSpan = highlightElements[0];
+      firstSpan.style.position = 'relative';
+      const copyBtn = this.createCopyButton(fullTextContent);
+      firstSpan.appendChild(copyBtn);
+    }
 
     if (!this.anchorElements) this.anchorElements = new Map();
     this.anchorElements.set(anchorId, highlightElements);
@@ -2102,7 +2351,7 @@ createSidePanel() {
       position: relative;
     ">
       <!-- Close Button with Lucide X -->
-      <button id="threadcub-panel-close" style="
+      <button id="threadcub-panel-close" title="Close panel" style="
         position: absolute;
         top: 16px;
         right: 16px;
@@ -2239,7 +2488,7 @@ createSidePanel() {
       display: flex;
       gap: 12px;
     ">
-      <button id="threadcub-close-panel" style="
+      <button id="threadcub-close-panel" title="Close panel" style="
         flex: 1;
         padding: 12px 16px;
         background: rgba(255, 255, 255, 0.9);
@@ -2260,7 +2509,7 @@ createSidePanel() {
         position: relative;
         flex: 1;
       ">
-        <button id="threadcub-export-btn" style="
+        <button id="threadcub-export-btn" title="Export tags" style="
           width: 100%;
           padding: 12px 16px;
           background: #99DAFA;
@@ -3418,6 +3667,7 @@ applySmartHighlight(range, tagId) {
       
       try {
         const contents = workingRange.extractContents();
+        const textContent = contents.textContent; // Store text before moving to span
         const span = document.createElement('span');
         span.className = 'threadcub-highlight';
         span.setAttribute('data-tag-id', tagId);
@@ -3425,15 +3675,23 @@ applySmartHighlight(range, tagId) {
           background: #FFD700 !important;
           cursor: pointer !important;
           transition: background-color 0.2s ease !important;
+          position: relative !important;
         `;
-        
+
         span.appendChild(contents);
+
+        // Add copy button
+        const copyBtn = this.createCopyButton(textContent);
+        span.appendChild(copyBtn);
+
         workingRange.insertNode(span);
-        
+
         // Add click listener to open side panel to tags tab
         span.addEventListener('click', (e) => {
-          e.stopPropagation();
-          this.showSidePanel('tags');
+          if (!e.target.closest('.threadcub-copy-btn')) {
+            e.stopPropagation();
+            this.showSidePanel('tags');
+          }
         });
 
         // Store for cleanup
@@ -3463,6 +3721,9 @@ applySmartHighlight(range, tagId) {
       rangeInfo: this.captureRangeInfo(range)
     });
     
+    // Collect the full text content for copy functionality
+    const fullTextContent = textNodes.map(node => node.textContent).join('');
+
     // Apply highlighting to each text node
     const highlightElements = [];
     textNodes.forEach(textNode => {
@@ -3471,13 +3732,31 @@ applySmartHighlight(range, tagId) {
         highlightElements.push(highlightSpan);
       }
     });
-    
+
+    // Add copy button to the first highlight element
+    if (highlightElements.length > 0) {
+      const firstSpan = highlightElements[0];
+      firstSpan.style.position = 'relative';
+      const copyBtn = this.createCopyButton(fullTextContent);
+      firstSpan.appendChild(copyBtn);
+
+      // Update click listener to not trigger when clicking copy button
+      const originalClick = firstSpan.onclick;
+      firstSpan.onclick = null;
+      firstSpan.addEventListener('click', (e) => {
+        if (!e.target.closest('.threadcub-copy-btn')) {
+          e.stopPropagation();
+          this.showSidePanel('tags');
+        }
+      });
+    }
+
     // Store highlight elements for cleanup
     if (!this.highlightElements) {
       this.highlightElements = new Map();
     }
     this.highlightElements.set(tagId, highlightElements);
-    
+
     console.log('🏷️ ThreadCub: Smart highlight applied with', highlightElements.length, 'elements');
     
   } catch (error) {

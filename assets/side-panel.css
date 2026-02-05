@@ -320,3 +320,34 @@ div.threadcub-tag-card .action-button svg {
   text-transform: uppercase;
   transition: all var(--transition-base);
 }
+
+/* ===== TOOLTIP STYLES ===== */
+.action-button {
+  position: relative;
+}
+
+.action-button::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: #1e293b;
+  color: white;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.15s ease;
+  pointer-events: none;
+  z-index: 10000;
+}
+
+.action-button:hover::after {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}

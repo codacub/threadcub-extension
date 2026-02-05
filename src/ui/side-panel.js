@@ -505,8 +505,18 @@ class ThreadCubSidePanel {
   }
 
   createActionButton(action, iconSvg, tagId) {
+    // Map action to tooltip text
+    const tooltipMap = {
+      'jump-to': 'Jump to location',
+      'jump-to-tag': 'Jump to location',
+      'edit-note': 'Edit note',
+      'add-tag': 'Add priority',
+      'delete': 'Delete'
+    };
+    const tooltip = tooltipMap[action] || action;
+
     return `
-      <button class="action-button" data-action="${action}" data-tag-id="${tagId}">
+      <button class="action-button" data-action="${action}" data-tag-id="${tagId}" data-tooltip="${tooltip}" title="${tooltip}">
         ${iconSvg}
       </button>
     `;

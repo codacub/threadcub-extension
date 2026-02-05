@@ -2314,13 +2314,13 @@ createSidePanel() {
             gap: 12px;
             transition: background 0.15s ease;
           ">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path>
               <path d="M14 2v4a2 2 0 0 0 2 2h4"></path>
               <path d="M10 12a1 1 0 0 0-1 1v1a1 1 0 0 1-1 1 1 1 0 0 1 1 1v1a1 1 0 0 0 1 1"></path>
               <path d="M14 18a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1 1 1 0 0 1-1-1v-1a1 1 0 0 0-1-1"></path>
             </svg>
-            <span>Download as JSON</span>
+            <span>JSON</span>
           </button>
           <button class="threadcub-export-option" data-format="markdown" style="
             width: 100%;
@@ -2336,14 +2336,14 @@ createSidePanel() {
             gap: 12px;
             transition: background 0.15s ease;
           ">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path>
               <path d="M14 2v4a2 2 0 0 0 2 2h4"></path>
               <path d="M10 9H8"></path>
               <path d="M16 13H8"></path>
               <path d="M16 17H8"></path>
             </svg>
-            <span>Download as Markdown</span>
+            <span>Markdown</span>
           </button>
           <button class="threadcub-export-option" data-format="pdf" style="
             width: 100%;
@@ -2359,14 +2359,14 @@ createSidePanel() {
             gap: 12px;
             transition: background 0.15s ease;
           ">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path>
               <path d="M14 2v4a2 2 0 0 0 2 2h4"></path>
               <path d="M10 9H8"></path>
               <path d="M16 13H8"></path>
               <path d="M16 17H8"></path>
             </svg>
-            <span>Download as PDF</span>
+            <span>PDF</span>
           </button>
         </div>
       </div>
@@ -2654,7 +2654,7 @@ downloadTagsAsMarkdown() {
   console.log('🏷️ ThreadCub: Tags downloaded as Markdown');
 }
 
-// Download tags as PDF
+// Download tags as PDF (generates actual PDF file)
 downloadTagsAsPDF() {
   if (this.tags.length === 0) {
     alert('No tags to download!');
@@ -2668,128 +2668,201 @@ downloadTagsAsPDF() {
   const tags = this.tags.filter(item => item.type !== 'anchor');
   const anchors = this.tags.filter(item => item.type === 'anchor');
 
-  // Create a printable HTML document
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) {
-    alert('Please allow popups to download PDF');
-    return;
+  // Build text content for PDF
+  const lines = [];
+  lines.push(title);
+  lines.push('');
+  lines.push(`Source: ${window.location.href}`);
+  lines.push(`Platform: ${this.currentPlatform}`);
+  lines.push(`Exported: ${new Date().toLocaleString()}`);
+  lines.push(`Total Items: ${this.tags.length} (${tags.length} tags, ${anchors.length} anchors)`);
+  lines.push('');
+  lines.push('─'.repeat(60));
+  lines.push('');
+
+  if (tags.length > 0) {
+    lines.push('TAGS');
+    lines.push('');
+    tags.forEach((tag, index) => {
+      lines.push(`${index + 1}. ${tag.categoryLabel || 'Tag'}`);
+      lines.push(`   "${tag.text}"`);
+      if (tag.note) {
+        lines.push(`   Note: ${tag.note}`);
+      }
+      if (tag.tags && tag.tags.length > 0) {
+        const priorities = tag.tags.map(t => t.label).join(', ');
+        lines.push(`   Priority: ${priorities}`);
+      }
+      lines.push(`   Created: ${new Date(tag.timestamp).toLocaleString()}`);
+      lines.push('');
+    });
   }
 
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>${title} - ThreadCub Export</title>
-      <style>
-        * { box-sizing: border-box; }
-        body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-          line-height: 1.6;
-          color: #1f2937;
-          max-width: 800px;
-          margin: 0 auto;
-          padding: 40px 20px;
-        }
-        h1 { color: #7C3AED; margin-bottom: 8px; }
-        h2 { color: #4b5563; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px; margin-top: 32px; }
-        h3 { color: #374151; margin-bottom: 8px; }
-        .meta { color: #6b7280; font-size: 14px; margin-bottom: 24px; }
-        .meta p { margin: 4px 0; }
-        .item {
-          background: #f9fafb;
-          border-left: 4px solid #7C3AED;
-          padding: 16px;
-          margin: 16px 0;
-          border-radius: 0 8px 8px 0;
-        }
-        .item.anchor { border-left-color: #10b981; }
-        .quote {
-          font-style: italic;
-          color: #4b5563;
-          padding: 12px;
-          background: white;
-          border-radius: 4px;
-          margin-bottom: 12px;
-        }
-        .note { color: #374151; margin: 8px 0; }
-        .note strong { color: #7C3AED; }
-        .priority-tag {
-          display: inline-block;
-          padding: 2px 8px;
-          border-radius: 4px;
-          font-size: 12px;
-          font-weight: 600;
-          margin-right: 4px;
-        }
-        .priority-high { background: #fef2f2; color: #dc2626; }
-        .priority-medium { background: #fffbeb; color: #d97706; }
-        .priority-low { background: #f0fdf4; color: #16a34a; }
-        .timestamp { color: #9ca3af; font-size: 12px; margin-top: 8px; }
-        hr { border: none; border-top: 1px solid #e5e7eb; margin: 24px 0; }
-        @media print {
-          body { padding: 20px; }
-          .item { break-inside: avoid; }
-        }
-      </style>
-    </head>
-    <body>
-      <h1>${title}</h1>
-      <div class="meta">
-        <p><strong>Source:</strong> ${window.location.href}</p>
-        <p><strong>Platform:</strong> ${this.currentPlatform}</p>
-        <p><strong>Exported:</strong> ${new Date().toLocaleString()}</p>
-        <p><strong>Total Items:</strong> ${this.tags.length} (${tags.length} tags, ${anchors.length} anchors)</p>
-      </div>
-      <hr>
+  if (anchors.length > 0) {
+    lines.push('─'.repeat(60));
+    lines.push('');
+    lines.push('ANCHORS');
+    lines.push('');
+    anchors.forEach((anchor, index) => {
+      lines.push(`${index + 1}. Anchor`);
+      lines.push(`   "${anchor.snippet || anchor.text}"`);
+      if (anchor.note) {
+        lines.push(`   Note: ${anchor.note}`);
+      }
+      if (anchor.tags && anchor.tags.length > 0) {
+        const priorities = anchor.tags.map(t => t.label).join(', ');
+        lines.push(`   Priority: ${priorities}`);
+      }
+      lines.push(`   Created: ${new Date(anchor.createdAt || anchor.timestamp).toLocaleString()}`);
+      lines.push('');
+    });
+  }
 
-      ${tags.length > 0 ? `
-        <h2>Tags</h2>
-        ${tags.map((tag, index) => `
-          <div class="item">
-            <h3>${index + 1}. ${tag.categoryLabel || 'Tag'}</h3>
-            <div class="quote">${this.escapeHtml(tag.text)}</div>
-            ${tag.note ? `<div class="note"><strong>Note:</strong> ${this.escapeHtml(tag.note)}</div>` : ''}
-            ${tag.tags && tag.tags.length > 0 ? `
-              <div>
-                ${tag.tags.map(t => `<span class="priority-tag priority-${t.priority || 'medium'}">${t.label}</span>`).join('')}
-              </div>
-            ` : ''}
-            <div class="timestamp">Created: ${new Date(tag.timestamp).toLocaleString()}</div>
-          </div>
-        `).join('')}
-      ` : ''}
+  // Generate minimal PDF
+  const pdfContent = this.generateSimplePDF(lines, title);
 
-      ${anchors.length > 0 ? `
-        <h2>Anchors</h2>
-        ${anchors.map((anchor, index) => `
-          <div class="item anchor">
-            <h3>${index + 1}. Anchor</h3>
-            <div class="quote">${this.escapeHtml(anchor.snippet || anchor.text)}</div>
-            ${anchor.note ? `<div class="note"><strong>Note:</strong> ${this.escapeHtml(anchor.note)}</div>` : ''}
-            ${anchor.tags && anchor.tags.length > 0 ? `
-              <div>
-                ${anchor.tags.map(t => `<span class="priority-tag priority-${t.priority || 'medium'}">${t.label}</span>`).join('')}
-              </div>
-            ` : ''}
-            <div class="timestamp">Created: ${new Date(anchor.createdAt || anchor.timestamp).toLocaleString()}</div>
-          </div>
-        `).join('')}
-      ` : ''}
+  const blob = new Blob([pdfContent], { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `threadcub-tags-${dateStr}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 
-      <script>
-        window.onload = function() {
-          window.print();
-          setTimeout(function() { window.close(); }, 500);
-        };
-      </script>
-    </body>
-    </html>
-  `;
+  console.log('🏷️ ThreadCub: Tags downloaded as PDF');
+}
 
-  printWindow.document.write(htmlContent);
-  printWindow.document.close();
+// Generate a simple PDF document
+generateSimplePDF(lines, title) {
+  // PDF uses 72 points per inch, typical page is 612x792 points (8.5x11 inches)
+  const pageWidth = 612;
+  const pageHeight = 792;
+  const margin = 50;
+  const lineHeight = 14;
+  const fontSize = 10;
+  const titleFontSize = 16;
 
-  console.log('🏷️ ThreadCub: PDF export initiated (print dialog)');
+  // Calculate content positioning
+  let yPos = pageHeight - margin;
+  const maxWidth = pageWidth - (2 * margin);
+
+  // Build PDF content streams
+  let streamContent = '';
+  let currentPage = 1;
+  let pages = [];
+
+  const startPage = () => {
+    streamContent = '';
+    yPos = pageHeight - margin;
+  };
+
+  const addText = (text, size = fontSize, isBold = false) => {
+    if (yPos < margin + lineHeight) {
+      pages.push(streamContent);
+      startPage();
+    }
+    // Escape special PDF characters
+    const escaped = text.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+    const font = isBold ? '/F2' : '/F1';
+    streamContent += `BT ${font} ${size} Tf ${margin} ${yPos} Td (${escaped}) Tj ET\n`;
+    yPos -= lineHeight;
+  };
+
+  const addLine = () => {
+    if (yPos < margin + lineHeight) {
+      pages.push(streamContent);
+      startPage();
+    }
+    streamContent += `${margin} ${yPos + 5} m ${pageWidth - margin} ${yPos + 5} l S\n`;
+    yPos -= lineHeight;
+  };
+
+  startPage();
+
+  // Add title
+  addText(title, titleFontSize, true);
+  yPos -= 10;
+
+  // Add content
+  lines.forEach(line => {
+    if (line === '' || line.startsWith('─')) {
+      if (line.startsWith('─')) {
+        addLine();
+      } else {
+        yPos -= lineHeight / 2;
+      }
+    } else {
+      // Word wrap long lines
+      const words = line.split(' ');
+      let currentLine = '';
+      const charsPerLine = Math.floor(maxWidth / (fontSize * 0.5));
+
+      words.forEach(word => {
+        if ((currentLine + ' ' + word).length > charsPerLine) {
+          if (currentLine) addText(currentLine);
+          currentLine = word;
+        } else {
+          currentLine = currentLine ? currentLine + ' ' + word : word;
+        }
+      });
+      if (currentLine) addText(currentLine);
+    }
+  });
+
+  pages.push(streamContent);
+
+  // Build PDF structure
+  let pdf = '%PDF-1.4\n';
+  let objects = [];
+  let objectOffsets = [];
+
+  // Object 1: Catalog
+  objectOffsets.push(pdf.length);
+  pdf += '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n';
+
+  // Object 2: Pages
+  objectOffsets.push(pdf.length);
+  const pageRefs = pages.map((_, i) => `${i + 4} 0 R`).join(' ');
+  pdf += `2 0 obj\n<< /Type /Pages /Kids [${pageRefs}] /Count ${pages.length} >>\nendobj\n`;
+
+  // Object 3: Font resources
+  objectOffsets.push(pdf.length);
+  pdf += '3 0 obj\n<< /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> /F2 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> >> >>\nendobj\n';
+
+  // Page objects and content streams
+  let objNum = 4;
+  pages.forEach((content, i) => {
+    // Page object
+    objectOffsets.push(pdf.length);
+    pdf += `${objNum} 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Contents ${objNum + 1} 0 R /Resources 3 0 R >>\nendobj\n`;
+    objNum++;
+
+    // Content stream
+    objectOffsets.push(pdf.length);
+    const streamData = content;
+    pdf += `${objNum} 0 obj\n<< /Length ${streamData.length} >>\nstream\n${streamData}endstream\nendobj\n`;
+    objNum++;
+  });
+
+  // Cross-reference table
+  const xrefOffset = pdf.length;
+  pdf += 'xref\n';
+  pdf += `0 ${objNum}\n`;
+  pdf += '0000000000 65535 f \n';
+  objectOffsets.forEach(offset => {
+    pdf += offset.toString().padStart(10, '0') + ' 00000 n \n';
+  });
+
+  // Trailer
+  pdf += 'trailer\n';
+  pdf += `<< /Size ${objNum} /Root 1 0 R >>\n`;
+  pdf += 'startxref\n';
+  pdf += `${xrefOffset}\n`;
+  pdf += '%%EOF';
+
+  return pdf;
 }
 
 // Helper to escape HTML

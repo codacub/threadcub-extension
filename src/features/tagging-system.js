@@ -2754,7 +2754,7 @@ downloadTagsAsMarkdown() {
 }
 
 // Download tags as PDF (generates actual PDF file)
-downloadTagsAsPDF() {
+async downloadTagsAsPDF() {
   if (this.tags.length === 0) {
     alert('No tags to download!');
     return;
@@ -2762,6 +2762,15 @@ downloadTagsAsPDF() {
 
   const dateStr = new Date().toISOString().split('T')[0];
   const title = document.title || 'Tagged Conversation';
+
+  // Load the logo image as base64
+  let logoBase64 = null;
+  try {
+    const logoUrl = chrome.runtime.getURL('icons/threadcub-logo.png');
+    logoBase64 = await this.loadImageAsBase64(logoUrl);
+  } catch (e) {
+    console.log('🏷️ ThreadCub: Could not load logo for PDF:', e);
+  }
 
   // Separate tags and anchors
   const tags = this.tags.filter(item => item.type !== 'anchor');
@@ -2817,8 +2826,8 @@ downloadTagsAsPDF() {
     });
   }
 
-  // Generate minimal PDF
-  const pdfContent = this.generateSimplePDF(lines, title);
+  // Generate minimal PDF with logo
+  const pdfContent = this.generateSimplePDF(lines, title, logoBase64);
 
   const blob = new Blob([pdfContent], { type: 'application/pdf' });
   const url = URL.createObjectURL(blob);
@@ -2833,8 +2842,33 @@ downloadTagsAsPDF() {
   console.log('🏷️ ThreadCub: Tags downloaded as PDF');
 }
 
-// Generate a simple PDF document
-generateSimplePDF(lines, title) {
+// Load an image as base64 string
+async loadImageAsBase64(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      // Get as JPEG for smaller size and better PDF compatibility
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+      const base64 = dataUrl.split(',')[1];
+      resolve({
+        data: base64,
+        width: img.width,
+        height: img.height
+      });
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+// Generate a simple PDF document with optional logo
+generateSimplePDF(lines, title, logoData = null) {
   // PDF uses 72 points per inch, typical page is 612x792 points (8.5x11 inches)
   const pageWidth = 612;
   const pageHeight = 792;
@@ -2842,6 +2876,14 @@ generateSimplePDF(lines, title) {
   const lineHeight = 14;
   const fontSize = 10;
   const titleFontSize = 16;
+
+  // Logo dimensions (target height ~60px, maintain aspect ratio)
+  const logoHeight = 60;
+  let logoWidth = 60;
+  if (logoData) {
+    const aspectRatio = logoData.width / logoData.height;
+    logoWidth = logoHeight * aspectRatio;
+  }
 
   // Calculate content positioning
   let yPos = pageHeight - margin;
@@ -2851,13 +2893,15 @@ generateSimplePDF(lines, title) {
   let streamContent = '';
   let currentPage = 1;
   let pages = [];
+  let isFirstPage = true;
 
   const startPage = () => {
     streamContent = '';
     yPos = pageHeight - margin;
+    isFirstPage = pages.length === 0;
   };
 
-  const addText = (text, size = fontSize, isBold = false) => {
+  const addText = (text, size = fontSize, isBold = false, centered = false) => {
     if (yPos < margin + lineHeight) {
       pages.push(streamContent);
       startPage();
@@ -2865,7 +2909,13 @@ generateSimplePDF(lines, title) {
     // Escape special PDF characters
     const escaped = text.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
     const font = isBold ? '/F2' : '/F1';
-    streamContent += `BT ${font} ${size} Tf ${margin} ${yPos} Td (${escaped}) Tj ET\n`;
+    let xPos = margin;
+    if (centered) {
+      // Approximate text width (rough estimate)
+      const textWidth = escaped.length * size * 0.5;
+      xPos = (pageWidth - textWidth) / 2;
+    }
+    streamContent += `BT ${font} ${size} Tf ${xPos} ${yPos} Td (${escaped}) Tj ET\n`;
     yPos -= lineHeight;
   };
 
@@ -2880,8 +2930,16 @@ generateSimplePDF(lines, title) {
 
   startPage();
 
-  // Add title
-  addText(title, titleFontSize, true);
+  // Add logo at top center if available
+  if (logoData) {
+    const logoX = (pageWidth - logoWidth) / 2;
+    const logoY = yPos - logoHeight;
+    streamContent += `q ${logoWidth} 0 0 ${logoHeight} ${logoX} ${logoY} cm /Logo Do Q\n`;
+    yPos -= (logoHeight + 20); // Logo height + spacing below
+  }
+
+  // Add title (centered)
+  addText(title, titleFontSize, true, true);
   yPos -= 10;
 
   // Add content
@@ -2914,7 +2972,6 @@ generateSimplePDF(lines, title) {
 
   // Build PDF structure
   let pdf = '%PDF-1.4\n';
-  let objects = [];
   let objectOffsets = [];
 
   // Object 1: Catalog
@@ -2923,15 +2980,34 @@ generateSimplePDF(lines, title) {
 
   // Object 2: Pages
   objectOffsets.push(pdf.length);
-  const pageRefs = pages.map((_, i) => `${i + 4} 0 R`).join(' ');
+  // Calculate page object numbers (they start after resources and optional image)
+  const resourceObjNum = 3;
+  const imageObjNum = logoData ? 4 : null;
+  const firstPageObjNum = logoData ? 5 : 4;
+  const pageRefs = pages.map((_, i) => `${firstPageObjNum + (i * 2)} 0 R`).join(' ');
   pdf += `2 0 obj\n<< /Type /Pages /Kids [${pageRefs}] /Count ${pages.length} >>\nendobj\n`;
 
-  // Object 3: Font resources
+  // Object 3: Resources (fonts and optional image XObject)
   objectOffsets.push(pdf.length);
-  pdf += '3 0 obj\n<< /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> /F2 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> >> >>\nendobj\n';
+  let resourcesDict = '/Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> /F2 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> >>';
+  if (logoData) {
+    resourcesDict += ` /XObject << /Logo ${imageObjNum} 0 R >>`;
+  }
+  pdf += `3 0 obj\n<< ${resourcesDict} >>\nendobj\n`;
+
+  // Object 4: Image XObject (if logo provided)
+  let objNum = 4;
+  if (logoData) {
+    objectOffsets.push(pdf.length);
+    const imageData = atob(logoData.data);
+    pdf += `${objNum} 0 obj\n<< /Type /XObject /Subtype /Image /Width ${logoData.width} /Height ${logoData.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${imageData.length} >>\nstream\n`;
+    // Add binary image data
+    pdf += imageData;
+    pdf += '\nendstream\nendobj\n';
+    objNum++;
+  }
 
   // Page objects and content streams
-  let objNum = 4;
   pages.forEach((content, i) => {
     // Page object
     objectOffsets.push(pdf.length);

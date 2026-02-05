@@ -532,7 +532,9 @@ class ThreadCubSidePanel {
           ${this.createPriorityButton('high')}
           ${this.createPriorityButton('medium')}
           ${this.createPriorityButton('low')}
-          ${this.createAddTagButton()}
+          ${/* TODO: Re-enable when custom tag functionality is implemented
+          this.createAddTagButton()
+          */ ''}
         </div>
 
         <div class="tag-actions">
@@ -549,6 +551,7 @@ class ThreadCubSidePanel {
     `;
   }
 
+  // TODO: Re-enable when custom tag functionality is implemented
   createAddTagButton() { // Removed 'tokens' parameter
     return `
       <button class="priority-btn add-tag-btn">

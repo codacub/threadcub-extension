@@ -2256,22 +2256,120 @@ createSidePanel() {
         CLOSE
       </button>
 
-      <button id="threadcub-download-json" style="
+      <div id="threadcub-export-menu" style="
+        position: relative;
         flex: 1;
-        padding: 12px 16px;
-        background: #99DAFA;
-        border: 1px solid #99DAFA;
-        border-radius: 8px;
-        font-size: 14px;
-        font-weight: 600;
-        color: #4C596E;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        backdrop-filter: blur(10px);
-        text-align: center;
       ">
-        DOWNLOAD
-      </button>
+        <button id="threadcub-export-btn" style="
+          width: 100%;
+          padding: 12px 16px;
+          background: #99DAFA;
+          border: 1px solid #99DAFA;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: 600;
+          color: #4C596E;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          backdrop-filter: blur(10px);
+          text-align: center;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+        ">
+          <span>EXPORT</span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="1"></circle>
+            <circle cx="12" cy="5" r="1"></circle>
+            <circle cx="12" cy="19" r="1"></circle>
+          </svg>
+        </button>
+        <div id="threadcub-export-dropdown" style="
+          position: absolute;
+          bottom: calc(100% + 8px);
+          left: 0;
+          right: 0;
+          background: white;
+          border-radius: 8px;
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.08);
+          opacity: 0;
+          visibility: hidden;
+          transform: translateY(8px);
+          transition: all 0.2s ease;
+          z-index: 10001;
+          overflow: hidden;
+        ">
+          <button class="threadcub-export-option" data-format="json" style="
+            width: 100%;
+            padding: 12px 16px;
+            background: transparent;
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: background 0.15s ease;
+          ">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path>
+              <path d="M14 2v4a2 2 0 0 0 2 2h4"></path>
+              <path d="M10 12a1 1 0 0 0-1 1v1a1 1 0 0 1-1 1 1 1 0 0 1 1 1v1a1 1 0 0 0 1 1"></path>
+              <path d="M14 18a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1 1 1 0 0 1-1-1v-1a1 1 0 0 0-1-1"></path>
+            </svg>
+            <span>Download as JSON</span>
+          </button>
+          <button class="threadcub-export-option" data-format="markdown" style="
+            width: 100%;
+            padding: 12px 16px;
+            background: transparent;
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: background 0.15s ease;
+          ">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path>
+              <path d="M14 2v4a2 2 0 0 0 2 2h4"></path>
+              <path d="M10 9H8"></path>
+              <path d="M16 13H8"></path>
+              <path d="M16 17H8"></path>
+            </svg>
+            <span>Download as Markdown</span>
+          </button>
+          <button class="threadcub-export-option" data-format="pdf" style="
+            width: 100%;
+            padding: 12px 16px;
+            background: transparent;
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: background 0.15s ease;
+          ">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path>
+              <path d="M14 2v4a2 2 0 0 0 2 2h4"></path>
+              <path d="M10 9H8"></path>
+              <path d="M16 13H8"></path>
+              <path d="M16 17H8"></path>
+            </svg>
+            <span>Download as PDF</span>
+          </button>
+        </div>
+      </div>
     </div>
   `;
   
@@ -2338,23 +2436,59 @@ setupPanelEventListeners() {
     }
   });
 
-  // Download button
-  const downloadBtn = this.sidePanel.querySelector('#threadcub-download-json');
-  downloadBtn.addEventListener('click', () => {
-    this.downloadTagsAsJSON();
+  // Export menu
+  const exportBtn = this.sidePanel.querySelector('#threadcub-export-btn');
+  const exportDropdown = this.sidePanel.querySelector('#threadcub-export-dropdown');
+  const exportOptions = this.sidePanel.querySelectorAll('.threadcub-export-option');
+
+  // Toggle dropdown on button click
+  exportBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = exportDropdown.style.opacity === '1';
+    if (isOpen) {
+      this.closeExportDropdown();
+    } else {
+      this.openExportDropdown();
+    }
   });
-  
-  // Download button hover effects
-  downloadBtn.addEventListener('mouseenter', () => {
-    downloadBtn.style.background = '#7DD3F8';
-    downloadBtn.style.borderColor = '#7DD3F8';
-    downloadBtn.style.transform = 'translateY(-1px)';
+
+  // Export button hover effects
+  exportBtn.addEventListener('mouseenter', () => {
+    exportBtn.style.background = '#7DD3F8';
+    exportBtn.style.borderColor = '#7DD3F8';
+    exportBtn.style.transform = 'translateY(-1px)';
   });
-  
-  downloadBtn.addEventListener('mouseleave', () => {
-    downloadBtn.style.background = '#99DAFA';
-    downloadBtn.style.borderColor = '#99DAFA';
-    downloadBtn.style.transform = 'translateY(0)';
+
+  exportBtn.addEventListener('mouseleave', () => {
+    exportBtn.style.background = '#99DAFA';
+    exportBtn.style.borderColor = '#99DAFA';
+    exportBtn.style.transform = 'translateY(0)';
+  });
+
+  // Export option click handlers
+  exportOptions.forEach(option => {
+    option.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const format = option.getAttribute('data-format');
+      this.handleExport(format);
+      this.closeExportDropdown();
+    });
+
+    // Hover effects for options
+    option.addEventListener('mouseenter', () => {
+      option.style.background = '#f3f4f6';
+    });
+
+    option.addEventListener('mouseleave', () => {
+      option.style.background = 'transparent';
+    });
+  });
+
+  // Close dropdown when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#threadcub-export-menu')) {
+      this.closeExportDropdown();
+    }
   });
   
   // Close panel button
@@ -2379,13 +2513,49 @@ setupPanelEventListeners() {
   });
 }
 
+// Export dropdown helpers
+openExportDropdown() {
+  const dropdown = this.sidePanel.querySelector('#threadcub-export-dropdown');
+  if (dropdown) {
+    dropdown.style.opacity = '1';
+    dropdown.style.visibility = 'visible';
+    dropdown.style.transform = 'translateY(0)';
+  }
+}
+
+closeExportDropdown() {
+  const dropdown = this.sidePanel.querySelector('#threadcub-export-dropdown');
+  if (dropdown) {
+    dropdown.style.opacity = '0';
+    dropdown.style.visibility = 'hidden';
+    dropdown.style.transform = 'translateY(8px)';
+  }
+}
+
+// Handle export based on format
+handleExport(format) {
+  switch (format) {
+    case 'json':
+      this.downloadTagsAsJSON();
+      break;
+    case 'markdown':
+      this.downloadTagsAsMarkdown();
+      break;
+    case 'pdf':
+      this.downloadTagsAsPDF();
+      break;
+    default:
+      console.warn('Unknown export format:', format);
+  }
+}
+
 // Download tags as JSON
 downloadTagsAsJSON() {
   if (this.tags.length === 0) {
     alert('No tags to download!');
     return;
   }
-  
+
   const tagsData = {
     title: document.title || 'Tagged Conversation',
     url: window.location.href,
@@ -2394,7 +2564,7 @@ downloadTagsAsJSON() {
     totalTags: this.tags.length,
     tags: this.tags
   };
-  
+
   const blob = new Blob([JSON.stringify(tagsData, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -2404,8 +2574,229 @@ downloadTagsAsJSON() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  
+
   console.log('🏷️ ThreadCub: Tags downloaded as JSON');
+}
+
+// Download tags as Markdown
+downloadTagsAsMarkdown() {
+  if (this.tags.length === 0) {
+    alert('No tags to download!');
+    return;
+  }
+
+  const dateStr = new Date().toISOString().split('T')[0];
+  const title = document.title || 'Tagged Conversation';
+
+  // Separate tags and anchors
+  const tags = this.tags.filter(item => item.type !== 'anchor');
+  const anchors = this.tags.filter(item => item.type === 'anchor');
+
+  let markdown = `# ${title}\n\n`;
+  markdown += `**Source:** ${window.location.href}\n`;
+  markdown += `**Platform:** ${this.currentPlatform}\n`;
+  markdown += `**Exported:** ${new Date().toLocaleString()}\n`;
+  markdown += `**Total Items:** ${this.tags.length} (${tags.length} tags, ${anchors.length} anchors)\n\n`;
+  markdown += `---\n\n`;
+
+  // Tags section
+  if (tags.length > 0) {
+    markdown += `## Tags\n\n`;
+    tags.forEach((tag, index) => {
+      markdown += `### ${index + 1}. ${tag.categoryLabel || 'Tag'}\n\n`;
+      markdown += `> ${tag.text}\n\n`;
+
+      if (tag.note) {
+        markdown += `**Note:** ${tag.note}\n\n`;
+      }
+
+      if (tag.tags && tag.tags.length > 0) {
+        const priorities = tag.tags.map(t => `\`${t.label}\``).join(', ');
+        markdown += `**Priority Tags:** ${priorities}\n\n`;
+      }
+
+      markdown += `*Created: ${new Date(tag.timestamp).toLocaleString()}*\n\n`;
+      markdown += `---\n\n`;
+    });
+  }
+
+  // Anchors section
+  if (anchors.length > 0) {
+    markdown += `## Anchors\n\n`;
+    anchors.forEach((anchor, index) => {
+      markdown += `### ${index + 1}. Anchor\n\n`;
+      markdown += `> ${anchor.snippet || anchor.text}\n\n`;
+
+      if (anchor.note) {
+        markdown += `**Note:** ${anchor.note}\n\n`;
+      }
+
+      if (anchor.tags && anchor.tags.length > 0) {
+        const priorities = anchor.tags.map(t => `\`${t.label}\``).join(', ');
+        markdown += `**Priority Tags:** ${priorities}\n\n`;
+      }
+
+      markdown += `*Created: ${new Date(anchor.createdAt || anchor.timestamp).toLocaleString()}*\n\n`;
+      markdown += `---\n\n`;
+    });
+  }
+
+  const blob = new Blob([markdown], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `threadcub-tags-${dateStr}.md`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  console.log('🏷️ ThreadCub: Tags downloaded as Markdown');
+}
+
+// Download tags as PDF
+downloadTagsAsPDF() {
+  if (this.tags.length === 0) {
+    alert('No tags to download!');
+    return;
+  }
+
+  const dateStr = new Date().toISOString().split('T')[0];
+  const title = document.title || 'Tagged Conversation';
+
+  // Separate tags and anchors
+  const tags = this.tags.filter(item => item.type !== 'anchor');
+  const anchors = this.tags.filter(item => item.type === 'anchor');
+
+  // Create a printable HTML document
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    alert('Please allow popups to download PDF');
+    return;
+  }
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>${title} - ThreadCub Export</title>
+      <style>
+        * { box-sizing: border-box; }
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          line-height: 1.6;
+          color: #1f2937;
+          max-width: 800px;
+          margin: 0 auto;
+          padding: 40px 20px;
+        }
+        h1 { color: #7C3AED; margin-bottom: 8px; }
+        h2 { color: #4b5563; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px; margin-top: 32px; }
+        h3 { color: #374151; margin-bottom: 8px; }
+        .meta { color: #6b7280; font-size: 14px; margin-bottom: 24px; }
+        .meta p { margin: 4px 0; }
+        .item {
+          background: #f9fafb;
+          border-left: 4px solid #7C3AED;
+          padding: 16px;
+          margin: 16px 0;
+          border-radius: 0 8px 8px 0;
+        }
+        .item.anchor { border-left-color: #10b981; }
+        .quote {
+          font-style: italic;
+          color: #4b5563;
+          padding: 12px;
+          background: white;
+          border-radius: 4px;
+          margin-bottom: 12px;
+        }
+        .note { color: #374151; margin: 8px 0; }
+        .note strong { color: #7C3AED; }
+        .priority-tag {
+          display: inline-block;
+          padding: 2px 8px;
+          border-radius: 4px;
+          font-size: 12px;
+          font-weight: 600;
+          margin-right: 4px;
+        }
+        .priority-high { background: #fef2f2; color: #dc2626; }
+        .priority-medium { background: #fffbeb; color: #d97706; }
+        .priority-low { background: #f0fdf4; color: #16a34a; }
+        .timestamp { color: #9ca3af; font-size: 12px; margin-top: 8px; }
+        hr { border: none; border-top: 1px solid #e5e7eb; margin: 24px 0; }
+        @media print {
+          body { padding: 20px; }
+          .item { break-inside: avoid; }
+        }
+      </style>
+    </head>
+    <body>
+      <h1>${title}</h1>
+      <div class="meta">
+        <p><strong>Source:</strong> ${window.location.href}</p>
+        <p><strong>Platform:</strong> ${this.currentPlatform}</p>
+        <p><strong>Exported:</strong> ${new Date().toLocaleString()}</p>
+        <p><strong>Total Items:</strong> ${this.tags.length} (${tags.length} tags, ${anchors.length} anchors)</p>
+      </div>
+      <hr>
+
+      ${tags.length > 0 ? `
+        <h2>Tags</h2>
+        ${tags.map((tag, index) => `
+          <div class="item">
+            <h3>${index + 1}. ${tag.categoryLabel || 'Tag'}</h3>
+            <div class="quote">${this.escapeHtml(tag.text)}</div>
+            ${tag.note ? `<div class="note"><strong>Note:</strong> ${this.escapeHtml(tag.note)}</div>` : ''}
+            ${tag.tags && tag.tags.length > 0 ? `
+              <div>
+                ${tag.tags.map(t => `<span class="priority-tag priority-${t.priority || 'medium'}">${t.label}</span>`).join('')}
+              </div>
+            ` : ''}
+            <div class="timestamp">Created: ${new Date(tag.timestamp).toLocaleString()}</div>
+          </div>
+        `).join('')}
+      ` : ''}
+
+      ${anchors.length > 0 ? `
+        <h2>Anchors</h2>
+        ${anchors.map((anchor, index) => `
+          <div class="item anchor">
+            <h3>${index + 1}. Anchor</h3>
+            <div class="quote">${this.escapeHtml(anchor.snippet || anchor.text)}</div>
+            ${anchor.note ? `<div class="note"><strong>Note:</strong> ${this.escapeHtml(anchor.note)}</div>` : ''}
+            ${anchor.tags && anchor.tags.length > 0 ? `
+              <div>
+                ${anchor.tags.map(t => `<span class="priority-tag priority-${t.priority || 'medium'}">${t.label}</span>`).join('')}
+              </div>
+            ` : ''}
+            <div class="timestamp">Created: ${new Date(anchor.createdAt || anchor.timestamp).toLocaleString()}</div>
+          </div>
+        `).join('')}
+      ` : ''}
+
+      <script>
+        window.onload = function() {
+          window.print();
+          setTimeout(function() { window.close(); }, 500);
+        };
+      </script>
+    </body>
+    </html>
+  `;
+
+  printWindow.document.write(htmlContent);
+  printWindow.document.close();
+
+  console.log('🏷️ ThreadCub: PDF export initiated (print dialog)');
+}
+
+// Helper to escape HTML
+escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }
 
 // === END SECTION 1D ===

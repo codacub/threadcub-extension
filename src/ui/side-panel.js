@@ -222,6 +222,71 @@ class ThreadCubSidePanel {
     this.jumpToTagViaTextSearch(tag);
   }
 
+  // Copy tag text to clipboard
+  copyTagText(card, tagId) {
+    const tag = this.taggingSystem.tags.find(t => t.id === tagId);
+    if (!tag) {
+      console.log('Tag not found:', tagId);
+      return;
+    }
+
+    navigator.clipboard.writeText(tag.text).then(() => {
+      // Show feedback
+      this.showCopiedFeedback(card);
+    }).catch(err => {
+      console.error('Failed to copy:', err);
+    });
+  }
+
+  // Show "Copied!" feedback on the card
+  showCopiedFeedback(card) {
+    const copyBtn = card.querySelector('[data-action="copy"]');
+    if (!copyBtn) return;
+
+    // Create feedback element
+    const feedback = document.createElement('span');
+    feedback.textContent = 'Copied!';
+    feedback.style.cssText = `
+      position: absolute;
+      bottom: calc(100% + 4px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #10b981;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 500;
+      white-space: nowrap;
+      z-index: 1000;
+      animation: fadeInOut 1.5s ease forwards;
+    `;
+
+    // Add animation styles if not already present
+    if (!document.getElementById('threadcub-copy-feedback-styles')) {
+      const styleSheet = document.createElement('style');
+      styleSheet.id = 'threadcub-copy-feedback-styles';
+      styleSheet.textContent = `
+        @keyframes fadeInOut {
+          0% { opacity: 0; transform: translateX(-50%) translateY(4px); }
+          15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+          85% { opacity: 1; transform: translateX(-50%) translateY(0); }
+          100% { opacity: 0; transform: translateX(-50%) translateY(-4px); }
+        }
+      `;
+      document.head.appendChild(styleSheet);
+    }
+
+    // Position the button relatively if needed
+    copyBtn.style.position = 'relative';
+    copyBtn.appendChild(feedback);
+
+    // Remove after animation
+    setTimeout(() => {
+      feedback.remove();
+    }, 1500);
+  }
+
   // Jump using rangeInfo (stored selection context)
   jumpToTagViaRangeInfo(tag) {
     const rangeInfo = tag.rangeInfo;
@@ -466,6 +531,7 @@ class ThreadCubSidePanel {
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="4" r="2"/><circle cx="18" cy="8" r="2"/><circle cx="20" cy="16" r="2"/><path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z"/></svg>
             </div>
             <div class="action-buttons">
+              ${this.createActionButton('copy', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>', tag.id)}
               ${this.createActionButton('jump-to-tag', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4v7a4 4 0 0 1-4 4H4"/><path d="m9 10-5 5 5 5"/></svg>', tag.id)}
               ${this.createActionButton('edit-note', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg>', tag.id)}
               ${this.createActionButton('add-tag', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></svg>', tag.id)}
@@ -507,6 +573,7 @@ class ThreadCubSidePanel {
   createActionButton(action, iconSvg, tagId) {
     // Map action to tooltip text
     const tooltipMap = {
+      'copy': 'Copy',
       'jump-to': 'Jump to location',
       'jump-to-tag': 'Jump to location',
       'edit-note': 'Edit note',
@@ -765,6 +832,15 @@ class ThreadCubSidePanel {
   }
 
   setupCardActionListeners(card, tagId) {
+    // Copy to clipboard
+    const copyBtn = card.querySelector('[data-action="copy"]');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.copyTagText(card, tagId);
+      });
+    }
+
     // Jump to tag
     const jumpBtn = card.querySelector('[data-action="jump-to-tag"]');
     if (jumpBtn) {

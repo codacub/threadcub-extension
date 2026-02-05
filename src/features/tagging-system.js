@@ -1267,57 +1267,13 @@ addTaggingStyles() {
     background: #FFD700 !important;
     cursor: pointer !important;
     transition: background-color 0.2s ease !important;
-    position: relative !important;
   }
 
   .threadcub-highlight:hover {
     background-color: #ffeb3b !important;
   }
 
-  /* Copy button for highlights */
-  .threadcub-copy-btn {
-    position: absolute !important;
-    top: -8px !important;
-    right: -8px !important;
-    width: 24px !important;
-    height: 24px !important;
-    background: white !important;
-    border: 1px solid #e2e8f0 !important;
-    border-radius: 4px !important;
-    cursor: pointer !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    opacity: 0 !important;
-    visibility: hidden !important;
-    transition: all 0.15s ease !important;
-    z-index: 10000001 !important;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-    padding: 0 !important;
-  }
-
-  .threadcub-highlight:hover .threadcub-copy-btn,
-  .threadcub-anchor-highlight:hover .threadcub-copy-btn {
-    opacity: 1 !important;
-    visibility: visible !important;
-  }
-
-  .threadcub-copy-btn:hover {
-    background: #f1f5f9 !important;
-    border-color: #cbd5e1 !important;
-  }
-
-  .threadcub-copy-btn svg {
-    width: 14px !important;
-    height: 14px !important;
-    stroke: #64748b !important;
-  }
-
-  .threadcub-copy-btn:hover svg {
-    stroke: #475569 !important;
-  }
-
-  /* Copied feedback toast */
+  /* Copied feedback toast (used by side panel copy button) */
   .threadcub-copied-toast {
     position: fixed !important;
     background: #1e293b !important;
@@ -1341,7 +1297,6 @@ addTaggingStyles() {
 
   /* Anchor highlight */
   .threadcub-anchor-highlight {
-    position: relative !important;
   }
 
   .threadcub-tag-item:hover {
@@ -2043,22 +1998,15 @@ applyAnchorHighlight(range, anchorId) {
       background-color: rgba(124, 58, 237, 0.15) !important;
       cursor: pointer !important;
       transition: background-color 0.2s ease !important;
-      position: relative !important;
     `;
 
     // Surround range with highlight span
     range.surroundContents(span);
 
-    // Add copy button
-    const copyBtn = this.createCopyButton(textContent);
-    span.appendChild(copyBtn);
-
     // Add click listener to open side panel and switch to anchors tab
     span.addEventListener('click', (e) => {
-      if (!e.target.closest('.threadcub-copy-btn')) {
-        e.stopPropagation();
-        this.showSidePanel('anchors');
-      }
+      e.stopPropagation();
+      this.showSidePanel('anchors');
     });
 
     // Add hover effects
@@ -2091,38 +2039,27 @@ applySmartAnchorHighlight(range, anchorId) {
     if (textNodes.length === 0) {
       // Simple fallback
       const contents = range.extractContents();
-      const textContent = contents.textContent;
       const span = document.createElement('span');
       span.className = 'threadcub-anchor-highlight';
       span.setAttribute('data-anchor-id', anchorId);
       span.style.cssText = `
         background-color: rgba(124, 58, 237, 0.15) !important;
         cursor: pointer !important;
-        position: relative !important;
       `;
       span.appendChild(contents);
-
-      // Add copy button
-      const copyBtn = this.createCopyButton(textContent);
-      span.appendChild(copyBtn);
 
       range.insertNode(span);
 
       // Add click listener
       span.addEventListener('click', (e) => {
-        if (!e.target.closest('.threadcub-copy-btn')) {
-          e.stopPropagation();
-          this.showSidePanel('anchors');
-        }
+        e.stopPropagation();
+        this.showSidePanel('anchors');
       });
 
       if (!this.anchorElements) this.anchorElements = new Map();
       this.anchorElements.set(anchorId, [span]);
       return;
     }
-
-    // Collect full text content for copy
-    const fullTextContent = textNodes.map(node => node.textContent).join('');
 
     // Wrap each text node
     const highlightElements = [];
@@ -2140,22 +2077,12 @@ applySmartAnchorHighlight(range, anchorId) {
       textNode.parentNode.replaceChild(span, textNode);
 
       span.addEventListener('click', (e) => {
-        if (!e.target.closest('.threadcub-copy-btn')) {
-          e.stopPropagation();
-          this.showSidePanel('anchors');
-        }
+        e.stopPropagation();
+        this.showSidePanel('anchors');
       });
 
       highlightElements.push(span);
     });
-
-    // Add copy button to first element
-    if (highlightElements.length > 0) {
-      const firstSpan = highlightElements[0];
-      firstSpan.style.position = 'relative';
-      const copyBtn = this.createCopyButton(fullTextContent);
-      firstSpan.appendChild(copyBtn);
-    }
 
     if (!this.anchorElements) this.anchorElements = new Map();
     this.anchorElements.set(anchorId, highlightElements);
@@ -3667,7 +3594,6 @@ applySmartHighlight(range, tagId) {
       
       try {
         const contents = workingRange.extractContents();
-        const textContent = contents.textContent; // Store text before moving to span
         const span = document.createElement('span');
         span.className = 'threadcub-highlight';
         span.setAttribute('data-tag-id', tagId);
@@ -3675,23 +3601,15 @@ applySmartHighlight(range, tagId) {
           background: #FFD700 !important;
           cursor: pointer !important;
           transition: background-color 0.2s ease !important;
-          position: relative !important;
         `;
 
         span.appendChild(contents);
-
-        // Add copy button
-        const copyBtn = this.createCopyButton(textContent);
-        span.appendChild(copyBtn);
-
         workingRange.insertNode(span);
 
         // Add click listener to open side panel to tags tab
         span.addEventListener('click', (e) => {
-          if (!e.target.closest('.threadcub-copy-btn')) {
-            e.stopPropagation();
-            this.showSidePanel('tags');
-          }
+          e.stopPropagation();
+          this.showSidePanel('tags');
         });
 
         // Store for cleanup
@@ -3720,9 +3638,6 @@ applySmartHighlight(range, tagId) {
       })),
       rangeInfo: this.captureRangeInfo(range)
     });
-    
-    // Collect the full text content for copy functionality
-    const fullTextContent = textNodes.map(node => node.textContent).join('');
 
     // Apply highlighting to each text node
     const highlightElements = [];
@@ -3732,24 +3647,6 @@ applySmartHighlight(range, tagId) {
         highlightElements.push(highlightSpan);
       }
     });
-
-    // Add copy button to the first highlight element
-    if (highlightElements.length > 0) {
-      const firstSpan = highlightElements[0];
-      firstSpan.style.position = 'relative';
-      const copyBtn = this.createCopyButton(fullTextContent);
-      firstSpan.appendChild(copyBtn);
-
-      // Update click listener to not trigger when clicking copy button
-      const originalClick = firstSpan.onclick;
-      firstSpan.onclick = null;
-      firstSpan.addEventListener('click', (e) => {
-        if (!e.target.closest('.threadcub-copy-btn')) {
-          e.stopPropagation();
-          this.showSidePanel('tags');
-        }
-      });
-    }
 
     // Store highlight elements for cleanup
     if (!this.highlightElements) {
@@ -3837,21 +3734,18 @@ wrapTextNodeSafely(textNode, tagId) {
       padding: 0 !important;
       margin: 0 !important;
       border: none !important;
-      position: relative !important;
     `;
-    
+
     // Move text content to span
     span.textContent = textNode.textContent;
-    
+
     // Replace text node with highlighted span
     textNode.parentNode.replaceChild(span, textNode);
 
-    // Add click listener to open side panel to tags tab (but not when clicking copy button)
+    // Add click listener to open side panel to tags tab
     span.addEventListener('click', (e) => {
-      if (!e.target.closest('.threadcub-copy-btn')) {
-        e.stopPropagation();
-        this.showSidePanel('tags');
-      }
+      e.stopPropagation();
+      this.showSidePanel('tags');
     });
 
     // Add hover effects

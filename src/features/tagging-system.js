@@ -50,21 +50,24 @@ window.ThreadCubTagging = class ThreadCubTagging {
     this.createContextMenu();
     this.createSidePanel();
     this.setupEventListeners();
-    
+
     // Initialize current storage key
     this.currentStorageKey = this.generateConversationKey();
-    
+
     // ADD THIS LINE:
     this.initializeSidePanelUI();
-    
+
     // Setup URL monitoring for storage key changes
     this.setupUrlMonitoring();
-    
+
+    // Setup cache clearing detection
+    this.setupCacheClearingDetection();
+
     // NEW: Load persisted tags with delay for DOM stabilization
     setTimeout(async () => {
       await this.loadPersistedTags();
     }, 1000);
-    
+
     console.log('🏷️ ThreadCub: Tagging system ready with enhanced persistence and URL monitoring');
   }
 
@@ -125,6 +128,80 @@ window.ThreadCubTagging = class ThreadCubTagging {
         }
       }, 100);
     };
+  }
+
+  // Setup cache clearing detection - clears Chrome storage when localStorage is cleared
+  setupCacheClearingDetection() {
+    const markerKey = 'threadcub-cache-marker';
+
+    // Check on init if localStorage was cleared but Chrome storage still has data
+    this.checkForCacheClearing(markerKey);
+
+    // Listen for storage events (fired when localStorage is modified from another context)
+    window.addEventListener('storage', (event) => {
+      if (event.key === null) {
+        // All localStorage was cleared
+        console.log('🏷️ ThreadCub: localStorage cleared, syncing Chrome storage...');
+        this.clearChromeStorageForCurrentPage();
+      } else if (event.key === markerKey && event.newValue === null) {
+        // Our marker was specifically removed
+        console.log('🏷️ ThreadCub: Cache marker removed, syncing Chrome storage...');
+        this.clearChromeStorageForCurrentPage();
+      }
+    });
+
+    // Set the marker to indicate localStorage is intact
+    localStorage.setItem(markerKey, Date.now().toString());
+  }
+
+  // Check if localStorage was cleared (marker missing) but we have Chrome storage data
+  async checkForCacheClearing(markerKey) {
+    const marker = localStorage.getItem(markerKey);
+
+    if (!marker && this.canUseChromStorage()) {
+      // Marker is missing - localStorage was likely cleared
+      // Check if Chrome storage has data for this page
+      const storageKey = this.currentStorageKey || this.generateConversationKey();
+
+      try {
+        const data = await this.loadFromChromStorage(storageKey);
+        if (data && data.tags && data.tags.length > 0) {
+          console.log('🏷️ ThreadCub: Cache cleared detected - clearing Chrome storage for consistency');
+          await this.clearChromeStorageForCurrentPage();
+        }
+      } catch (e) {
+        console.log('🏷️ ThreadCub: Error checking Chrome storage during cache clear detection:', e);
+      }
+    }
+
+    // Restore the marker
+    localStorage.setItem(markerKey, Date.now().toString());
+  }
+
+  // Clear Chrome storage data for the current page
+  async clearChromeStorageForCurrentPage() {
+    if (!this.canUseChromStorage()) return;
+
+    const storageKey = this.currentStorageKey || this.generateConversationKey();
+
+    try {
+      await new Promise((resolve) => {
+        chrome.storage.local.remove([storageKey], () => {
+          console.log('🏷️ ThreadCub: Chrome storage cleared for key:', storageKey);
+          resolve();
+        });
+      });
+
+      // Clear local state
+      this.tags = [];
+
+      // Update UI if panel is open
+      if (this.isPanelOpen) {
+        this.updateTagsList();
+      }
+    } catch (e) {
+      console.log('🏷️ ThreadCub: Error clearing Chrome storage:', e);
+    }
   }
 
   // NEW: Handle URL changes and transfer tags if needed
@@ -1094,23 +1171,26 @@ window.ThreadCubTagging = class ThreadCubTagging {
     this.applySmartHighlight(this.selectedRange, tag.id);
     
     await this.saveTagsToPersistentStorage();
-    
-    if (this.tags.length === 1) {
-      this.showSidePanel();
+
+    // Open side panel to Tags tab
+    if (!this.isPanelOpen) {
+      this.showSidePanel('tags');
     } else {
-      this.updateTagsList();
+      if (this.sidePanelUI && this.sidePanelUI.switchTab) {
+        this.sidePanelUI.switchTab('tags');
+      }
     }
-    
+
     this.hideContextMenu();
-    
+
     this.isAddingMore = false;
-    
+
     console.log('🏷️ ThreadCub: Tag created and persisted successfully:', tag);
   }
 
   async createTagFromSelectionWithoutCategory() {
     if (!this.selectedText || !this.selectedRange) return;
-    
+
     const tag = {
       id: Date.now(),
       text: this.selectedText,
@@ -1119,21 +1199,24 @@ window.ThreadCubTagging = class ThreadCubTagging {
       timestamp: new Date().toISOString(),
       rangeInfo: this.captureEnhancedRangeInfo(this.selectedRange)
     };
-    
+
     this.tags.push(tag);
-    
+
     this.removeTemporaryHighlight();
-    
+
     this.applySmartHighlight(this.selectedRange, tag.id);
-    
+
     await this.saveTagsToPersistentStorage();
-    
-    if (this.tags.length === 1) {
-      this.showSidePanel();
+
+    // Open side panel to Tags tab
+    if (!this.isPanelOpen) {
+      this.showSidePanel('tags');
     } else {
-      this.updateTagsList();
+      if (this.sidePanelUI && this.sidePanelUI.switchTab) {
+        this.sidePanelUI.switchTab('tags');
+      }
     }
-    
+
     this.hideContextMenu();
     
     this.isAddingMore = false;
@@ -1686,15 +1769,13 @@ async handleCreateAnchor() {
   await this.saveTagsToPersistentStorage();
 
   // Open side panel to Anchors tab
-  if (this.tags.length === 1) {
+  if (!this.isPanelOpen) {
+    // Panel is closed - open it to Anchors tab
     this.showSidePanel('anchors');
   } else {
-    // Switch to anchors tab if panel is open
+    // Panel is already open - switch to anchors tab and update
     if (this.sidePanelUI && this.sidePanelUI.switchTab) {
       this.sidePanelUI.switchTab('anchors');
-    }
-    if (this.isPanelOpen) {
-      this.updateTagsList();
     }
   }
 
@@ -2191,23 +2272,6 @@ createSidePanel() {
       ">
         DOWNLOAD
       </button>
-
-      <button id="threadcub-clear-all" style="
-        flex: 1;
-        padding: 12px 16px;
-        background: rgba(255, 255, 255, 0.9);
-        border: 1px solid #ef4444;
-        border-radius: 8px;
-        font-size: 14px;
-        font-weight: 600;
-        color: #ef4444;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        backdrop-filter: blur(10px);
-        text-align: center;
-      ">
-        CLEAR ALL
-      </button>
     </div>
   `;
   
@@ -2313,70 +2377,6 @@ setupPanelEventListeners() {
     closeBtn.style.color = '#374151';
     closeBtn.style.transform = 'translateY(0)';
   });
-
-  // Clear All button
-  const clearBtn = this.sidePanel.querySelector('#threadcub-clear-all');
-  if (clearBtn) {
-    clearBtn.addEventListener('click', () => {
-      this.clearAllTagsAndAnchors();
-    });
-
-    // Clear button hover effects
-    clearBtn.addEventListener('mouseenter', () => {
-      clearBtn.style.background = '#ef4444';
-      clearBtn.style.color = '#ffffff';
-      clearBtn.style.transform = 'translateY(-1px)';
-    });
-
-    clearBtn.addEventListener('mouseleave', () => {
-      clearBtn.style.background = 'rgba(255, 255, 255, 0.9)';
-      clearBtn.style.color = '#ef4444';
-      clearBtn.style.transform = 'translateY(0)';
-    });
-  }
-}
-
-// Clear all tags and anchors for this page
-async clearAllTagsAndAnchors() {
-  if (this.tags.length === 0) {
-    console.log('🏷️ ThreadCub: No tags to clear');
-    return;
-  }
-
-  // Confirm with user
-  const confirmed = confirm(`Are you sure you want to clear all ${this.tags.length} tags and anchors for this page? This cannot be undone.`);
-  if (!confirmed) return;
-
-  console.log('🏷️ ThreadCub: Clearing all tags and anchors...');
-
-  // Remove all highlights from the page
-  const highlights = document.querySelectorAll('.threadcub-highlight, .threadcub-anchor-highlight');
-  highlights.forEach(el => {
-    const text = el.textContent;
-    const textNode = document.createTextNode(text);
-    el.parentNode.replaceChild(textNode, el);
-  });
-
-  // Clear the tags array
-  this.tags = [];
-
-  // Clear from storage
-  const storageKey = this.currentStorageKey || this.generateConversationKey();
-  if (this.canUseChromStorage()) {
-    try {
-      await new Promise((resolve) => {
-        chrome.storage.local.remove([storageKey], resolve);
-      });
-    } catch (e) {
-      console.log('🏷️ ThreadCub: Chrome storage clear failed, trying localStorage');
-    }
-  }
-  localStorage.removeItem(storageKey);
-
-  // Update the side panel
-  this.updateTagsList();
-
-  console.log('🏷️ ThreadCub: All tags and anchors cleared');
 }
 
 // Download tags as JSON

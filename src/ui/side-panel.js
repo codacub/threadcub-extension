@@ -162,9 +162,23 @@ class ThreadCubSidePanel {
       if (this.currentTab === 'tags') {
         tagsTab.classList.add('active');
         anchorsTab.classList.remove('active');
+        // Update inline styles to override initial values
+        tagsTab.style.borderBottom = '2px solid #7C3AED';
+        tagsTab.style.color = '#7C3AED';
+        tagsTab.style.fontWeight = '600';
+        anchorsTab.style.borderBottom = '2px solid transparent';
+        anchorsTab.style.color = '#64748b';
+        anchorsTab.style.fontWeight = '500';
       } else {
         tagsTab.classList.remove('active');
         anchorsTab.classList.add('active');
+        // Update inline styles to override initial values
+        anchorsTab.style.borderBottom = '2px solid #7C3AED';
+        anchorsTab.style.color = '#7C3AED';
+        anchorsTab.style.fontWeight = '600';
+        tagsTab.style.borderBottom = '2px solid transparent';
+        tagsTab.style.color = '#64748b';
+        tagsTab.style.fontWeight = '500';
       }
     }
   }

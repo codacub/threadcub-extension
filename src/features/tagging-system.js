@@ -2852,6 +2852,9 @@ async loadImageAsBase64(url) {
       canvas.width = img.width;
       canvas.height = img.height;
       const ctx = canvas.getContext('2d');
+      // Fill with white background first (PNG transparency becomes black in JPEG)
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0);
       // Get as JPEG for smaller size and better PDF compatibility
       const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
@@ -2930,9 +2933,9 @@ generateSimplePDF(lines, title, logoData = null) {
 
   startPage();
 
-  // Add logo at top center if available
+  // Add logo at top left if available (aligned with title)
   if (logoData) {
-    const logoX = (pageWidth - logoWidth) / 2;
+    const logoX = margin;
     const logoY = yPos - logoHeight;
     streamContent += `q ${logoWidth} 0 0 ${logoHeight} ${logoX} ${logoY} cm /Logo Do Q\n`;
     yPos -= (logoHeight + 20); // Logo height + spacing below

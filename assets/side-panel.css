@@ -320,3 +320,112 @@ div.threadcub-tag-card .action-button svg {
   text-transform: uppercase;
   transition: all var(--transition-base);
 }
+
+/* ===== TOOLTIP STYLES ===== */
+.action-button {
+  position: relative;
+}
+
+.action-button::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: #1e293b;
+  color: white;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.15s ease;
+  pointer-events: none;
+  z-index: 10000;
+}
+
+.action-button:hover::after {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ===== ANCHOR ITEM STYLES ===== */
+.threadcub-anchor-item {
+  background: var(--color-white);
+  border: var(--border-width-thin) solid var(--color-gray-200);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-4);
+  margin-bottom: var(--spacing-3);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing-3);
+  transition: all var(--transition-base);
+}
+
+.threadcub-anchor-item:hover {
+  box-shadow: var(--shadow-card-hover);
+}
+
+.anchor-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.anchor-item-text {
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--color-gray-700);
+  font-family: var(--font-family-primary);
+}
+
+.anchor-item-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  flex-shrink: 0;
+}
+
+/* Anchor action button styling - matches tag action buttons */
+.anchor-action-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 32px !important;
+  height: 32px !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: var(--border-radius-base) !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  color: #64748b !important;
+  transition: all 0.15s ease !important;
+}
+
+.anchor-action-btn:hover {
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+}
+
+.anchor-action-btn svg {
+  stroke: currentColor !important;
+  fill: none !important;
+}
+
+/* ===== STANDARDIZED ACTION BUTTON SIZING ===== */
+/* Override action button SVG sizes for consistency */
+.action-button svg,
+.anchor-action-btn svg {
+  width: 18px !important;
+  height: 18px !important;
+}
+
+/* Action button hover state */
+.action-button:hover {
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+}

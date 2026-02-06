@@ -50,21 +50,21 @@ window.ThreadCubTagging = class ThreadCubTagging {
     this.createContextMenu();
     this.createSidePanel();
     this.setupEventListeners();
-    
+
     // Initialize current storage key
     this.currentStorageKey = this.generateConversationKey();
-    
+
     // ADD THIS LINE:
     this.initializeSidePanelUI();
-    
+
     // Setup URL monitoring for storage key changes
     this.setupUrlMonitoring();
-    
+
     // NEW: Load persisted tags with delay for DOM stabilization
     setTimeout(async () => {
       await this.loadPersistedTags();
     }, 1000);
-    
+
     console.log('🏷️ ThreadCub: Tagging system ready with enhanced persistence and URL monitoring');
   }
 
@@ -127,7 +127,7 @@ window.ThreadCubTagging = class ThreadCubTagging {
     };
   }
 
-  // NEW: Handle URL changes and transfer tags if needed
+  // Handle URL changes and transfer tags if needed
   async handleUrlChange(newUrl) {
     console.log('🔍 Handling URL change to:', newUrl);
     
@@ -337,22 +337,31 @@ window.ThreadCubTagging = class ThreadCubTagging {
       console.log(`🔍 DEBUG: Saving ${this.tags.length} tags with key:`, storageKey);
       console.log('🔍 DEBUG: Tags data:', tagsData);
       
-      // Try Chrome storage first
+      // Try Chrome storage first, with fallback to localStorage
+      let savedToChrome = false;
       if (this.canUseChromStorage()) {
-        await this.saveToChromStorage(storageKey, tagsData);
-        console.log('🔍 DEBUG: ✅ Tags saved to Chrome storage successfully');
-        
-        // Verify the save worked
-        const verification = await this.loadFromChromStorage(storageKey);
-        console.log('🔍 DEBUG: Verification - data retrieved:', !!verification);
-        if (verification) {
-          console.log('🔍 DEBUG: Verification - tag count:', verification.tags?.length || 0);
+        try {
+          await this.saveToChromStorage(storageKey, tagsData);
+          console.log('🔍 DEBUG: ✅ Tags saved to Chrome storage successfully');
+          savedToChrome = true;
+
+          // Verify the save worked
+          const verification = await this.loadFromChromStorage(storageKey);
+          console.log('🔍 DEBUG: Verification - data retrieved:', !!verification);
+          if (verification) {
+            console.log('🔍 DEBUG: Verification - tag count:', verification.tags?.length || 0);
+          }
+        } catch (chromeError) {
+          console.log('🏷️ ThreadCub: Chrome storage failed, falling back to localStorage:', chromeError.message);
+          savedToChrome = false;
         }
-      } else {
-        // Fallback to localStorage
+      }
+
+      // Fallback to localStorage if Chrome storage unavailable or failed
+      if (!savedToChrome) {
         localStorage.setItem(storageKey, JSON.stringify(tagsData));
         console.log('🔍 DEBUG: ✅ Tags saved to localStorage');
-        
+
         // Verify the save worked
         const verification = localStorage.getItem(storageKey);
         console.log('🔍 DEBUG: Verification - localStorage data exists:', !!verification);
@@ -374,13 +383,23 @@ window.ThreadCubTagging = class ThreadCubTagging {
       console.log('🔍 DEBUG: Loading tags with key:', storageKey);
       
       let tagsData = null;
-      
-      // Try Chrome storage first
+      let loadedFromChrome = false;
+
+      // Try Chrome storage first, with fallback to localStorage
       if (this.canUseChromStorage()) {
-        console.log('🔍 DEBUG: Attempting Chrome storage load...');
-        tagsData = await this.loadFromChromStorage(storageKey);
-        console.log('🔍 DEBUG: Chrome storage result:', !!tagsData);
-      } else {
+        try {
+          console.log('🔍 DEBUG: Attempting Chrome storage load...');
+          tagsData = await this.loadFromChromStorage(storageKey);
+          console.log('🔍 DEBUG: Chrome storage result:', !!tagsData);
+          loadedFromChrome = true;
+        } catch (chromeError) {
+          console.log('🏷️ ThreadCub: Chrome storage load failed, trying localStorage:', chromeError.message);
+          loadedFromChrome = false;
+        }
+      }
+
+      // Fallback to localStorage if Chrome storage unavailable or failed
+      if (!loadedFromChrome) {
         console.log('🔍 DEBUG: Attempting localStorage load...');
         const stored = localStorage.getItem(storageKey);
         console.log('🔍 DEBUG: localStorage raw data exists:', !!stored);
@@ -431,6 +450,16 @@ window.ThreadCubTagging = class ThreadCubTagging {
   // NEW: Enhanced capture of range info with text context
   captureEnhancedRangeInfo(range) {
     try {
+      // Get message index using platform adapter
+      let messageIndex = -1;
+      const adapter = window.PlatformAdapters?.getAdapter();
+      if (adapter) {
+        const messageContainer = adapter.findMessageContainer(range.startContainer);
+        if (messageContainer) {
+          messageIndex = adapter.getMessageIndex(messageContainer);
+        }
+      }
+
       const rangeInfo = {
         startXPath: this.getXPathForElement(range.startContainer),
         endXPath: this.getXPathForElement(range.endContainer),
@@ -440,16 +469,20 @@ window.ThreadCubTagging = class ThreadCubTagging {
         // NEW: Add text content and context for better matching
         selectedText: range.toString().trim(),
         textLength: range.toString().trim().length,
-        // Store surrounding context for better matching
+        // Store surrounding context for better matching (prefix/suffix for jump-to)
         beforeText: this.getTextBefore(range, 50),
         afterText: this.getTextAfter(range, 50),
+        prefix: this.getTextBefore(range, 60), // TextQuote-style prefix
+        suffix: this.getTextAfter(range, 60),  // TextQuote-style suffix
         // Store parent element text for backup matching
-        parentText: range.commonAncestorContainer.textContent?.substring(0, 200) || ''
+        parentText: range.commonAncestorContainer.textContent?.substring(0, 200) || '',
+        // Message index for section assignment
+        messageIndex: messageIndex
       };
-      
+
       console.log('🏷️ ThreadCub: Enhanced range info captured:', rangeInfo);
       return rangeInfo;
-      
+
     } catch (error) {
       console.log('🏷️ ThreadCub: Could not capture enhanced range info:', error);
       return this.captureRangeInfo(range); // Fallback to original method
@@ -969,11 +1002,22 @@ window.ThreadCubTagging = class ThreadCubTagging {
 
   canUseChromStorage() {
     try {
-      return typeof chrome !== 'undefined' && 
-             chrome.runtime && 
-             chrome.storage && 
-             chrome.storage.local &&
-             !chrome.runtime.lastError;
+      // Check if chrome APIs exist
+      if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.storage || !chrome.storage.local) {
+        return false;
+      }
+
+      // Check for extension context invalidation by testing chrome.runtime.id
+      // When context is invalidated, accessing chrome.runtime.id will throw
+      try {
+        const _ = chrome.runtime.id;
+        if (!_) return false;
+      } catch (e) {
+        console.log('🏷️ ThreadCub: Extension context invalidated, falling back to localStorage');
+        return false;
+      }
+
+      return !chrome.runtime.lastError;
     } catch (error) {
       return false;
     }
@@ -982,6 +1026,12 @@ window.ThreadCubTagging = class ThreadCubTagging {
   async saveToChromStorage(key, data) {
     return new Promise((resolve, reject) => {
       try {
+        // Double-check context is still valid before attempting storage operation
+        if (!this.canUseChromStorage()) {
+          reject(new Error('Extension context invalidated'));
+          return;
+        }
+
         chrome.storage.local.set({ [key]: data }, () => {
           if (chrome.runtime.lastError) {
             reject(new Error(chrome.runtime.lastError.message));
@@ -998,6 +1048,12 @@ window.ThreadCubTagging = class ThreadCubTagging {
   async loadFromChromStorage(key) {
     return new Promise((resolve, reject) => {
       try {
+        // Double-check context is still valid before attempting storage operation
+        if (!this.canUseChromStorage()) {
+          reject(new Error('Extension context invalidated'));
+          return;
+        }
+
         chrome.storage.local.get([key], (result) => {
           if (chrome.runtime.lastError) {
             reject(new Error(chrome.runtime.lastError.message));
@@ -1038,23 +1094,26 @@ window.ThreadCubTagging = class ThreadCubTagging {
     this.applySmartHighlight(this.selectedRange, tag.id);
     
     await this.saveTagsToPersistentStorage();
-    
-    if (this.tags.length === 1) {
-      this.showSidePanel();
+
+    // Open side panel to Tags tab
+    if (!this.isPanelOpen) {
+      this.showSidePanel('tags');
     } else {
-      this.updateTagsList();
+      if (this.sidePanelUI && this.sidePanelUI.switchTab) {
+        this.sidePanelUI.switchTab('tags');
+      }
     }
-    
+
     this.hideContextMenu();
-    
+
     this.isAddingMore = false;
-    
+
     console.log('🏷️ ThreadCub: Tag created and persisted successfully:', tag);
   }
 
   async createTagFromSelectionWithoutCategory() {
     if (!this.selectedText || !this.selectedRange) return;
-    
+
     const tag = {
       id: Date.now(),
       text: this.selectedText,
@@ -1063,21 +1122,24 @@ window.ThreadCubTagging = class ThreadCubTagging {
       timestamp: new Date().toISOString(),
       rangeInfo: this.captureEnhancedRangeInfo(this.selectedRange)
     };
-    
+
     this.tags.push(tag);
-    
+
     this.removeTemporaryHighlight();
-    
+
     this.applySmartHighlight(this.selectedRange, tag.id);
-    
+
     await this.saveTagsToPersistentStorage();
-    
-    if (this.tags.length === 1) {
-      this.showSidePanel();
+
+    // Open side panel to Tags tab
+    if (!this.isPanelOpen) {
+      this.showSidePanel('tags');
     } else {
-      this.updateTagsList();
+      if (this.sidePanelUI && this.sidePanelUI.switchTab) {
+        this.sidePanelUI.switchTab('tags');
+      }
     }
-    
+
     this.hideContextMenu();
     
     this.isAddingMore = false;
@@ -1129,9 +1191,35 @@ addTaggingStyles() {
     cursor: pointer !important;
     transition: background-color 0.2s ease !important;
   }
-  
+
   .threadcub-highlight:hover {
     background-color: #ffeb3b !important;
+  }
+
+  /* Copied feedback toast (used by side panel copy button) */
+  .threadcub-copied-toast {
+    position: fixed !important;
+    background: #1e293b !important;
+    color: white !important;
+    padding: 8px 16px !important;
+    border-radius: 6px !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    z-index: 10000003 !important;
+    pointer-events: none !important;
+    opacity: 0 !important;
+    transform: translateY(4px) !important;
+    transition: all 0.2s ease !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  }
+
+  .threadcub-copied-toast.visible {
+    opacity: 1 !important;
+    transform: translateY(0) !important;
+  }
+
+  /* Anchor highlight */
+  .threadcub-anchor-highlight {
   }
 
   .threadcub-tag-item:hover {
@@ -1164,6 +1252,7 @@ createContextMenu() {
   const hideFindOutMore = hostname.includes('chatgpt.com') ||
                           hostname.includes('claude.ai') ||
                           hostname.includes('grok.com') ||
+                          hostname.includes('perplexity.ai') ||
                           (hostname.includes('x.com') && window.location.pathname.includes('/i/grok'));
 
   // When Find Out More is hidden, remove the border-right divider from Save button
@@ -1216,6 +1305,7 @@ createContextMenu() {
         position: relative;
         background: transparent;
         border: none;
+        border-right: 1px solid #7C3AED;
         color: #7C3AED;
       ">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1226,6 +1316,27 @@ createContextMenu() {
         </svg>
       </div>
       `}
+
+      <!-- Create Anchor Button -->
+      <div class="threadcub-icon-button" id="threadcub-anchor-button" data-tooltip="CREATE ANCHOR" style="
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+        background: transparent;
+        border: none;
+        color: #7C3AED;
+      ">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22V8"/>
+          <path d="M5 12H2a10 10 0 0 0 20 0h-3"/>
+          <circle cx="12" cy="5" r="3"/>
+        </svg>
+      </div>
     </div>
   `;
 
@@ -1250,7 +1361,8 @@ updateSelectionColor(color = '#FFD700') {
 setupSimplifiedIconListeners() {
   const saveButton = this.contextMenu.querySelector('#threadcub-save-button');
   const findoutButton = this.contextMenu.querySelector('#threadcub-findout-button');
-  
+  const anchorButton = this.contextMenu.querySelector('#threadcub-anchor-button');
+
   // Tooltip management variables
   this.tooltipTimeout = null;
   this.currentHoveredButton = null;
@@ -1339,13 +1451,13 @@ setupSimplifiedIconListeners() {
     
     findoutButton.addEventListener('mouseleave', () => {
       findoutButton.style.background = 'transparent';
-      
+
       // Change SVG stroke back to purple
       const svg = findoutButton.querySelector('svg');
       if (svg) svg.setAttribute('stroke', '#7C3AED');
-      
+
       this.currentHoveredButton = null;
-      
+
       // Delay hiding tooltip to allow for button transitions
       this.tooltipTimeout = setTimeout(() => {
         if (!this.currentHoveredButton) {
@@ -1354,7 +1466,57 @@ setupSimplifiedIconListeners() {
       }, 100);
     });
   }
-  
+
+  // Create Anchor button
+  if (anchorButton) {
+    anchorButton.addEventListener('mousedown', (e) => {
+      e.preventDefault(); // Prevents selection from being cleared
+    });
+
+    anchorButton.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      console.log('Anchor: Create Anchor clicked');
+      this.handleCreateAnchor();
+    });
+
+    // Hover effects with custom tooltip
+    anchorButton.addEventListener('mouseenter', (e) => {
+      // Clear any pending hide timeout
+      if (this.tooltipTimeout) {
+        clearTimeout(this.tooltipTimeout);
+        this.tooltipTimeout = null;
+      }
+
+      this.currentHoveredButton = 'anchor';
+      anchorButton.style.background = '#7C3AED';
+
+      // Change SVG stroke to white on hover
+      const svg = anchorButton.querySelector('svg');
+      if (svg) svg.setAttribute('stroke', 'white');
+
+      // Show tooltip immediately
+      this.showCustomTooltip('CREATE ANCHOR', anchorButton);
+    });
+
+    anchorButton.addEventListener('mouseleave', () => {
+      anchorButton.style.background = 'transparent';
+
+      // Change SVG stroke back to purple
+      const svg = anchorButton.querySelector('svg');
+      if (svg) svg.setAttribute('stroke', '#7C3AED');
+
+      this.currentHoveredButton = null;
+
+      // Delay hiding tooltip to allow for button transitions
+      this.tooltipTimeout = setTimeout(() => {
+        if (!this.currentHoveredButton) {
+          this.hideCustomTooltip();
+        }
+      }, 100);
+    });
+  }
+
   // Close on outside click
   document.addEventListener('click', (e) => {
     if (!this.contextMenu.contains(e.target)) {
@@ -1421,13 +1583,148 @@ hideCustomTooltip() {
   if (this.activeTooltip) {
     this.activeTooltip.style.opacity = '0';
     this.activeTooltip.style.transform = 'translateY(-4px)';
-    
+
     setTimeout(() => {
       if (this.activeTooltip && this.activeTooltip.parentNode) {
         this.activeTooltip.parentNode.removeChild(this.activeTooltip);
       }
       this.activeTooltip = null;
     }, 200);
+  }
+}
+
+// Create copy button for highlight spans
+createCopyButton(textContent) {
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'threadcub-copy-btn';
+  copyBtn.setAttribute('data-tooltip', 'Copy');
+  copyBtn.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+    </svg>
+  `;
+
+  // Copy functionality
+  copyBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    this.copyToClipboard(textContent, copyBtn);
+  });
+
+  // Tooltip on hover
+  let tooltipTimeout;
+  copyBtn.addEventListener('mouseenter', () => {
+    tooltipTimeout = setTimeout(() => {
+      this.showCopyTooltip('Copy', copyBtn);
+    }, 300);
+  });
+
+  copyBtn.addEventListener('mouseleave', () => {
+    clearTimeout(tooltipTimeout);
+    this.hideCopyTooltip();
+  });
+
+  return copyBtn;
+}
+
+// Copy text to clipboard with feedback
+async copyToClipboard(text, buttonElement) {
+  try {
+    await navigator.clipboard.writeText(text);
+    this.showCopiedFeedback(buttonElement);
+    console.log('🏷️ ThreadCub: Text copied to clipboard');
+  } catch (error) {
+    // Fallback for older browsers
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-9999px';
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textArea);
+    this.showCopiedFeedback(buttonElement);
+    console.log('🏷️ ThreadCub: Text copied to clipboard (fallback)');
+  }
+}
+
+// Show "Copied!" feedback toast
+showCopiedFeedback(buttonElement) {
+  // Remove any existing toast
+  const existingToast = document.querySelector('.threadcub-copied-toast');
+  if (existingToast) existingToast.remove();
+
+  const toast = document.createElement('div');
+  toast.className = 'threadcub-copied-toast';
+  toast.textContent = 'Copied!';
+  document.body.appendChild(toast);
+
+  // Position near the button
+  const rect = buttonElement.getBoundingClientRect();
+  toast.style.left = (rect.left + rect.width / 2 - toast.offsetWidth / 2) + 'px';
+  toast.style.top = (rect.top - 36) + 'px';
+
+  // Animate in
+  requestAnimationFrame(() => {
+    toast.classList.add('visible');
+  });
+
+  // Remove after delay
+  setTimeout(() => {
+    toast.classList.remove('visible');
+    setTimeout(() => toast.remove(), 200);
+  }, 1500);
+}
+
+// Show tooltip for copy button
+showCopyTooltip(text, buttonElement) {
+  this.hideCopyTooltip();
+
+  this.copyTooltip = document.createElement('div');
+  this.copyTooltip.className = 'threadcub-custom-tooltip';
+  this.copyTooltip.style.cssText = `
+    position: fixed;
+    height: 24px;
+    background: #475569;
+    color: white;
+    padding: 0 10px;
+    border-radius: 4px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    z-index: 10000002;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: all 0.15s ease;
+  `;
+  this.copyTooltip.textContent = text;
+  document.body.appendChild(this.copyTooltip);
+
+  // Position above the button
+  const rect = buttonElement.getBoundingClientRect();
+  const tooltipWidth = this.copyTooltip.offsetWidth;
+  this.copyTooltip.style.left = (rect.left + rect.width / 2 - tooltipWidth / 2) + 'px';
+  this.copyTooltip.style.top = (rect.top - 32) + 'px';
+
+  requestAnimationFrame(() => {
+    if (this.copyTooltip) {
+      this.copyTooltip.style.opacity = '1';
+      this.copyTooltip.style.transform = 'translateY(0)';
+    }
+  });
+}
+
+// Hide copy tooltip
+hideCopyTooltip() {
+  if (this.copyTooltip) {
+    this.copyTooltip.remove();
+    this.copyTooltip = null;
   }
 }
 
@@ -1479,23 +1776,322 @@ async handleSaveForLater() {
 
 // Handle "Find Out More" - sends selection to chat input
 handleFindOutMore() {
-  console.log('🏷️ ThreadCub: Find Out More clicked');
-  
+  console.log('ThreadCub: Find Out More clicked');
+
   if (!this.selectedText) {
-    console.log('🏷️ ThreadCub: No selection available');
+    console.log('ThreadCub: No selection available');
     return;
   }
-  
+
   // Use the existing continueTagInChat logic but with current selection
   const success = this.populateChatInputDirectly(this.selectedText);
-  
+
   if (success) {
-    console.log('🏷️ ThreadCub: Selection sent to chat input');
+    console.log('ThreadCub: Selection sent to chat input');
   } else {
-    console.log('🏷️ ThreadCub: Could not find chat input field');
+    console.log('ThreadCub: Could not find chat input field');
   }
-  
+
   this.hideContextMenu();
+}
+
+// Handle "Create Anchor" - creates an anchor with TextQuote-style context
+async handleCreateAnchor() {
+  console.log('Anchor: Create Anchor clicked');
+
+  if (!this.selectedText || !this.selectedRange) {
+    console.log('Anchor: No selection available');
+    return;
+  }
+
+  // Initialize anchor system if needed
+  if (window.anchorSystem) {
+    window.anchorSystem.init();
+  }
+
+  // Get the browser selection
+  const selection = window.getSelection();
+
+  // Create anchor using the anchor system
+  const anchorData = window.anchorSystem
+    ? window.anchorSystem.createAnchorFromSelection(selection)
+    : this.createBasicAnchor(selection);
+
+  if (!anchorData) {
+    console.log('Anchor: Failed to create anchor data');
+    return;
+  }
+
+  // Create anchor item (similar to tag but with type: 'anchor')
+  const anchor = {
+    id: Date.now(),
+    type: 'anchor',
+    text: this.selectedText, // snippet
+    title: this.selectedText.substring(0, 50) + (this.selectedText.length > 50 ? '...' : ''),
+    snippet: this.selectedText,
+    createdAt: new Date().toISOString(),
+    platform: window.PlatformDetector?.detectPlatform() || 'unknown',
+    anchor: anchorData,
+    // Keep compatibility with existing tag structure
+    category: null,
+    categoryLabel: 'Anchor',
+    note: '',
+    tags: [], // Priority tags support (same as regular tags)
+    timestamp: new Date().toISOString(),
+    rangeInfo: this.captureEnhancedRangeInfo(this.selectedRange)
+  };
+
+  this.tags.push(anchor);
+
+  // Remove temporary highlight before creating permanent one
+  this.removeTemporaryHighlight();
+
+  // Apply anchor-specific highlight (slightly different from tags)
+  this.applyAnchorHighlight(this.selectedRange, anchor.id);
+
+  // Save to persistent storage
+  await this.saveTagsToPersistentStorage();
+
+  // Open side panel to Anchors tab
+  if (!this.isPanelOpen) {
+    // Panel is closed - open it to Anchors tab
+    this.showSidePanel('anchors');
+  } else {
+    // Panel is already open - switch to anchors tab and update
+    if (this.sidePanelUI && this.sidePanelUI.switchTab) {
+      this.sidePanelUI.switchTab('anchors');
+    }
+  }
+
+  this.hideContextMenu();
+
+  console.log('Anchor: Anchor created and persisted:', anchor);
+}
+
+// Create basic anchor without anchor system (fallback)
+createBasicAnchor(selection) {
+  if (!selection || selection.isCollapsed) return null;
+
+  const range = selection.getRangeAt(0);
+  const exact = range.toString().trim();
+
+  if (exact.length < 3) return null;
+
+  // Find container element
+  let container = range.startContainer;
+  if (container.nodeType === Node.TEXT_NODE) {
+    container = container.parentElement;
+  }
+
+  // Get text before and after for context
+  let prefix = '';
+  let suffix = '';
+
+  try {
+    const containerText = container.textContent || '';
+    const exactIndex = containerText.indexOf(exact);
+
+    if (exactIndex !== -1) {
+      prefix = containerText.slice(Math.max(0, exactIndex - 60), exactIndex).trim();
+      suffix = containerText.slice(exactIndex + exact.length, exactIndex + exact.length + 60).trim();
+    }
+  } catch (e) {
+    console.log('Anchor: Could not capture context:', e);
+  }
+
+  return {
+    exact,
+    prefix,
+    suffix,
+    messageSelector: '',
+    messageIndex: -1,
+    url: window.location.href,
+    platform: 'unknown'
+  };
+}
+
+// Apply anchor-specific highlight (purple tint instead of yellow)
+applyAnchorHighlight(range, anchorId) {
+  try {
+    const textContent = range.toString(); // Get text before surrounding
+    const span = document.createElement('span');
+    span.className = 'threadcub-anchor-highlight';
+    span.setAttribute('data-anchor-id', anchorId);
+    span.style.cssText = `
+      background-color: rgba(124, 58, 237, 0.15) !important;
+      cursor: pointer !important;
+      transition: background-color 0.2s ease !important;
+    `;
+
+    // Surround range with highlight span
+    range.surroundContents(span);
+
+    // Add click listener to open side panel and switch to anchors tab
+    span.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.showSidePanel('anchors');
+    });
+
+    // Add hover effects
+    span.addEventListener('mouseenter', () => {
+      span.style.backgroundColor = 'rgba(124, 58, 237, 0.25)';
+    });
+    span.addEventListener('mouseleave', () => {
+      span.style.backgroundColor = 'rgba(124, 58, 237, 0.15)';
+    });
+
+    // Store reference for cleanup
+    if (!this.anchorElements) {
+      this.anchorElements = new Map();
+    }
+    this.anchorElements.set(anchorId, span);
+
+    console.log('Anchor: Highlight applied for anchor', anchorId);
+  } catch (error) {
+    console.log('Anchor: Could not apply highlight, using fallback:', error);
+    // Fallback: use smart highlight with anchor class
+    this.applySmartAnchorHighlight(range, anchorId);
+  }
+}
+
+// Smart anchor highlight fallback (similar to tag but with anchor styling and click handler)
+applySmartAnchorHighlight(range, anchorId) {
+  try {
+    const textNodes = this.getTextNodesInRange(range);
+
+    if (textNodes.length === 0) {
+      // Simple fallback
+      const contents = range.extractContents();
+      const span = document.createElement('span');
+      span.className = 'threadcub-anchor-highlight';
+      span.setAttribute('data-anchor-id', anchorId);
+      span.style.cssText = `
+        background-color: rgba(124, 58, 237, 0.15) !important;
+        cursor: pointer !important;
+      `;
+      span.appendChild(contents);
+
+      range.insertNode(span);
+
+      // Add click listener
+      span.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.showSidePanel('anchors');
+      });
+
+      if (!this.anchorElements) this.anchorElements = new Map();
+      this.anchorElements.set(anchorId, [span]);
+      return;
+    }
+
+    // Wrap each text node
+    const highlightElements = [];
+    textNodes.forEach(textNode => {
+      if (!textNode.textContent || textNode.textContent.trim().length === 0) return;
+
+      const span = document.createElement('span');
+      span.className = 'threadcub-anchor-highlight';
+      span.setAttribute('data-anchor-id', anchorId);
+      span.style.cssText = `
+        background-color: rgba(124, 58, 237, 0.15) !important;
+        cursor: pointer !important;
+      `;
+      span.textContent = textNode.textContent;
+      textNode.parentNode.replaceChild(span, textNode);
+
+      span.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.showSidePanel('anchors');
+      });
+
+      highlightElements.push(span);
+    });
+
+    if (!this.anchorElements) this.anchorElements = new Map();
+    this.anchorElements.set(anchorId, highlightElements);
+  } catch (error) {
+    console.log('Anchor: Smart anchor highlight failed:', error);
+  }
+}
+
+// Jump to an anchor
+async jumpToAnchor(anchorId) {
+  const anchor = this.tags.find(t => t.id === anchorId && t.type === 'anchor');
+
+  if (!anchor || !anchor.anchor) {
+    console.log('Anchor: Anchor not found:', anchorId);
+    this.showJumpFailedNotification();
+    return;
+  }
+
+  console.log('Anchor: Jumping to anchor:', anchor);
+
+  // Use anchor system if available
+  if (window.anchorSystem) {
+    const result = await window.anchorSystem.jumpToAnchor(anchor.anchor);
+
+    if (result.success) {
+      console.log('Anchor: Jump successful via', result.method, 'approximate:', result.approximate);
+    } else {
+      console.log('Anchor: Jump failed');
+      this.showJumpFailedNotification();
+    }
+  } else {
+    // Fallback: try to find and scroll to the text
+    this.fallbackJumpToAnchor(anchor);
+  }
+}
+
+// Fallback jump method
+fallbackJumpToAnchor(anchor) {
+  const targetText = anchor.anchor?.exact || anchor.text;
+
+  // Try to find the text in the page
+  const walker = document.createTreeWalker(
+    document.body,
+    NodeFilter.SHOW_TEXT,
+    null,
+    false
+  );
+
+  let textNode;
+  while ((textNode = walker.nextNode())) {
+    if (textNode.textContent.includes(targetText)) {
+      const element = textNode.parentElement;
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        element.classList.add('threadcub-anchor-flash');
+        setTimeout(() => {
+          element.classList.remove('threadcub-anchor-flash');
+        }, 2000);
+        return;
+      }
+    }
+  }
+
+  this.showJumpFailedNotification();
+}
+
+// Show notification when jump fails
+showJumpFailedNotification() {
+  const notification = document.createElement('div');
+  notification.className = 'threadcub-jump-failed';
+  notification.innerHTML = `
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="10"/>
+      <line x1="12" y1="8" x2="12" y2="12"/>
+      <line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
+    Could not find anchor location - content may have changed
+  `;
+
+  document.body.appendChild(notification);
+
+  setTimeout(() => {
+    notification.style.opacity = '0';
+    notification.style.transition = 'opacity 0.5s ease';
+    setTimeout(() => notification.remove(), 500);
+  }, 3000);
 }
 
 // Direct chat input population (reuse existing logic)
@@ -1605,7 +2201,7 @@ createSidePanel() {
       position: relative;
     ">
       <!-- Close Button with Lucide X -->
-      <button id="threadcub-panel-close" style="
+      <button id="threadcub-panel-close" title="Close panel" style="
         position: absolute;
         top: 16px;
         right: 16px;
@@ -1658,47 +2254,40 @@ createSidePanel() {
         margin: 0;
       ">Swiping like a pro!</h2>
     </div>
-    
-    <!-- Priority Filter Section -->
-    <div style="padding: 20px 24px; border-bottom: 1px solid rgba(226, 232, 240, 0.6);">      
-      <div style="position: relative;">
-        <select id="threadcub-priority-filter" style="
-          width: 100%;
-          padding: 12px 16px;
-          padding-right: 40px;
-          background: white;
-          border: 1px solid #d1d5db;
-          border-radius: 8px;
-          font-size: 14px;
-          font-weight: 500;
-          color: #374151;
-          cursor: pointer;
-          appearance: none;
-          transition: all 0.2s ease;
-          outline: none;
-        " class="focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-          <option value="all">All priorities</option>
-          <option value="high">High priority</option>
-          <option value="medium">Medium priority</option>
-          <option value="low">Low priority</option>
-        </select>
-        
-        <!-- Custom dropdown arrow with Lucide ChevronDown -->
-        <div style="
-          position: absolute;
-          right: 12px;
-          top: 50%;
-          transform: translateY(-50%);
-          pointer-events: none;
-          color: #94a3b8;
-        ">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="m6 9 6 6 6-6"/>
-          </svg>
-        </div>
-      </div>
+
+    <!-- Tab Navigation -->
+    <div class="threadcub-tabs" style="
+      display: flex;
+      padding: 0 24px;
+      border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+      gap: 0;
+    ">
+      <button class="threadcub-tab active" data-tab="tags" style="
+        flex: 1;
+        padding: 12px 16px;
+        background: transparent;
+        border: none;
+        border-bottom: 2px solid #7C3AED;
+        font-size: 14px;
+        font-weight: 600;
+        color: #7C3AED;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      ">Tags</button>
+      <button class="threadcub-tab" data-tab="anchors" style="
+        flex: 1;
+        padding: 12px 16px;
+        background: transparent;
+        border: none;
+        border-bottom: 2px solid transparent;
+        font-size: 14px;
+        font-weight: 500;
+        color: #64748b;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      ">Anchors</button>
     </div>
-    
+
     <!-- Tags Container -->
     <div id="threadcub-tags-container" style="
       flex: 1;
@@ -1749,7 +2338,7 @@ createSidePanel() {
       display: flex;
       gap: 12px;
     ">
-      <button id="threadcub-close-panel" style="
+      <button id="threadcub-close-panel" title="Close panel" style="
         flex: 1;
         padding: 12px 16px;
         background: rgba(255, 255, 255, 0.9);
@@ -1766,22 +2355,120 @@ createSidePanel() {
         CLOSE
       </button>
 
-      <button id="threadcub-download-json" style="
+      <div id="threadcub-export-menu" style="
+        position: relative;
         flex: 1;
-        padding: 12px 16px;
-        background: #99DAFA;
-        border: 1px solid #99DAFA;
-        border-radius: 8px;
-        font-size: 14px;
-        font-weight: 600;
-        color: #4C596E;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        backdrop-filter: blur(10px);
-        text-align: center;
       ">
-        DOWNLOAD
-      </button>
+        <button id="threadcub-export-btn" title="Export tags" style="
+          width: 100%;
+          padding: 12px 16px;
+          background: #99DAFA;
+          border: 1px solid #99DAFA;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: 600;
+          color: #4C596E;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          backdrop-filter: blur(10px);
+          text-align: center;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+        ">
+          <span>EXPORT</span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="1"></circle>
+            <circle cx="12" cy="5" r="1"></circle>
+            <circle cx="12" cy="19" r="1"></circle>
+          </svg>
+        </button>
+        <div id="threadcub-export-dropdown" style="
+          position: absolute;
+          bottom: calc(100% + 8px);
+          left: 0;
+          right: 0;
+          background: white;
+          border-radius: 8px;
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.08);
+          opacity: 0;
+          visibility: hidden;
+          transform: translateY(8px);
+          transition: all 0.2s ease;
+          z-index: 10001;
+          overflow: hidden;
+        ">
+          <button class="threadcub-export-option" data-format="json" style="
+            width: 100%;
+            padding: 12px 16px;
+            background: transparent;
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: background 0.15s ease;
+          ">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path>
+              <path d="M14 2v4a2 2 0 0 0 2 2h4"></path>
+              <path d="M10 12a1 1 0 0 0-1 1v1a1 1 0 0 1-1 1 1 1 0 0 1 1 1v1a1 1 0 0 0 1 1"></path>
+              <path d="M14 18a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1 1 1 0 0 1-1-1v-1a1 1 0 0 0-1-1"></path>
+            </svg>
+            <span>JSON</span>
+          </button>
+          <button class="threadcub-export-option" data-format="markdown" style="
+            width: 100%;
+            padding: 12px 16px;
+            background: transparent;
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: background 0.15s ease;
+          ">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path>
+              <path d="M14 2v4a2 2 0 0 0 2 2h4"></path>
+              <path d="M10 9H8"></path>
+              <path d="M16 13H8"></path>
+              <path d="M16 17H8"></path>
+            </svg>
+            <span>Markdown</span>
+          </button>
+          <button class="threadcub-export-option" data-format="pdf" style="
+            width: 100%;
+            padding: 12px 16px;
+            background: transparent;
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: background 0.15s ease;
+          ">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path>
+              <path d="M14 2v4a2 2 0 0 0 2 2h4"></path>
+              <path d="M10 9H8"></path>
+              <path d="M16 13H8"></path>
+              <path d="M16 17H8"></path>
+            </svg>
+            <span>PDF</span>
+          </button>
+        </div>
+      </div>
     </div>
   `;
   
@@ -1847,49 +2534,60 @@ setupPanelEventListeners() {
       // REMOVED: Any highlight cleanup calls
     }
   });
-  
-  // Priority filter dropdown
-  const filterSelect = this.sidePanel.querySelector('#threadcub-priority-filter');
-  filterSelect.addEventListener('change', (e) => {
-    this.filterTagsByPriority(e.target.value);
+
+  // Export menu
+  const exportBtn = this.sidePanel.querySelector('#threadcub-export-btn');
+  const exportDropdown = this.sidePanel.querySelector('#threadcub-export-dropdown');
+  const exportOptions = this.sidePanel.querySelectorAll('.threadcub-export-option');
+
+  // Toggle dropdown on button click
+  exportBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = exportDropdown.style.opacity === '1';
+    if (isOpen) {
+      this.closeExportDropdown();
+    } else {
+      this.openExportDropdown();
+    }
   });
-  
-  // Filter hover effects
-  filterSelect.addEventListener('mouseenter', () => {
-    filterSelect.style.borderColor = '#3b82f6';
+
+  // Export button hover effects
+  exportBtn.addEventListener('mouseenter', () => {
+    exportBtn.style.background = '#7DD3F8';
+    exportBtn.style.borderColor = '#7DD3F8';
+    exportBtn.style.transform = 'translateY(-1px)';
   });
-  
-  filterSelect.addEventListener('mouseleave', () => {
-    filterSelect.style.borderColor = '#d1d5db';
+
+  exportBtn.addEventListener('mouseleave', () => {
+    exportBtn.style.background = '#99DAFA';
+    exportBtn.style.borderColor = '#99DAFA';
+    exportBtn.style.transform = 'translateY(0)';
   });
-  
-  filterSelect.addEventListener('focus', () => {
-    filterSelect.style.borderColor = '#3b82f6';
-    filterSelect.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+
+  // Export option click handlers
+  exportOptions.forEach(option => {
+    option.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const format = option.getAttribute('data-format');
+      this.handleExport(format);
+      this.closeExportDropdown();
+    });
+
+    // Hover effects for options
+    option.addEventListener('mouseenter', () => {
+      option.style.background = '#f3f4f6';
+    });
+
+    option.addEventListener('mouseleave', () => {
+      option.style.background = 'transparent';
+    });
   });
-  
-  filterSelect.addEventListener('blur', () => {
-    filterSelect.style.borderColor = '#d1d5db';
-    filterSelect.style.boxShadow = 'none';
-  });
-  
-  // Download button
-  const downloadBtn = this.sidePanel.querySelector('#threadcub-download-json');
-  downloadBtn.addEventListener('click', () => {
-    this.downloadTagsAsJSON();
-  });
-  
-  // Download button hover effects
-  downloadBtn.addEventListener('mouseenter', () => {
-    downloadBtn.style.background = '#7DD3F8';
-    downloadBtn.style.borderColor = '#7DD3F8';
-    downloadBtn.style.transform = 'translateY(-1px)';
-  });
-  
-  downloadBtn.addEventListener('mouseleave', () => {
-    downloadBtn.style.background = '#99DAFA';
-    downloadBtn.style.borderColor = '#99DAFA';
-    downloadBtn.style.transform = 'translateY(0)';
+
+  // Close dropdown when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#threadcub-export-menu')) {
+      this.closeExportDropdown();
+    }
   });
   
   // Close panel button
@@ -1914,13 +2612,49 @@ setupPanelEventListeners() {
   });
 }
 
+// Export dropdown helpers
+openExportDropdown() {
+  const dropdown = this.sidePanel.querySelector('#threadcub-export-dropdown');
+  if (dropdown) {
+    dropdown.style.opacity = '1';
+    dropdown.style.visibility = 'visible';
+    dropdown.style.transform = 'translateY(0)';
+  }
+}
+
+closeExportDropdown() {
+  const dropdown = this.sidePanel.querySelector('#threadcub-export-dropdown');
+  if (dropdown) {
+    dropdown.style.opacity = '0';
+    dropdown.style.visibility = 'hidden';
+    dropdown.style.transform = 'translateY(8px)';
+  }
+}
+
+// Handle export based on format
+handleExport(format) {
+  switch (format) {
+    case 'json':
+      this.downloadTagsAsJSON();
+      break;
+    case 'markdown':
+      this.downloadTagsAsMarkdown();
+      break;
+    case 'pdf':
+      this.downloadTagsAsPDF();
+      break;
+    default:
+      console.warn('Unknown export format:', format);
+  }
+}
+
 // Download tags as JSON
 downloadTagsAsJSON() {
   if (this.tags.length === 0) {
     alert('No tags to download!');
     return;
   }
-  
+
   const tagsData = {
     title: document.title || 'Tagged Conversation',
     url: window.location.href,
@@ -1929,7 +2663,7 @@ downloadTagsAsJSON() {
     totalTags: this.tags.length,
     tags: this.tags
   };
-  
+
   const blob = new Blob([JSON.stringify(tagsData, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1939,8 +2673,387 @@ downloadTagsAsJSON() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  
+
   console.log('🏷️ ThreadCub: Tags downloaded as JSON');
+}
+
+// Download tags as Markdown
+downloadTagsAsMarkdown() {
+  if (this.tags.length === 0) {
+    alert('No tags to download!');
+    return;
+  }
+
+  const dateStr = new Date().toISOString().split('T')[0];
+  const title = document.title || 'Tagged Conversation';
+
+  // Separate tags and anchors
+  const tags = this.tags.filter(item => item.type !== 'anchor');
+  const anchors = this.tags.filter(item => item.type === 'anchor');
+
+  let markdown = `# ${title}\n\n`;
+  markdown += `**Source:** ${window.location.href}\n`;
+  markdown += `**Platform:** ${this.currentPlatform}\n`;
+  markdown += `**Exported:** ${new Date().toLocaleString()}\n`;
+  markdown += `**Total Items:** ${this.tags.length} (${tags.length} tags, ${anchors.length} anchors)\n\n`;
+  markdown += `---\n\n`;
+
+  // Tags section
+  if (tags.length > 0) {
+    markdown += `## Tags\n\n`;
+    tags.forEach((tag, index) => {
+      markdown += `### ${index + 1}. ${tag.categoryLabel || 'Tag'}\n\n`;
+      markdown += `> ${tag.text}\n\n`;
+
+      if (tag.note) {
+        markdown += `**Note:** ${tag.note}\n\n`;
+      }
+
+      if (tag.tags && tag.tags.length > 0) {
+        const priorities = tag.tags.map(t => `\`${t.label}\``).join(', ');
+        markdown += `**Priority Tags:** ${priorities}\n\n`;
+      }
+
+      markdown += `*Created: ${new Date(tag.timestamp).toLocaleString()}*\n\n`;
+      markdown += `---\n\n`;
+    });
+  }
+
+  // Anchors section
+  if (anchors.length > 0) {
+    markdown += `## Anchors\n\n`;
+    anchors.forEach((anchor, index) => {
+      markdown += `### ${index + 1}. Anchor\n\n`;
+      markdown += `> ${anchor.snippet || anchor.text}\n\n`;
+
+      if (anchor.note) {
+        markdown += `**Note:** ${anchor.note}\n\n`;
+      }
+
+      if (anchor.tags && anchor.tags.length > 0) {
+        const priorities = anchor.tags.map(t => `\`${t.label}\``).join(', ');
+        markdown += `**Priority Tags:** ${priorities}\n\n`;
+      }
+
+      markdown += `*Created: ${new Date(anchor.createdAt || anchor.timestamp).toLocaleString()}*\n\n`;
+      markdown += `---\n\n`;
+    });
+  }
+
+  const blob = new Blob([markdown], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `threadcub-tags-${dateStr}.md`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  console.log('🏷️ ThreadCub: Tags downloaded as Markdown');
+}
+
+// Download tags as PDF (generates actual PDF file)
+async downloadTagsAsPDF() {
+  if (this.tags.length === 0) {
+    alert('No tags to download!');
+    return;
+  }
+
+  const dateStr = new Date().toISOString().split('T')[0];
+  const title = document.title || 'Tagged Conversation';
+
+  // Load the logo image as base64
+  let logoBase64 = null;
+  try {
+    const logoUrl = chrome.runtime.getURL('icons/threadcub-logo.png');
+    logoBase64 = await this.loadImageAsBase64(logoUrl);
+  } catch (e) {
+    console.log('🏷️ ThreadCub: Could not load logo for PDF:', e);
+  }
+
+  // Separate tags and anchors
+  const tags = this.tags.filter(item => item.type !== 'anchor');
+  const anchors = this.tags.filter(item => item.type === 'anchor');
+
+  // Build text content for PDF
+  const lines = [];
+  lines.push(title);
+  lines.push('');
+  lines.push(`Source: ${window.location.href}`);
+  lines.push(`Platform: ${this.currentPlatform}`);
+  lines.push(`Exported: ${new Date().toLocaleString()}`);
+  lines.push(`Total Items: ${this.tags.length} (${tags.length} tags, ${anchors.length} anchors)`);
+  lines.push('');
+  lines.push('─'.repeat(60));
+  lines.push('');
+
+  if (tags.length > 0) {
+    lines.push('TAGS');
+    lines.push('');
+    tags.forEach((tag, index) => {
+      lines.push(`${index + 1}. ${tag.categoryLabel || 'Tag'}`);
+      lines.push(`   "${tag.text}"`);
+      if (tag.note) {
+        lines.push(`   Note: ${tag.note}`);
+      }
+      if (tag.tags && tag.tags.length > 0) {
+        const priorities = tag.tags.map(t => t.label).join(', ');
+        lines.push(`   Priority: ${priorities}`);
+      }
+      lines.push(`   Created: ${new Date(tag.timestamp).toLocaleString()}`);
+      lines.push('');
+    });
+  }
+
+  if (anchors.length > 0) {
+    lines.push('─'.repeat(60));
+    lines.push('');
+    lines.push('ANCHORS');
+    lines.push('');
+    anchors.forEach((anchor, index) => {
+      lines.push(`${index + 1}. Anchor`);
+      lines.push(`   "${anchor.snippet || anchor.text}"`);
+      if (anchor.note) {
+        lines.push(`   Note: ${anchor.note}`);
+      }
+      if (anchor.tags && anchor.tags.length > 0) {
+        const priorities = anchor.tags.map(t => t.label).join(', ');
+        lines.push(`   Priority: ${priorities}`);
+      }
+      lines.push(`   Created: ${new Date(anchor.createdAt || anchor.timestamp).toLocaleString()}`);
+      lines.push('');
+    });
+  }
+
+  // Generate minimal PDF with logo
+  const pdfContent = this.generateSimplePDF(lines, title, logoBase64);
+
+  const blob = new Blob([pdfContent], { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `threadcub-tags-${dateStr}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  console.log('🏷️ ThreadCub: Tags downloaded as PDF');
+}
+
+// Load an image as base64 string
+async loadImageAsBase64(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      // Fill with white background first (PNG transparency becomes black in JPEG)
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+      // Get as JPEG for smaller size and better PDF compatibility
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+      const base64 = dataUrl.split(',')[1];
+      resolve({
+        data: base64,
+        width: img.width,
+        height: img.height
+      });
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+// Generate a simple PDF document with optional logo
+generateSimplePDF(lines, title, logoData = null) {
+  // PDF uses 72 points per inch, typical page is 612x792 points (8.5x11 inches)
+  const pageWidth = 612;
+  const pageHeight = 792;
+  const margin = 50;
+  const lineHeight = 14;
+  const fontSize = 10;
+  const titleFontSize = 16;
+
+  // Logo dimensions (target height ~60px, maintain aspect ratio)
+  const logoHeight = 60;
+  let logoWidth = 60;
+  if (logoData) {
+    const aspectRatio = logoData.width / logoData.height;
+    logoWidth = logoHeight * aspectRatio;
+  }
+
+  // Calculate content positioning
+  let yPos = pageHeight - margin;
+  const maxWidth = pageWidth - (2 * margin);
+
+  // Build PDF content streams
+  let streamContent = '';
+  let currentPage = 1;
+  let pages = [];
+  let isFirstPage = true;
+
+  const startPage = () => {
+    streamContent = '';
+    yPos = pageHeight - margin;
+    isFirstPage = pages.length === 0;
+  };
+
+  const addText = (text, size = fontSize, isBold = false, centered = false) => {
+    if (yPos < margin + lineHeight) {
+      pages.push(streamContent);
+      startPage();
+    }
+    // Escape special PDF characters
+    const escaped = text.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+    const font = isBold ? '/F2' : '/F1';
+    let xPos = margin;
+    if (centered) {
+      // Approximate text width (rough estimate)
+      const textWidth = escaped.length * size * 0.5;
+      xPos = (pageWidth - textWidth) / 2;
+    }
+    streamContent += `BT ${font} ${size} Tf ${xPos} ${yPos} Td (${escaped}) Tj ET\n`;
+    yPos -= lineHeight;
+  };
+
+  const addLine = () => {
+    if (yPos < margin + lineHeight) {
+      pages.push(streamContent);
+      startPage();
+    }
+    streamContent += `${margin} ${yPos + 5} m ${pageWidth - margin} ${yPos + 5} l S\n`;
+    yPos -= lineHeight;
+  };
+
+  startPage();
+
+  // Add logo at top left if available (aligned with title)
+  if (logoData) {
+    const logoX = margin;
+    const logoY = yPos - logoHeight;
+    streamContent += `q ${logoWidth} 0 0 ${logoHeight} ${logoX} ${logoY} cm /Logo Do Q\n`;
+    yPos -= (logoHeight + 20); // Logo height + spacing below
+  }
+
+  // Add title (left-aligned)
+  addText(title, titleFontSize, true);
+  yPos -= 10;
+
+  // Add content
+  lines.forEach(line => {
+    if (line === '' || line.startsWith('─')) {
+      if (line.startsWith('─')) {
+        addLine();
+      } else {
+        yPos -= lineHeight / 2;
+      }
+    } else {
+      // Word wrap long lines
+      const words = line.split(' ');
+      let currentLine = '';
+      const charsPerLine = Math.floor(maxWidth / (fontSize * 0.5));
+
+      words.forEach(word => {
+        if ((currentLine + ' ' + word).length > charsPerLine) {
+          if (currentLine) addText(currentLine);
+          currentLine = word;
+        } else {
+          currentLine = currentLine ? currentLine + ' ' + word : word;
+        }
+      });
+      if (currentLine) addText(currentLine);
+    }
+  });
+
+  pages.push(streamContent);
+
+  // Build PDF structure
+  let pdf = '%PDF-1.4\n';
+  let objectOffsets = [];
+
+  // Object 1: Catalog
+  objectOffsets.push(pdf.length);
+  pdf += '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n';
+
+  // Object 2: Pages
+  objectOffsets.push(pdf.length);
+  // Calculate page object numbers (they start after resources and optional image)
+  const resourceObjNum = 3;
+  const imageObjNum = logoData ? 4 : null;
+  const firstPageObjNum = logoData ? 5 : 4;
+  const pageRefs = pages.map((_, i) => `${firstPageObjNum + (i * 2)} 0 R`).join(' ');
+  pdf += `2 0 obj\n<< /Type /Pages /Kids [${pageRefs}] /Count ${pages.length} >>\nendobj\n`;
+
+  // Object 3: Resources (fonts and optional image XObject)
+  objectOffsets.push(pdf.length);
+  let resourcesDict = '/Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> /F2 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> >>';
+  if (logoData) {
+    resourcesDict += ` /XObject << /Logo ${imageObjNum} 0 R >>`;
+  }
+  pdf += `3 0 obj\n<< ${resourcesDict} >>\nendobj\n`;
+
+  // Object 4: Image XObject (if logo provided)
+  let objNum = 4;
+  if (logoData) {
+    objectOffsets.push(pdf.length);
+    // Convert base64 to hex string for ASCIIHexDecode (works with JS strings)
+    const binaryString = atob(logoData.data);
+    let hexData = '';
+    for (let i = 0; i < binaryString.length; i++) {
+      const hex = binaryString.charCodeAt(i).toString(16).padStart(2, '0');
+      hexData += hex;
+    }
+    hexData += '>'; // ASCIIHexDecode end marker
+    pdf += `${objNum} 0 obj\n<< /Type /XObject /Subtype /Image /Width ${logoData.width} /Height ${logoData.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter [/ASCIIHexDecode /DCTDecode] /Length ${hexData.length} >>\nstream\n`;
+    pdf += hexData;
+    pdf += '\nendstream\nendobj\n';
+    objNum++;
+  }
+
+  // Page objects and content streams
+  pages.forEach((content, i) => {
+    // Page object
+    objectOffsets.push(pdf.length);
+    pdf += `${objNum} 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Contents ${objNum + 1} 0 R /Resources 3 0 R >>\nendobj\n`;
+    objNum++;
+
+    // Content stream
+    objectOffsets.push(pdf.length);
+    const streamData = content;
+    pdf += `${objNum} 0 obj\n<< /Length ${streamData.length} >>\nstream\n${streamData}endstream\nendobj\n`;
+    objNum++;
+  });
+
+  // Cross-reference table
+  const xrefOffset = pdf.length;
+  pdf += 'xref\n';
+  pdf += `0 ${objNum}\n`;
+  pdf += '0000000000 65535 f \n';
+  objectOffsets.forEach(offset => {
+    pdf += offset.toString().padStart(10, '0') + ' 00000 n \n';
+  });
+
+  // Trailer
+  pdf += 'trailer\n';
+  pdf += `<< /Size ${objNum} /Root 1 0 R >>\n`;
+  pdf += 'startxref\n';
+  pdf += `${xrefOffset}\n`;
+  pdf += '%%EOF';
+
+  return pdf;
+}
+
+// Helper to escape HTML
+escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }
 
 // === END SECTION 1D ===
@@ -2269,20 +3382,26 @@ hideContextMenu() {
 }
 
 // Side panel methods
-showSidePanel() {
+showSidePanel(openToTab = null) {
   if (this.sidePanel && this.panelOverlay) {
     // Show overlay first
     this.panelOverlay.style.opacity = '1';
     this.panelOverlay.style.visibility = 'visible';
-    
+
     // Then slide in panel
     setTimeout(() => {
       this.sidePanel.style.right = '0px';
       this.isPanelOpen = true;
+
+      // Switch to specific tab if requested
+      if (openToTab && this.sidePanelUI) {
+        this.sidePanelUI.switchTab(openToTab);
+      }
+
       this.updateTagsList();
     }, 50);
-    
-    console.log('🏷️ ThreadCub: Side panel opened');
+
+    console.log('🏷️ ThreadCub: Side panel opened' + (openToTab ? ` to ${openToTab} tab` : ''));
   }
 }
 
@@ -2491,25 +3610,25 @@ applySmartHighlight(range, tagId) {
           cursor: pointer !important;
           transition: background-color 0.2s ease !important;
         `;
-        
+
         span.appendChild(contents);
         workingRange.insertNode(span);
-        
-        // Add click listener
+
+        // Add click listener to open side panel to tags tab
         span.addEventListener('click', (e) => {
           e.stopPropagation();
-          this.showSidePanel();
+          this.showSidePanel('tags');
         });
-        
+
         // Store for cleanup
         if (!this.highlightElements) {
           this.highlightElements = new Map();
         }
         this.highlightElements.set(tagId, [span]);
-        
+
         console.log('🏷️ ThreadCub: ✅ Claude fallback highlighting applied');
         return;
-        
+
       } catch (error) {
         console.log('🏷️ ThreadCub: Claude fallback failed:', error);
       }
@@ -2527,7 +3646,7 @@ applySmartHighlight(range, tagId) {
       })),
       rangeInfo: this.captureRangeInfo(range)
     });
-    
+
     // Apply highlighting to each text node
     const highlightElements = [];
     textNodes.forEach(textNode => {
@@ -2536,13 +3655,13 @@ applySmartHighlight(range, tagId) {
         highlightElements.push(highlightSpan);
       }
     });
-    
+
     // Store highlight elements for cleanup
     if (!this.highlightElements) {
       this.highlightElements = new Map();
     }
     this.highlightElements.set(tagId, highlightElements);
-    
+
     console.log('🏷️ ThreadCub: Smart highlight applied with', highlightElements.length, 'elements');
     
   } catch (error) {
@@ -2624,19 +3743,19 @@ wrapTextNodeSafely(textNode, tagId) {
       margin: 0 !important;
       border: none !important;
     `;
-    
+
     // Move text content to span
     span.textContent = textNode.textContent;
-    
+
     // Replace text node with highlighted span
     textNode.parentNode.replaceChild(span, textNode);
-    
-    // Add click listener
+
+    // Add click listener to open side panel to tags tab
     span.addEventListener('click', (e) => {
       e.stopPropagation();
-      this.showSidePanel();
+      this.showSidePanel('tags');
     });
-    
+
     // Add hover effects
     span.addEventListener('mouseenter', () => {
       span.style.backgroundColor = '#FFE55C';
@@ -2841,10 +3960,35 @@ initializeSidePanelUI() {
   if (typeof window.ThreadCubSidePanel !== 'undefined') {
     this.sidePanelUI = new window.ThreadCubSidePanel(this);
     this.sidePanelUI.setSidePanel(this.sidePanel);
+    this.sidePanelUI.setupTabListeners();
+    this.setupTabStyling();
     console.log('🏷️ ThreadCub: Side panel UI manager initialized');
   } else {
     console.warn('🏷️ ThreadCub: ThreadCubSidePanel class not found');
   }
+}
+
+// Setup tab styling updates when clicked
+setupTabStyling() {
+  const tabs = this.sidePanel.querySelectorAll('.threadcub-tab');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      // Update styles for all tabs
+      tabs.forEach(t => {
+        if (t.getAttribute('data-tab') === this.sidePanelUI.currentTab) {
+          t.style.borderBottomColor = '#7C3AED';
+          t.style.color = '#7C3AED';
+          t.style.fontWeight = '600';
+          t.classList.add('active');
+        } else {
+          t.style.borderBottomColor = 'transparent';
+          t.style.color = '#64748b';
+          t.style.fontWeight = '500';
+          t.classList.remove('active');
+        }
+      });
+    });
+  });
 }
 
 // NEW: Updated tags list method that uses the modular side panel
@@ -2970,21 +4114,21 @@ continueTagInChat(tagId) {
 }
 
 filterTagsByPriority(priority) {
-  console.log('🏷️ ThreadCub: Filtering tags by priority:', priority);
-  
-  const allCards = this.sidePanel.querySelectorAll('.threadcub-tag-card');
-  
+  console.log('ThreadCub: Filtering tags by priority:', priority);
+
+  const allCards = this.sidePanel.querySelectorAll('.threadcub-tag-card, .threadcub-anchor-card');
+
   allCards.forEach(card => {
-    const tagId = parseInt(card.getAttribute('data-tag-id'));
+    const tagId = parseInt(card.getAttribute('data-tag-id') || card.getAttribute('data-anchor-id'));
     const tag = this.tags.find(t => t.id === tagId);
-    
+
     let shouldShow = true;
-    
+
     if (priority !== 'all' && tag) {
       const hasPriority = tag.tags && tag.tags.some(t => t.priority === priority);
       shouldShow = hasPriority;
     }
-    
+
     card.style.display = shouldShow ? 'block' : 'none';
   });
 }

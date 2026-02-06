@@ -2938,8 +2938,8 @@ generateSimplePDF(lines, title, logoData = null) {
     yPos -= (logoHeight + 20); // Logo height + spacing below
   }
 
-  // Add title (centered)
-  addText(title, titleFontSize, true, true);
+  // Add title (left-aligned)
+  addText(title, titleFontSize, true);
   yPos -= 10;
 
   // Add content
@@ -2999,10 +2999,16 @@ generateSimplePDF(lines, title, logoData = null) {
   let objNum = 4;
   if (logoData) {
     objectOffsets.push(pdf.length);
-    const imageData = atob(logoData.data);
-    pdf += `${objNum} 0 obj\n<< /Type /XObject /Subtype /Image /Width ${logoData.width} /Height ${logoData.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${imageData.length} >>\nstream\n`;
-    // Add binary image data
-    pdf += imageData;
+    // Convert base64 to hex string for ASCIIHexDecode (works with JS strings)
+    const binaryString = atob(logoData.data);
+    let hexData = '';
+    for (let i = 0; i < binaryString.length; i++) {
+      const hex = binaryString.charCodeAt(i).toString(16).padStart(2, '0');
+      hexData += hex;
+    }
+    hexData += '>'; // ASCIIHexDecode end marker
+    pdf += `${objNum} 0 obj\n<< /Type /XObject /Subtype /Image /Width ${logoData.width} /Height ${logoData.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter [/ASCIIHexDecode /DCTDecode] /Length ${hexData.length} >>\nstream\n`;
+    pdf += hexData;
     pdf += '\nendstream\nendobj\n';
     objNum++;
   }

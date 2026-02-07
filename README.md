@@ -1,4 +1,4 @@
-# ThreadCub Chrome Extension (v1.0.4)
+# ThreadCub Chrome Extension (v1.0.5)
 
 ThreadCub helps you stay in control of long AI conversations.
 
@@ -40,6 +40,13 @@ ThreadCub does **not** use a full auth system in the extension popup.
 It uses an **anonymous session ID** by default, and can optionally read an auth token
 from a ThreadCub dashboard tab (if present) for account linking.
 
+### 📊 Usage Analytics (v1.0.5+)
+ThreadCub includes privacy-first analytics to help improve the extension:
+- **What we track:** Feature usage (tags created, exports, continuations), platform detection, extension installs/updates
+- **What we DON'T track:** Conversation content, personal information, or any identifiable data
+- **How it works:** Anonymous tracking via Google Analytics 4 Measurement Protocol
+- **Privacy:** All tracking uses anonymous client IDs with no personal data collection
+
 ---
 
 ## Platform support
@@ -50,10 +57,10 @@ from a ThreadCub dashboard tab (if present) for account linking.
 | ChatGPT (chatgpt.com) | Fully implemented | Alternating role detection |
 | Gemini | Fully implemented | Class-based role detection |
 | Copilot | Fully implemented | More generic selectors / fallbacks |
-| Grok | ⚠️ Partial | Framework exists — needs real DOM selectors |
-| X.com/i/grok | ⚠️ Partial | Framework exists — needs real DOM selectors |
-| DeepSeek | ⚠️ Partial | Framework exists — needs real DOM selectors |
-| Perplexity | ⚠️ Partial | Framework exists — needs real DOM selectors |
+| Grok | ⚠️ Partial | Framework exists – needs real DOM selectors |
+| X.com/i/grok | ⚠️ Partial | Framework exists – needs real DOM selectors |
+| DeepSeek | ⚠️ Partial | Framework exists – needs real DOM selectors |
+| Perplexity | ⚠️ Partial | Framework exists – needs real DOM selectors |
 
 Continuation behaviour:
 - **Claude / X.omc/i/grok / Grok.com:** direct flow, can auto-submit
@@ -63,19 +70,19 @@ Continuation behaviour:
 
 ## Project structure (high level)
 
-- `manifest.json` — Manifest V4, content scripts load order
-- `background.js` — service worker (downloads, API calls, auth token lookup)
-- `content.js` — entry point
+- `manifest.json` – Manifest V4, content scripts load order
+- `background.js` – service worker (downloads, API calls, auth token lookup, analytics)
+- `content.js` – entry point
 - `src/`
-  - `core/` — app initializer, conversation extractor, floating button UI
-  - `features/` — continuation, tagging (tags + anchors), downloads, platform autostart
-  - `services/` — API + storage wrappers
-  - `ui/` — side panel with tabs + UI utilities
-  - `adapters/` — platform-specific adapters for chat extraction
-  - `utils/` — platform detection + helpers
-- `assets/` — CSS + images/icons
-- `popup/` — minimal popup (feedback form + Discord webhook)
-- `docs/` — audits, quick start, testing guides
+  - `core/` – app initializer, conversation extractor, floating button UI
+  - `features/` – continuation, tagging (tags + anchors), downloads, platform autostart
+  - `services/` – API + storage wrappers, **analytics service**
+  - `ui/` – side panel with tabs + UI utilities
+  - `adapters/` – platform-specific adapters for chat extraction
+  - `utils/` – platform detection + helpers
+- `assets/` – CSS + images/icons
+- `popup/` – minimal popup (feedback form + Discord webhook)
+- `docs/` – audits, quick start, testing guides
 
 ---
 
@@ -125,22 +132,42 @@ Professional export featuring:
 
 ---
 
-## What's New in v1.0.4
+## What's New in v1.0.5
 
-### Side Panel Enhancements
+### Analytics Integration 🐻
+- Added Google Analytics 4 tracking for usage insights
+- Privacy-first approach: no conversation content or personal data tracked
+- Track feature usage (tags, anchors, exports, continuations)
+- Track extension installs and updates
+- Track platform detection (Claude, ChatGPT, Gemini, etc.)
+- Anonymous client IDs only
+
+### Technical Improvements
+- New `analytics.js` service with GA4 Measurement Protocol
+- Enhanced background script with event tracking
+- Added GA4 domain to host permissions
+- Comprehensive tracking across all extension features
+
+---
+
+## Previous Updates
+
+### v1.0.4 - Side Panel & Export Enhancements
+
+**Side Panel Improvements:**
 - Fixed tab switching - anchors open to Anchors tab, tags to Tags tab
 - Standardized icon styling across all buttons
 - Added tooltips to all icon buttons
 - Copy-to-clipboard on tag cards
 - Improved visual consistency
 
-### Export Improvements
+**Export Features:**
 - Multi-format export (JSON, Markdown, PDF)
 - Three-dot menu for format selection
 - ThreadCub logo on PDF exports
 - Direct download without opening new tabs
 
-### Data Persistence
+**Data Persistence:**
 - Tags and anchors persist across sessions
 - Survives browser cache clearing
 - Manual deletion only
@@ -149,16 +176,15 @@ Professional export featuring:
 
 ## Docs
 
-- `docs/PROJECT-AUDIT.md` — deep codebase audit
-- `docs/development/QUICK-START.md` — install + troubleshooting notes
-- `docs/development/GROK_DEEPSEEK_TESTING.md` — how to finish Grok/DeepSeek selectors
+- `docs/PROJECT-AUDIT.md` – deep codebase audit
+- `docs/development/QUICK-START.md` – install + troubleshooting notes
+- `docs/development/GROK_DEEPSEEK_TESTING.md` – how to finish Grok/DeepSeek selectors
 
 ---
 
-
 ## Links
 
-- **Chrome Web Store**: [Coming soon - v1.0.4 pending review]
+- **Chrome Web Store**: [Coming soon - v1.0.5 pending review]
 - **Website**: [https://threadcub.com](https://threadcub.com)
 - **Discord Community**: Join for support and updates
 

@@ -1093,7 +1093,18 @@ window.ThreadCubTagging = class ThreadCubTagging {
     
     this.applySmartHighlight(this.selectedRange, tag.id);
     
-    await this.saveTagsToPersistentStorage();
+    await this.saveTagsToPersistentStorage(); //Add tagging below this line
+
+    // 🐻 Track tag creation
+    chrome.runtime.sendMessage({
+      action: 'trackEvent',
+      eventType: 'tag_created',
+      data: {
+        text: tag.text,
+        selectedText: this.selectedText,
+        platform: this.currentPlatform
+      }
+    });
 
     // Open side panel to Tags tab
     if (!this.isPanelOpen) {
@@ -1129,7 +1140,18 @@ window.ThreadCubTagging = class ThreadCubTagging {
 
     this.applySmartHighlight(this.selectedRange, tag.id);
 
-    await this.saveTagsToPersistentStorage();
+    await this.saveTagsToPersistentStorage(); //Add tagging below this line
+
+    // 🐻 Track tag creation
+    chrome.runtime.sendMessage({
+      action: 'trackEvent',
+      eventType: 'tag_created',
+      data: {
+        text: tag.text,
+        selectedText: this.selectedText,
+        platform: this.currentPlatform
+      }
+    });
 
     // Open side panel to Tags tab
     if (!this.isPanelOpen) {
@@ -1850,7 +1872,18 @@ async handleCreateAnchor() {
   this.applyAnchorHighlight(this.selectedRange, anchor.id);
 
   // Save to persistent storage
-  await this.saveTagsToPersistentStorage();
+  await this.saveTagsToPersistentStorage(); // Add tagging below this line
+
+  // 🐻 Track anchor creation
+  chrome.runtime.sendMessage({
+    action: 'trackEvent',
+    eventType: 'anchor_created',
+    data: {
+      text: anchor.text,
+      selectedText: this.selectedText,
+      platform: anchor.platform
+    }
+  });
 
   // Open side panel to Anchors tab
   if (!this.isPanelOpen) {
@@ -2672,7 +2705,22 @@ downloadTagsAsJSON() {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  URL.revokeObjectURL(url); // Add tagging line after this line
+
+  // 🐻 Track JSON export
+  chrome.runtime.sendMessage({
+    action: 'trackEvent',
+    eventType: 'conversation_exported',
+    data: {
+      format: 'json',
+      conversation: {
+        tags: this.tags.filter(t => t.type !== 'anchor'),
+        anchors: this.tags.filter(t => t.type === 'anchor'),
+        messages: [],
+        platform: this.currentPlatform
+      }
+    }
+  });
 
   console.log('🏷️ ThreadCub: Tags downloaded as JSON');
 }
@@ -2748,7 +2796,22 @@ downloadTagsAsMarkdown() {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  URL.revokeObjectURL(url); // Add tagging line after this line
+
+  // 🐻 Track Markdown export
+  chrome.runtime.sendMessage({
+    action: 'trackEvent',
+    eventType: 'conversation_exported',
+    data: {
+      format: 'markdown',
+      conversation: {
+        tags: tags,
+        anchors: anchors,
+        messages: [],
+        platform: this.currentPlatform
+      }
+    }
+  });
 
   console.log('🏷️ ThreadCub: Tags downloaded as Markdown');
 }
@@ -2837,7 +2900,22 @@ async downloadTagsAsPDF() {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  URL.revokeObjectURL(url); // Add tagging line after this line
+
+  // 🐻 Track PDF export
+  chrome.runtime.sendMessage({
+    action: 'trackEvent',
+    eventType: 'conversation_exported',
+    data: {
+      format: 'pdf',
+      conversation: {
+        tags: tags,
+        anchors: anchors,
+        messages: [],
+        platform: this.currentPlatform
+      }
+    }
+  });
 
   console.log('🏷️ ThreadCub: Tags downloaded as PDF');
 }

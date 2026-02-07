@@ -26,7 +26,22 @@ function createDownloadFromData(conversationData) {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    URL.revokeObjectURL(url); // Add tagging below this line
+
+    // 🐻 Track JSON export
+    chrome.runtime.sendMessage({
+      action: 'trackEvent',
+      eventType: 'conversation_exported',
+      data: {
+        format: 'json',
+        conversation: {
+          tags: conversationData.tags || [],
+          anchors: conversationData.anchors || [],
+          messages: conversationData.messages || [],
+          platform: conversationData.platform || 'unknown'
+        }
+      }
+    });
     
     console.log('🐻 ThreadCub: JSON download completed with filename:', filename);
   } catch (error) {

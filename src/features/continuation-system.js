@@ -119,6 +119,16 @@ function checkForContinuationData() {
 // ===== STREAMLINED: Execute continuation without modal =====
 function executeStreamlinedContinuation(fullPrompt, shareUrl, continuationData) {
   console.log('🚀 ThreadCub: Executing streamlined continuation');
+
+  // 🐻 Track continuation started
+  chrome.runtime.sendMessage({
+    action: 'trackEvent',
+    eventType: 'continuation_started',
+    data: {
+      platform: continuationData.platform || window.PlatformDetector?.detectPlatform() || 'unknown'
+    }
+  });
+  
   console.log('🚀 Platform:', continuationData.platform);
   console.log('🚀 ChatGPT Flow:', continuationData.chatGPTFlow);
   console.log('🚀 Gemini Flow:', continuationData.geminiFlow);

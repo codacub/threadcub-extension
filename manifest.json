@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ThreadCub",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Save, tag, and resume your AI chats across platforms. ThreadCub makes long conversations organised, searchable, and stress-free.",
 
   
@@ -49,7 +49,8 @@
     "https://www.perplexity.ai/*",
     "https://perplexity.ai/*",
     "https://threadcub.com/*",
-    "https://*.threadcub.com/*"
+    "https://*.threadcub.com/*",
+    "https://www.google-analytics.com/*"
   ],
   
   "background": {
@@ -78,6 +79,7 @@
       "assets/anchor.css"
     ],
     "js": [
+      "src/services/analytics.js",
       "src/utils/platform-detector.js",
       "src/utils/utilities.js",
       "src/services/storage-service.js",

@@ -1,3 +1,27 @@
+// === SECTION 0: Analytics Integration ===
+
+// Import analytics service
+importScripts('src/services/analytics.js');
+
+// Track installation and updates
+chrome.runtime.onInstalled.addListener((details) => {
+  console.log('🐻 Background: Extension installed/updated:', details.reason);
+
+  if (details.reason === 'install') {
+    console.log('🐻 Background: First install - opening welcome page');
+    // Track installation
+    self.Analytics.trackInstall();
+    
+    chrome.tabs.create({
+      url: chrome.runtime.getURL('welcome.html')
+    });
+  } else if (details.reason === 'update') {
+    console.log('🐻 Background: Extension updated from', details.previousVersion);
+    // Track update
+    self.Analytics.trackUpdate(details.previousVersion);
+  }
+});
+
 // === SECTION 1: Core Message Handler ===
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -32,6 +56,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       handleGetAuthToken(sendResponse);
       return true;
     
+    case 'trackEvent':
+      handleTrackEvent(request, sendResponse);
+      return false;
+    
     case 'exportComplete':
       console.log('🐻 Background: Export completed notification received');
       break;
@@ -45,6 +73,62 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       sendResponse({ success: false, error: 'Unknown action' });
   }
 });
+
+// === SECTION 1.5: Analytics Event Handler ===
+
+function handleTrackEvent(request, sendResponse) {
+  try {
+    const { eventType, data } = request;
+    
+    console.log('🐻 Background: Tracking event:', eventType);
+    
+    switch (eventType) {
+      case 'tag_created':
+        self.Analytics.trackTagCreated(data);
+        break;
+      
+      case 'anchor_created':
+        self.Analytics.trackAnchorCreated(data);
+        break;
+      
+      case 'conversation_exported':
+        self.Analytics.trackExport(data.format, data.conversation);
+        break;
+      
+      case 'side_panel_opened':
+        self.Analytics.trackSidePanelOpened(data.platform);
+        break;
+      
+      case 'platform_detected':
+        self.Analytics.trackPlatformDetected(data.platform);
+        break;
+      
+      case 'conversation_extracted':
+        self.Analytics.trackConversationExtracted(data);
+        break;
+      
+      case 'floating_button_clicked':
+        self.Analytics.trackFloatingButtonClicked(data.platform);
+        break;
+      
+      case 'continuation_started':
+        self.Analytics.trackContinuationStarted(data.platform);
+        break;
+      
+      case 'error':
+        self.Analytics.trackError(data.errorType, data.errorMessage);
+        break;
+      
+      default:
+        console.log('🐻 Background: Unknown tracking event:', eventType);
+    }
+    
+    sendResponse({ success: true });
+  } catch (error) {
+    console.error('🐻 Background: Error tracking event:', error);
+    sendResponse({ success: false, error: error.message });
+  }
+}
 
 // === SECTION 2: Download Handler ===
 
@@ -231,33 +315,38 @@ async function handleOpenAndInject(url, prompt) {
     console.log(`🔄 Background: Opening new tab: ${url}`);
     
     // Create new tab
-    const tab = await chrome.tabs.create({ url: url });
+    const tab = await chrome.tabs.create({ url, active: false });
+    console.log(`🔄 Background: Created tab ${tab.id}`);
     
-    // Wait for tab to load
+    // Wait for tab to be ready
     await waitForTabReady(tab.id);
+    console.log('🔄 Background: Tab ready, attempting injection');
     
-    // Get platform config
-    const hostname = new URL(url).hostname;
-    const platformConfig = PLATFORM_INJECTORS[hostname];
+    // Get platform-specific selectors
+    const domain = new URL(url).hostname;
+    const platformConfig = PLATFORM_INJECTORS[domain];
     
     if (!platformConfig) {
-      console.log('🔄 Background: Unsupported platform, tab opened but no injection');
-      return { success: true, tabId: tab.id, platform: 'Unknown', injected: false };
+      throw new Error(`Platform ${domain} not supported for injection`);
     }
     
     // Inject the prompt
-    const result = await chrome.scripting.executeScript({
+    const results = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: injectPromptFunction,
       args: [prompt, platformConfig.selectors]
     });
     
-    console.log('🔄 Background: Injection result:', result);
-    
-    return { success: true, tabId: tab.id, platform: platformConfig.name, injected: true };
+    if (results && results[0] && results[0].result.success) {
+      console.log('🔄 Background: Prompt injection successful, activating tab');
+      await chrome.tabs.update(tab.id, { active: true });
+      return { success: true, tabId: tab.id };
+    } else {
+      throw new Error(results[0].result.error || 'Injection failed');
+    }
     
   } catch (error) {
-    console.error('🔄 Background: Error:', error);
+    console.error('🔄 Background: Error in handleOpenAndInject:', error);
     return { success: false, error: error.message };
   }
 }
@@ -331,18 +420,8 @@ function injectPromptFunction(prompt, selectors) {
   });
 }
 
-// === SECTION 6: Extension Lifecycle ===
-
-chrome.runtime.onInstalled.addListener((details) => {
-  console.log('🐻 Background: Extension installed/updated:', details.reason);
-
-  if (details.reason === 'install') {
-    console.log('🐻 Background: First install - opening welcome page');
-    chrome.tabs.create({
-      url: chrome.runtime.getURL('welcome.html')
-    });
-  }
-});
+// === SECTION 6: Extension Lifecycle (MOVED TO TOP FOR ANALYTICS) ===
+// This section was moved to SECTION 0 for analytics integration
 
 chrome.runtime.onStartup.addListener(() => {
   console.log('🐻 Background: Extension started');

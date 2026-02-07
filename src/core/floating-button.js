@@ -389,19 +389,50 @@ class ThreadCubFloatingButton {
     const tagBtn = e.target.closest('.threadcub-tag-btn');
     const closeBtn = e.target.closest('.threadcub-close-btn');
 
-    if (newBtn) {
+   if (newBtn) {
+      // 🐻 Track continue button clicked
+      chrome.runtime.sendMessage({
+        action: 'trackEvent',
+        eventType: 'floating_button_clicked',
+        data: {
+          platform: window.PlatformDetector?.detectPlatform() || 'unknown'
+        }
+      });
+      
       this.saveAndOpenConversation('floating');
       return;
     }
 
     if (downloadBtn) {
       console.log('🐻 ThreadCub: Download button clicked by user - manual download only');
+      
+      // 🐻 Track download button clicked
+      chrome.runtime.sendMessage({
+        action: 'trackEvent',
+        eventType: 'floating_button_clicked',
+        data: {
+          platform: window.PlatformDetector?.detectPlatform() || 'unknown',
+          action: 'download'
+        }
+      });
+      
       this.downloadConversationJSON();
       return;
     }
 
     if (tagBtn) {
       console.log('🏷️ ThreadCub: Tag button clicked');
+      
+      // 🐻 Track tag button clicked
+      chrome.runtime.sendMessage({
+        action: 'trackEvent',
+        eventType: 'floating_button_clicked',
+        data: {
+          platform: window.PlatformDetector?.detectPlatform() || 'unknown',
+          action: 'tag'
+        }
+      });
+      
       this.handleTagButtonClick();
       return;
     }

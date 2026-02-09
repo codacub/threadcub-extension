@@ -3986,10 +3986,12 @@ clearAllHighlights() {
   }
 
   // Strategy 2: Clean up any anchor highlight elements
+  // Note: anchorElements values may be a single element OR an array depending on code path
   if (this.anchorElements && this.anchorElements.size > 0) {
     console.log('🔍 Cleaning up', this.anchorElements.size, 'tracked anchor highlight groups');
     for (const [anchorId, elements] of this.anchorElements) {
-      elements.forEach(span => {
+      const elementList = Array.isArray(elements) ? elements : [elements];
+      elementList.forEach(span => {
         if (span && span.parentNode) {
           const textNode = document.createTextNode(span.textContent);
           span.parentNode.replaceChild(textNode, span);
@@ -4020,16 +4022,19 @@ clearAllHighlights() {
 }
 
 // Updated delete tag method
-deleteTag(tagId) {
+async deleteTag(tagId) {
   // Remove from tags array
   this.tags = this.tags.filter(tag => tag.id !== tagId);
-  
+
   // Use smart cleanup method
   this.cleanupSmartHighlight(tagId);
-  
+
+  // Persist deletion to storage so it survives page refresh
+  await this.saveTagsToPersistentStorage();
+
   // Update the tags list
   this.updateTagsList();
-  console.log('🏷️ ThreadCub: Tag deleted with smart cleanup:', tagId);
+  console.log('🏷️ ThreadCub: Tag deleted and persisted:', tagId);
 }
 
 // === END SECTION 1G-4 ===

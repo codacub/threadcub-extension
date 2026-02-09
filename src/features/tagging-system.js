@@ -25,7 +25,9 @@ window.ThreadCubTagging = class ThreadCubTagging {
     this.currentPlatform = this.detectPlatform();
     this.currentStorageKey = null;
     this.lastUrl = window.location.href;
-    
+    this._urlChangeDebounceTimer = null;
+    this._lastConversationId = null;
+
     // ✅ CRITICAL: Set global reference
     window.threadcubTagging = this;
     
@@ -127,29 +129,57 @@ window.ThreadCubTagging = class ThreadCubTagging {
     };
   }
 
-  // Handle URL changes and transfer tags if needed
+  // Handle URL changes - clear old state and load new conversation's tags/anchors
   async handleUrlChange(newUrl) {
-    console.log('🔍 Handling URL change to:', newUrl);
-    
+    // Debounce rapid URL changes (e.g. SPA redirects that fire multiple events)
+    if (this._urlChangeDebounceTimer) {
+      clearTimeout(this._urlChangeDebounceTimer);
+    }
+
+    this._urlChangeDebounceTimer = setTimeout(async () => {
+      this._urlChangeDebounceTimer = null;
+      await this._processUrlChange(newUrl);
+    }, 150);
+  }
+
+  async _processUrlChange(newUrl) {
+    console.log('🔍 Processing URL change to:', newUrl);
+
     const oldStorageKey = this.currentStorageKey;
     const newStorageKey = this.generateConversationKey();
-    
+
     console.log('🔍 Old storage key:', oldStorageKey);
     console.log('🔍 New storage key:', newStorageKey);
-    
-    if (oldStorageKey !== newStorageKey) {
-      console.log('🔍 Storage key changed - transferring tags...');
-      
-      // Check if we have tags in the old key that should be transferred
-      if (this.shouldTransferTags(oldStorageKey, newStorageKey)) {
-        await this.transferTagsToNewKey(oldStorageKey, newStorageKey);
-      }
-      
-      this.currentStorageKey = newStorageKey;
-      
-      // Load tags for the new URL
-      await this.loadPersistedTags();
+
+    // Same conversation - no action needed
+    if (oldStorageKey === newStorageKey) {
+      console.log('🔍 Same conversation - no reload needed');
+      return;
     }
+
+    console.log('🔍 Conversation changed - clearing old state and loading new tags/anchors');
+
+    // Check if tags should be transferred (e.g., /new → real conversation URL)
+    if (this.shouldTransferTags(oldStorageKey, newStorageKey)) {
+      await this.transferTagsToNewKey(oldStorageKey, newStorageKey);
+    }
+
+    // 1. Clear all existing highlights from the DOM
+    this.clearAllHighlights();
+
+    // 2. Clear the in-memory tags array (includes both tags and anchors)
+    this.tags = [];
+
+    // 3. Update the storage key to point at the new conversation
+    this.currentStorageKey = newStorageKey;
+
+    // 4. Update the side panel UI immediately to show empty state
+    this.updateTagsList();
+
+    // 5. Load tags/anchors for the new conversation from storage
+    await this.loadPersistedTags();
+
+    console.log('🔍 Conversation switch complete. Tags loaded:', this.tags.length);
   }
 
   // NEW: Determine if tags should be transferred between keys
@@ -265,12 +295,11 @@ window.ThreadCubTagging = class ThreadCubTagging {
         }
       } else if (url.includes('gemini.google.com')) {
         console.log('🔍 DEBUG: Detected Gemini platform');
-        // Try Gemini URL patterns
         const patterns = [
           /\/app\/([^\/\?]+)/,      // /app/conversation-id
           /\/chat\/([^\/\?]+)/      // /chat/conversation-id
         ];
-        
+
         for (const pattern of patterns) {
           const match = url.match(pattern);
           if (match) {
@@ -279,8 +308,56 @@ window.ThreadCubTagging = class ThreadCubTagging {
             break;
           }
         }
+      } else if (url.includes('grok.x.ai') || url.includes('grok.com') || url.includes('x.com')) {
+        console.log('🔍 DEBUG: Detected Grok platform');
+        const patterns = [
+          /\/i\/grok\/([^\/\?]+)/,  // x.com/i/grok/conversation-id
+          /\/grok\/([^\/\?]+)/,     // grok.com/grok/conversation-id
+          /([a-f0-9-]{36})/         // any UUID in URL
+        ];
+
+        for (const pattern of patterns) {
+          const match = url.match(pattern);
+          if (match) {
+            conversationId = match[1];
+            console.log('🔍 DEBUG: Found Grok conversation ID:', conversationId, 'using pattern:', pattern);
+            break;
+          }
+        }
+      } else if (url.includes('chat.deepseek.com')) {
+        console.log('🔍 DEBUG: Detected DeepSeek platform');
+        const patterns = [
+          /\/chat\/([^\/\?]+)/,     // /chat/conversation-id
+          /\/c\/([^\/\?]+)/,        // /c/conversation-id
+          /([a-f0-9-]{36})/         // any UUID in URL
+        ];
+
+        for (const pattern of patterns) {
+          const match = url.match(pattern);
+          if (match) {
+            conversationId = match[1];
+            console.log('🔍 DEBUG: Found DeepSeek conversation ID:', conversationId, 'using pattern:', pattern);
+            break;
+          }
+        }
+      } else if (url.includes('perplexity.ai')) {
+        console.log('🔍 DEBUG: Detected Perplexity platform');
+        const patterns = [
+          /\/search\/([^\/\?]+)/,   // /search/conversation-id
+          /\/thread\/([^\/\?]+)/,   // /thread/conversation-id
+          /([a-f0-9-]{36})/         // any UUID in URL
+        ];
+
+        for (const pattern of patterns) {
+          const match = url.match(pattern);
+          if (match) {
+            conversationId = match[1];
+            console.log('🔍 DEBUG: Found Perplexity conversation ID:', conversationId, 'using pattern:', pattern);
+            break;
+          }
+        }
       }
-      
+
       // Enhanced fallback: Use full URL hash for unique identification
       if (!conversationId) {
         console.log('🔍 DEBUG: No conversation ID found in URL, creating fallback');
@@ -426,19 +503,14 @@ window.ThreadCubTagging = class ThreadCubTagging {
         
         console.log('🔍 DEBUG: ✅ Tags restoration complete');
       } else {
-        console.log('🔍 DEBUG: ❌ No valid persisted tags found');
-        
-        // DEBUG: Check what keys exist in storage
-        if (this.canUseChromStorage()) {
-          chrome.storage.local.get(null, (allData) => {
-            console.log('🔍 DEBUG: All Chrome storage keys:', Object.keys(allData));
-            const threadcubKeys = Object.keys(allData).filter(key => key.startsWith('threadcub-tags-'));
-            console.log('🔍 DEBUG: ThreadCub tag keys in storage:', threadcubKeys);
-          });
-        } else {
-          const allKeys = Object.keys(localStorage);
-          const threadcubKeys = allKeys.filter(key => key.startsWith('threadcub-tags-'));
-          console.log('🔍 DEBUG: ThreadCub tag keys in localStorage:', threadcubKeys);
+        console.log('🔍 DEBUG: No persisted tags found for this conversation - showing empty state');
+
+        // Ensure tags are cleared for this conversation (no stale data)
+        this.tags = [];
+
+        // Update UI to show empty state
+        if (this.isPanelOpen) {
+          this.updateTagsList();
         }
       }
       
@@ -3893,6 +3965,58 @@ cleanupSmartHighlight(tagId) {
 cleanupHighlight(tagId) {
   // Use the smart cleanup method
   this.cleanupSmartHighlight(tagId);
+}
+
+// Clear ALL highlights from the DOM (used during conversation switching)
+clearAllHighlights() {
+  console.log('🔍 Clearing all highlights for conversation switch');
+
+  // Strategy 1: Clean up tracked highlight elements via the Map
+  if (this.highlightElements && this.highlightElements.size > 0) {
+    console.log('🔍 Cleaning up', this.highlightElements.size, 'tracked highlight groups');
+    for (const [tagId, elements] of this.highlightElements) {
+      elements.forEach(span => {
+        if (span && span.parentNode) {
+          const textNode = document.createTextNode(span.textContent);
+          span.parentNode.replaceChild(textNode, span);
+        }
+      });
+    }
+    this.highlightElements.clear();
+  }
+
+  // Strategy 2: Clean up any anchor highlight elements
+  if (this.anchorElements && this.anchorElements.size > 0) {
+    console.log('🔍 Cleaning up', this.anchorElements.size, 'tracked anchor highlight groups');
+    for (const [anchorId, elements] of this.anchorElements) {
+      elements.forEach(span => {
+        if (span && span.parentNode) {
+          const textNode = document.createTextNode(span.textContent);
+          span.parentNode.replaceChild(textNode, span);
+        }
+      });
+    }
+    this.anchorElements.clear();
+  }
+
+  // Strategy 3: Sweep for any orphaned highlight spans in the DOM
+  const orphanedHighlights = document.querySelectorAll('.threadcub-highlight, .threadcub-anchor-flash');
+  if (orphanedHighlights.length > 0) {
+    console.log('🔍 Removing', orphanedHighlights.length, 'orphaned highlight elements');
+    orphanedHighlights.forEach(span => {
+      if (span.parentNode) {
+        const textNode = document.createTextNode(span.textContent);
+        span.parentNode.replaceChild(textNode, span);
+      }
+    });
+  }
+
+  // Clear stored range data
+  if (this.originalRanges) {
+    this.originalRanges.clear();
+  }
+
+  console.log('🔍 All highlights cleared');
 }
 
 // Updated delete tag method

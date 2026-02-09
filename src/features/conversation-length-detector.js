@@ -83,28 +83,47 @@ const ConversationLengthDetector = {
    * already running.
    */
   init() {
-    if (this._initialized) return;
+    console.log('[DEBUG] ConversationLengthDetector.init() ENTERED, this:', typeof this, 'this._initialized:', this._initialized);
+    try {
+      if (this._initialized) {
+        console.log('[DEBUG] init() early return: already initialized');
+        return;
+      }
 
-    this._platform = window.PlatformDetector.detectPlatform();
-    if (this._platform === 'unknown') return;
+      console.log('[DEBUG] PlatformDetector available:', typeof window.PlatformDetector);
+      this._platform = window.PlatformDetector.detectPlatform();
+      console.log('[DEBUG] Detected platform:', this._platform);
+      if (this._platform === 'unknown') {
+        console.log('[DEBUG] init() early return: platform is unknown');
+        return;
+      }
 
-    this._lastUrl = window.location.href;
-    this._currentConversationId = this._getConversationId();
+      this._lastUrl = window.location.href;
+      console.log('[DEBUG] lastUrl set to:', this._lastUrl);
+      this._currentConversationId = this._getConversationId();
+      console.log('[DEBUG] conversationId:', this._currentConversationId);
 
-    // Restore dismissal state for this conversation
-    this._loadDismissalState();
+      // Restore dismissal state for this conversation
+      this._loadDismissalState();
+      console.log('[DEBUG] After loadDismissalState, _promptShown:', this._promptShown);
 
-    // Start observing the DOM for new messages
-    this._setupObserver();
+      // Start observing the DOM for new messages
+      this._setupObserver();
+      console.log('[DEBUG] Observer setup complete');
 
-    // Poll for SPA navigation (URL changes without reload)
-    this._startUrlMonitor();
+      // Poll for SPA navigation (URL changes without reload)
+      this._startUrlMonitor();
+      console.log('[DEBUG] URL monitor started');
 
-    // Run an initial count in case the page already has messages
-    this._countMessages();
+      // Run an initial count in case the page already has messages
+      this._countMessages();
+      console.log('[DEBUG] Initial count complete, _messageCount:', this._messageCount);
 
-    this._initialized = true;
-    console.log('ThreadCub: ConversationLengthDetector initialized for', this._platform);
+      this._initialized = true;
+      console.log('[DEBUG] ConversationLengthDetector fully initialized for', this._platform);
+    } catch (err) {
+      console.error('[DEBUG] ConversationLengthDetector.init() internal error:', err);
+    }
   },
 
   /**
@@ -424,4 +443,6 @@ const ConversationLengthDetector = {
 
 // Export to window
 window.ConversationLengthDetector = ConversationLengthDetector;
-console.log('ThreadCub: ConversationLengthDetector module loaded');
+console.log('[DEBUG] ConversationLengthDetector assigned to window, typeof:', typeof window.ConversationLengthDetector);
+console.log('[DEBUG] Has init method:', typeof window.ConversationLengthDetector.init);
+console.log('[DEBUG] Has _messageCount:', '_messageCount' in window.ConversationLengthDetector, 'value:', window.ConversationLengthDetector._messageCount);

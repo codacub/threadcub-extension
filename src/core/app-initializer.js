@@ -58,18 +58,8 @@ function startThreadCub() {
         console.error('🐻 ThreadCub: ❌ Error checking continuation data:', continuationError);
       }
 
-      // Initialize conversation length detector
-      try {
-        if (typeof window.ConversationLengthDetector !== 'undefined') {
-          window.ConversationLengthDetector.init();
-          console.log('🐻 ThreadCub: ✅ Conversation length detector initialized');
-        }
-      } catch (detectorError) {
-        console.error('🐻 ThreadCub: ❌ Error initializing conversation length detector:', detectorError);
-      }
-
       console.log('🐻 ThreadCub: ✅ Application fully initialized with all features!');
-      
+
       // Final verification
       setTimeout(() => {
         const buttonElement = document.querySelector('#threadcub-edge-btn');
@@ -80,14 +70,14 @@ function startThreadCub() {
           console.error('🐻 ThreadCub: ❌ FAILED! Button not found in DOM after initialization');
         }
       }, 1000);
-      
+
     } catch (buttonError) {
       console.error('🐻 ThreadCub: ❌ Error creating floating button instance:', buttonError);
     }
-    
+
   } else {
     console.error('🐻 ThreadCub: ❌ ThreadCubFloatingButton class not found - module may not have loaded');
-    
+
     // Retry after a short delay
     setTimeout(() => {
       if (typeof window.ThreadCubFloatingButton !== 'undefined') {
@@ -97,6 +87,17 @@ function startThreadCub() {
         console.error('🐻 ThreadCub: ❌ Failed to load floating button module after retry');
       }
     }, 1000);
+  }
+
+  // Initialize conversation length detector independently of the floating button.
+  // This runs outside the button's try/catch so an error above cannot prevent it.
+  try {
+    if (typeof window.ConversationLengthDetector !== 'undefined') {
+      window.ConversationLengthDetector.init();
+      console.log('🐻 ThreadCub: ✅ Conversation length detector initialized');
+    }
+  } catch (detectorError) {
+    console.error('🐻 ThreadCub: ❌ Error initializing conversation length detector:', detectorError);
   }
 }
 

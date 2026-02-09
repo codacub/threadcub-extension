@@ -10,7 +10,7 @@ const ConversationLengthDetector = {
   // =========================================================================
 
   CONFIG: {
-    EXCHANGE_THRESHOLD: 25,           // 25 user-assistant pairs = 50 total messages
+    EXCHANGE_THRESHOLD: 2,           // 25 user-assistant pairs = 50 total messages
     OBSERVER_DEBOUNCE_MS: 1000,       // Debounce DOM mutations before counting
     STORAGE_PREFIX: 'threadcub-clp-', // conversation-length-prompt dismissal keys
     DISMISSAL_TTL_MS: 24 * 60 * 60 * 1000, // 24 hours before dismissal expires

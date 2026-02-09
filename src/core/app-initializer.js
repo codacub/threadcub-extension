@@ -57,7 +57,17 @@ function startThreadCub() {
       } catch (continuationError) {
         console.error('🐻 ThreadCub: ❌ Error checking continuation data:', continuationError);
       }
-      
+
+      // Initialize conversation length detector
+      try {
+        if (typeof window.ConversationLengthDetector !== 'undefined') {
+          window.ConversationLengthDetector.init();
+          console.log('🐻 ThreadCub: ✅ Conversation length detector initialized');
+        }
+      } catch (detectorError) {
+        console.error('🐻 ThreadCub: ❌ Error initializing conversation length detector:', detectorError);
+      }
+
       console.log('🐻 ThreadCub: ✅ Application fully initialized with all features!');
       
       // Final verification

@@ -1,6 +1,5 @@
 
 // === SECTION 5A: Main Application Initialization ===
-console.log('[DEBUG] app-initializer.js loaded, readyState:', document.readyState);
 
 // Main initialization when DOM is ready
 function initializeThreadCub() {
@@ -92,21 +91,12 @@ function startThreadCub() {
 
   // Initialize conversation length detector independently of the floating button.
   // This runs outside the button's try/catch so an error above cannot prevent it.
-  console.log('[DEBUG] About to init ConversationLengthDetector, typeof:', typeof window.ConversationLengthDetector);
-  console.log('[DEBUG] ConversationLengthDetector keys:', window.ConversationLengthDetector ? Object.keys(window.ConversationLengthDetector) : 'N/A');
   try {
     if (typeof window.ConversationLengthDetector !== 'undefined') {
-      console.log('[DEBUG] Calling ConversationLengthDetector.init() now');
       window.ConversationLengthDetector.init();
-      console.log('[DEBUG] ConversationLengthDetector.init() returned');
-      console.log('[DEBUG] _initialized:', window.ConversationLengthDetector._initialized);
-      console.log('[DEBUG] _platform:', window.ConversationLengthDetector._platform);
-      console.log('[DEBUG] _messageCount:', window.ConversationLengthDetector._messageCount);
-    } else {
-      console.error('[DEBUG] ConversationLengthDetector is NOT defined on window');
     }
   } catch (detectorError) {
-    console.error('[DEBUG] ConversationLengthDetector.init() threw:', detectorError);
+    console.error('🐻 ThreadCub: ❌ Error initializing conversation length detector:', detectorError);
   }
 }
 

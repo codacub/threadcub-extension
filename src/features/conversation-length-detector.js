@@ -21,10 +21,15 @@ const ConversationLengthDetector = {
   // Lightweight message-counting selectors per platform.
   // These are intentionally simpler than the full extraction selectors —
   // we only need a count, not content.
+  //
+  // Claude requires a special approach because its DOM lacks stable
+  // data-testid or role attributes on message containers. The proven
+  // selector from ConversationExtractor.simpleWorkingExtraction() is
+  // used as a fallback with a lightweight textContent length filter.
   MESSAGE_SELECTORS: {
     claude: {
-      turns: '[data-testid^="conversation-turn"]',
-      fallback: 'div.font-claude-message',
+      // Claude has no reliable single selector. We try several in order
+      // inside _countClaudeMessages().
       container: 'main',
     },
     chatgpt: {
@@ -83,47 +88,28 @@ const ConversationLengthDetector = {
    * already running.
    */
   init() {
-    console.log('[DEBUG] ConversationLengthDetector.init() ENTERED, this:', typeof this, 'this._initialized:', this._initialized);
-    try {
-      if (this._initialized) {
-        console.log('[DEBUG] init() early return: already initialized');
-        return;
-      }
+    if (this._initialized) return;
 
-      console.log('[DEBUG] PlatformDetector available:', typeof window.PlatformDetector);
-      this._platform = window.PlatformDetector.detectPlatform();
-      console.log('[DEBUG] Detected platform:', this._platform);
-      if (this._platform === 'unknown') {
-        console.log('[DEBUG] init() early return: platform is unknown');
-        return;
-      }
+    this._platform = window.PlatformDetector.detectPlatform();
+    if (this._platform === 'unknown') return;
 
-      this._lastUrl = window.location.href;
-      console.log('[DEBUG] lastUrl set to:', this._lastUrl);
-      this._currentConversationId = this._getConversationId();
-      console.log('[DEBUG] conversationId:', this._currentConversationId);
+    this._lastUrl = window.location.href;
+    this._currentConversationId = this._getConversationId();
 
-      // Restore dismissal state for this conversation
-      this._loadDismissalState();
-      console.log('[DEBUG] After loadDismissalState, _promptShown:', this._promptShown);
+    // Restore dismissal state for this conversation
+    this._loadDismissalState();
 
-      // Start observing the DOM for new messages
-      this._setupObserver();
-      console.log('[DEBUG] Observer setup complete');
+    // Start observing the DOM for new messages
+    this._setupObserver();
 
-      // Poll for SPA navigation (URL changes without reload)
-      this._startUrlMonitor();
-      console.log('[DEBUG] URL monitor started');
+    // Poll for SPA navigation (URL changes without reload)
+    this._startUrlMonitor();
 
-      // Run an initial count in case the page already has messages
-      this._countMessages();
-      console.log('[DEBUG] Initial count complete, _messageCount:', this._messageCount);
+    // Run an initial count in case the page already has messages
+    this._countMessages();
 
-      this._initialized = true;
-      console.log('[DEBUG] ConversationLengthDetector fully initialized for', this._platform);
-    } catch (err) {
-      console.error('[DEBUG] ConversationLengthDetector.init() internal error:', err);
-    }
+    this._initialized = true;
+    console.log('ThreadCub: ConversationLengthDetector initialized for', this._platform, '— messageCount:', this._messageCount);
   },
 
   /**
@@ -198,8 +184,9 @@ const ConversationLengthDetector = {
   // =========================================================================
 
   /**
-   * Count messages using fast, platform-specific selectors. Only runs
-   * querySelectorAll().length — never reads text content.
+   * Count messages using platform-specific selectors.
+   * Claude requires a special approach because its DOM has no stable
+   * message-level data-testid or role attributes.
    */
   _countMessages() {
     // Already shown for this conversation — skip the work
@@ -210,21 +197,25 @@ const ConversationLengthDetector = {
 
     let count = 0;
 
-    // Strategy 1: Single "turns" selector that captures both roles
-    if (selectors.turns) {
-      count = document.querySelectorAll(selectors.turns).length;
-    }
+    if (this._platform === 'claude') {
+      count = this._countClaudeMessages();
+    } else {
+      // Strategy 1: Single "turns" selector that captures both roles
+      if (selectors.turns) {
+        count = document.querySelectorAll(selectors.turns).length;
+      }
 
-    // Strategy 2: Separate user/assistant selectors
-    if (count === 0 && selectors.userTurns && selectors.assistantTurns) {
-      const userCount = document.querySelectorAll(selectors.userTurns).length;
-      const assistantCount = document.querySelectorAll(selectors.assistantTurns).length;
-      count = userCount + assistantCount;
-    }
+      // Strategy 2: Separate user/assistant selectors
+      if (count === 0 && selectors.userTurns && selectors.assistantTurns) {
+        const userCount = document.querySelectorAll(selectors.userTurns).length;
+        const assistantCount = document.querySelectorAll(selectors.assistantTurns).length;
+        count = userCount + assistantCount;
+      }
 
-    // Strategy 3: Fallback selector
-    if (count === 0 && selectors.fallback) {
-      count = document.querySelectorAll(selectors.fallback).length;
+      // Strategy 3: Fallback selector
+      if (count === 0 && selectors.fallback) {
+        count = document.querySelectorAll(selectors.fallback).length;
+      }
     }
 
     this._messageCount = count;
@@ -234,6 +225,40 @@ const ConversationLengthDetector = {
     if (exchanges >= this.CONFIG.EXCHANGE_THRESHOLD) {
       this._showPromptToast();
     }
+  },
+
+  /**
+   * Claude-specific message counting. Tries progressively broader selectors.
+   * The final fallback mirrors ConversationExtractor.simpleWorkingExtraction()
+   * — the only proven-working approach for Claude — but uses textContent.length
+   * instead of innerText to avoid triggering layout reflow.
+   */
+  _countClaudeMessages() {
+    // Attempt 1: data-testid conversation turns (may exist in some versions)
+    let elements = document.querySelectorAll('[data-testid^="conversation-turn"]');
+    if (elements.length > 0) return elements.length;
+
+    // Attempt 2: .font-claude-message class
+    elements = document.querySelectorAll('.font-claude-message');
+    if (elements.length > 0) return elements.length;
+
+    // Attempt 3: data-testid containing "message"
+    elements = document.querySelectorAll('[data-testid*="message"]');
+    if (elements.length > 0) return elements.length;
+
+    // Attempt 4 (proven fallback): Broad flex-col selector filtered by
+    // content length. This is the same selector used by
+    // ConversationExtractor.simpleWorkingExtraction() and is the only
+    // approach confirmed to work on the current Claude.ai DOM.
+    // textContent is used instead of innerText (no layout reflow).
+    elements = document.querySelectorAll('div[class*="flex"][class*="flex-col"]');
+    let count = 0;
+    for (let i = 0; i < elements.length; i++) {
+      if ((elements[i].textContent || '').length > 50) {
+        count++;
+      }
+    }
+    return count;
   },
 
   // =========================================================================
@@ -443,6 +468,3 @@ const ConversationLengthDetector = {
 
 // Export to window
 window.ConversationLengthDetector = ConversationLengthDetector;
-console.log('[DEBUG] ConversationLengthDetector assigned to window, typeof:', typeof window.ConversationLengthDetector);
-console.log('[DEBUG] Has init method:', typeof window.ConversationLengthDetector.init);
-console.log('[DEBUG] Has _messageCount:', '_messageCount' in window.ConversationLengthDetector, 'value:', window.ConversationLengthDetector._messageCount);

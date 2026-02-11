@@ -308,20 +308,58 @@ window.ThreadCubTagging = class ThreadCubTagging {
             break;
           }
         }
-      } else if (url.includes('grok.x.ai') || url.includes('grok.com') || url.includes('x.com')) {
+      } else if (url.includes('grok.x.ai') || url.includes('grok.com') || (url.includes('x.com') && url.includes('/i/grok'))) {
         console.log('🔍 DEBUG: Detected Grok platform');
-        const patterns = [
-          /\/i\/grok\/([^\/\?]+)/,  // x.com/i/grok/conversation-id
-          /\/grok\/([^\/\?]+)/,     // grok.com/grok/conversation-id
-          /([a-f0-9-]{36})/         // any UUID in URL
-        ];
-
-        for (const pattern of patterns) {
-          const match = url.match(pattern);
-          if (match) {
-            conversationId = match[1];
-            console.log('🔍 DEBUG: Found Grok conversation ID:', conversationId, 'using pattern:', pattern);
-            break;
+        
+        // Try to use adapter's getConversationId method first (most reliable)
+        const adapter = window.PlatformAdapters?.getAdapter();
+        if (adapter && adapter.getConversationId) {
+          const adapterId = adapter.getConversationId(url);
+          if (adapterId) {
+            conversationId = adapterId;
+            console.log('🔍 DEBUG: Got Grok conversation ID from adapter:', conversationId);
+          }
+        }
+        
+        // Fallback: manual extraction if adapter didn't work
+        if (!conversationId) {
+          // X.com Grok: check query parameter first
+          if (url.includes('x.com') && url.includes('/i/grok')) {
+            try {
+              const urlObj = new URL(url);
+              const conversationParam = urlObj.searchParams.get('conversation');
+              if (conversationParam) {
+                conversationId = conversationParam;
+                console.log('🔍 DEBUG: Found X.com Grok conversation ID from query param:', conversationId);
+              } else {
+                // Try path-based pattern (fallback)
+                const xcomPattern = /\/i\/grok\/([a-zA-Z0-9_-]+)/;
+                const match = url.match(xcomPattern);
+                if (match) {
+                  conversationId = match[1];
+                  console.log('🔍 DEBUG: Found X.com Grok conversation ID from path:', conversationId);
+                }
+              }
+            } catch (e) {
+              console.log('🔍 DEBUG: Error parsing X.com Grok URL:', e);
+            }
+          }
+          // Grok.com: different patterns
+          else if (url.includes('grok.com')) {
+            const grokPattern = /\/grok\/([^\/\?]+)/;
+            const match = url.match(grokPattern);
+            if (match) {
+              conversationId = match[1];
+              console.log('🔍 DEBUG: Found Grok.com conversation ID:', conversationId);
+            } else {
+              // Try UUID fallback for grok.com
+              const uuidPattern = /([a-f0-9-]{36})/;
+              const uuidMatch = url.match(uuidPattern);
+              if (uuidMatch) {
+                conversationId = uuidMatch[1];
+                console.log('🔍 DEBUG: Found Grok.com UUID:', conversationId);
+              }
+            }
           }
         }
       } else if (url.includes('chat.deepseek.com')) {
@@ -624,7 +662,12 @@ window.ThreadCubTagging = class ThreadCubTagging {
           }
           
           if (range) {
-            this.applySmartHighlight(range, tag.id);
+            // Use appropriate highlight method based on tag type
+            if (tag.type === 'anchor') {
+              this.applySmartAnchorHighlight(range, tag.id);
+            } else {
+              this.applySmartHighlight(range, tag.id);
+            }
             restoredCount++;
             console.log(`🏷️ ThreadCub: ✅ Restored highlight ${restoredCount}/${totalTags} for tag ${tag.id}`);
           } else {

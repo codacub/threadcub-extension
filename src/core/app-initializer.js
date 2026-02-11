@@ -1,5 +1,6 @@
 
 // === SECTION 5A: Main Application Initialization ===
+console.log('[DEBUG] app-initializer.js loaded, readyState:', document.readyState);
 
 // Main initialization when DOM is ready
 function initializeThreadCub() {
@@ -57,9 +58,9 @@ function startThreadCub() {
       } catch (continuationError) {
         console.error('🐻 ThreadCub: ❌ Error checking continuation data:', continuationError);
       }
-      
+
       console.log('🐻 ThreadCub: ✅ Application fully initialized with all features!');
-      
+
       // Final verification
       setTimeout(() => {
         const buttonElement = document.querySelector('#threadcub-edge-btn');
@@ -70,14 +71,14 @@ function startThreadCub() {
           console.error('🐻 ThreadCub: ❌ FAILED! Button not found in DOM after initialization');
         }
       }, 1000);
-      
+
     } catch (buttonError) {
       console.error('🐻 ThreadCub: ❌ Error creating floating button instance:', buttonError);
     }
-    
+
   } else {
     console.error('🐻 ThreadCub: ❌ ThreadCubFloatingButton class not found - module may not have loaded');
-    
+
     // Retry after a short delay
     setTimeout(() => {
       if (typeof window.ThreadCubFloatingButton !== 'undefined') {
@@ -87,6 +88,25 @@ function startThreadCub() {
         console.error('🐻 ThreadCub: ❌ Failed to load floating button module after retry');
       }
     }, 1000);
+  }
+
+  // Initialize conversation length detector independently of the floating button.
+  // This runs outside the button's try/catch so an error above cannot prevent it.
+  console.log('[DEBUG] About to init ConversationLengthDetector, typeof:', typeof window.ConversationLengthDetector);
+  console.log('[DEBUG] ConversationLengthDetector keys:', window.ConversationLengthDetector ? Object.keys(window.ConversationLengthDetector) : 'N/A');
+  try {
+    if (typeof window.ConversationLengthDetector !== 'undefined') {
+      console.log('[DEBUG] Calling ConversationLengthDetector.init() now');
+      window.ConversationLengthDetector.init();
+      console.log('[DEBUG] ConversationLengthDetector.init() returned');
+      console.log('[DEBUG] _initialized:', window.ConversationLengthDetector._initialized);
+      console.log('[DEBUG] _platform:', window.ConversationLengthDetector._platform);
+      console.log('[DEBUG] _messageCount:', window.ConversationLengthDetector._messageCount);
+    } else {
+      console.error('[DEBUG] ConversationLengthDetector is NOT defined on window');
+    }
+  } catch (detectorError) {
+    console.error('[DEBUG] ConversationLengthDetector.init() threw:', detectorError);
   }
 }
 

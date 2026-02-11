@@ -76,7 +76,8 @@
       "assets/tokens.css",
       "assets/floating-button.css",
       "assets/side-panel.css",
-      "assets/anchor.css"
+      "assets/anchor.css",
+      "assets/conversation-prompt.css"
     ],
     "js": [
       "src/services/analytics.js",
@@ -94,6 +95,7 @@
       "src/features/continuation-system.js",
       "src/features/platform-autostart.js",
       "src/features/download-manager.js",
+      "src/features/conversation-length-detector.js",
       "src/core/app-initializer.js",
       "content.js"
     ],

@@ -364,18 +364,32 @@ window.ThreadCubTagging = class ThreadCubTagging {
         }
       } else if (url.includes('chat.deepseek.com')) {
         console.log('🔍 DEBUG: Detected DeepSeek platform');
-        const patterns = [
-          /\/chat\/([^\/\?]+)/,     // /chat/conversation-id
-          /\/c\/([^\/\?]+)/,        // /c/conversation-id
-          /([a-f0-9-]{36})/         // any UUID in URL
-        ];
+        
+        // Try to use adapter's getConversationId method first (most reliable)
+        const adapter = window.PlatformAdapters?.getAdapter();
+        if (adapter && adapter.getConversationId) {
+          const adapterId = adapter.getConversationId(url);
+          if (adapterId) {
+            conversationId = adapterId;
+            console.log('🔍 DEBUG: Got DeepSeek conversation ID from adapter:', conversationId);
+          }
+        }
+        
+        // Fallback: manual extraction if adapter didn't work
+        if (!conversationId) {
+          const patterns = [
+            /\/chat\/s\/([a-f0-9-]{36})/,  // /chat/s/uuid (FIXED!)
+            /\/s\/([a-f0-9-]{36})/,        // /s/uuid
+            /([a-f0-9-]{36})/              // any UUID in URL
+          ];
 
-        for (const pattern of patterns) {
-          const match = url.match(pattern);
-          if (match) {
-            conversationId = match[1];
-            console.log('🔍 DEBUG: Found DeepSeek conversation ID:', conversationId, 'using pattern:', pattern);
-            break;
+          for (const pattern of patterns) {
+            const match = url.match(pattern);
+            if (match) {
+              conversationId = match[1];
+              console.log('🔍 DEBUG: Found DeepSeek conversation ID:', conversationId, 'using pattern:', pattern);
+              break;
+            }
           }
         }
       } else if (url.includes('perplexity.ai')) {
@@ -391,6 +405,20 @@ window.ThreadCubTagging = class ThreadCubTagging {
           if (match) {
             conversationId = match[1];
             console.log('🔍 DEBUG: Found Perplexity conversation ID:', conversationId, 'using pattern:', pattern);
+            break;
+          }
+        }
+      } else if (url.includes('copilot.microsoft.com')) {
+        console.log('🔍 DEBUG: Detected Copilot platform');
+        const patterns = [
+          /\/chats\/([^\/\?]+)/     // /chats/conversation-id
+        ];
+
+        for (const pattern of patterns) {
+          const match = url.match(pattern);
+          if (match) {
+            conversationId = match[1];
+            console.log('🔍 DEBUG: Found Copilot conversation ID:', conversationId, 'using pattern:', pattern);
             break;
           }
         }
@@ -632,6 +660,15 @@ window.ThreadCubTagging = class ThreadCubTagging {
     // Wait for DOM to be fully loaded and stable
     await this.waitForDOMStability();
     
+    // COPILOT EXTRA DELAY: Copilot continues rendering after DOM appears stable
+    // Add extra time to ensure content is truly ready
+    const isCopilot = window.location.hostname.includes('copilot.microsoft.com');
+    if (isCopilot) {
+      console.log('🏷️ ThreadCub: Copilot detected - adding extra 2s delay for complete rendering...');
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log('🏷️ ThreadCub: Extra delay complete, proceeding with highlight restoration');
+    }
+    
     let restoredCount = 0;
     const totalTags = this.tags.length;
     
@@ -684,12 +721,17 @@ window.ThreadCubTagging = class ThreadCubTagging {
     
     console.log(`🏷️ ThreadCub: Highlight restoration complete: ${restoredCount}/${totalTags} highlights restored`);
     
-    // If we restored less than 50% of highlights, try again after a delay
-    if (restoredCount < totalTags * 0.5 && totalTags > 0) {
-      console.log('🏷️ ThreadCub: Low success rate, retrying highlight restoration in 2 seconds...');
+    // Copilot needs more aggressive retry due to its rendering behavior
+    // (isCopilot already declared earlier in this function)
+    const retryThreshold = isCopilot ? 0.9 : 0.5; // Retry if <90% success on Copilot, <50% on others
+    const retryDelay = isCopilot ? 3000 : 2000; // Longer delay for Copilot
+    
+    // If we restored less than threshold, try again after a delay
+    if (restoredCount < totalTags * retryThreshold && totalTags > 0) {
+      console.log(`🏷️ ThreadCub: Low success rate (${restoredCount}/${totalTags}), retrying highlight restoration in ${retryDelay/1000} seconds...`);
       setTimeout(() => {
         this.retryFailedHighlights();
-      }, 2000);
+      }, retryDelay);
     }
   }
 
@@ -698,6 +740,11 @@ window.ThreadCubTagging = class ThreadCubTagging {
     return new Promise((resolve) => {
       let stabilityCounter = 0;
       const requiredStability = 3; // Need 3 consecutive checks with no changes
+      
+      // Copilot needs longer delays because it re-renders conversations differently
+      const isCopilot = window.location.hostname.includes('copilot.microsoft.com');
+      const checkInterval = isCopilot ? 300 : 200;
+      const initialDelay = isCopilot ? 1500 : 500; // Copilot needs 1.5s initial delay
       
       const checkStability = () => {
         const currentNodeCount = document.querySelectorAll('*').length;
@@ -714,11 +761,11 @@ window.ThreadCubTagging = class ThreadCubTagging {
         }
         
         this.lastNodeCount = currentNodeCount;
-        setTimeout(checkStability, 200);
+        setTimeout(checkStability, checkInterval);
       };
       
       this.lastNodeCount = document.querySelectorAll('*').length;
-      setTimeout(checkStability, 500); // Initial delay
+      setTimeout(checkStability, initialDelay); // Copilot gets longer initial delay
     });
   }
 
@@ -757,7 +804,9 @@ window.ThreadCubTagging = class ThreadCubTagging {
 
   // NEW: Search specifically in conversation containers (Claude.ai structure)
   searchInConversationContainer(targetText) {
-    // Look for Claude's conversation structure
+    // Platform-specific selectors
+    const isCopilot = window.location.hostname.includes('copilot.microsoft.com');
+    
     const conversationSelectors = [
       '[data-testid*="conversation"]',
       '[data-testid*="message"]',
@@ -766,6 +815,18 @@ window.ThreadCubTagging = class ThreadCubTagging {
       'div[class*="prose"]',
       'main'
     ];
+    
+    // Add Copilot-specific selectors
+    if (isCopilot) {
+      conversationSelectors.unshift(
+        '.group/user-message',  // Copilot user messages
+        '.group/ai-message',    // Copilot AI messages
+        '[class*="user-message"]',
+        '[class*="ai-message"]',
+        'div[data-content="ai-message"]',
+        'div[role="article"]'
+      );
+    }
     
     for (const selector of conversationSelectors) {
       const containers = document.querySelectorAll(selector);
@@ -2061,7 +2122,52 @@ createBasicAnchor(selection) {
 // Apply anchor-specific highlight (purple tint instead of yellow)
 applyAnchorHighlight(range, anchorId) {
   try {
-    const textContent = range.toString(); // Get text before surrounding
+    // GROK FIX: Detect if we're on Grok/X and use simple method
+    const isGrok = window.location.hostname.includes('x.com') || 
+                   window.location.hostname.includes('grok.com') ||
+                   window.location.hostname.includes('grok.x.ai');
+    
+    if (isGrok) {
+      console.log('🔗 Anchor: Grok platform detected - using simple highlight method');
+      
+      const contents = range.extractContents();
+      const span = document.createElement('span');
+      span.className = 'threadcub-anchor-highlight';
+      span.setAttribute('data-anchor-id', anchorId);
+      span.style.cssText = `
+        background-color: rgba(124, 58, 237, 0.15) !important;
+        cursor: pointer !important;
+        transition: background-color 0.2s ease !important;
+      `;
+      span.appendChild(contents);
+      range.insertNode(span);
+
+      // Add click listener to open side panel and switch to anchors tab
+      span.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.showSidePanel('anchors');
+      });
+
+      // Add hover effects
+      span.addEventListener('mouseenter', () => {
+        span.style.backgroundColor = 'rgba(124, 58, 237, 0.25)';
+      });
+      span.addEventListener('mouseleave', () => {
+        span.style.backgroundColor = 'rgba(124, 58, 237, 0.15)';
+      });
+
+      // Store reference for cleanup
+      if (!this.anchorElements) {
+        this.anchorElements = new Map();
+      }
+      this.anchorElements.set(anchorId, span);
+
+      console.log('🔗 Anchor: ✅ Grok simple highlighting applied');
+      return;
+    }
+    
+    // For non-Grok platforms, try surroundContents first
+    const textContent = range.toString();
     const span = document.createElement('span');
     span.className = 'threadcub-anchor-highlight';
     span.setAttribute('data-anchor-id', anchorId);
@@ -2105,9 +2211,15 @@ applyAnchorHighlight(range, anchorId) {
 // Smart anchor highlight fallback (similar to tag but with anchor styling and click handler)
 applySmartAnchorHighlight(range, anchorId) {
   try {
-    const textNodes = this.getTextNodesInRange(range);
+    // Copilot needs simple method due to fragmented text nodes
+    const isCopilot = window.location.hostname.includes('copilot.microsoft.com');
+    
+    const textNodes = isCopilot ? [] : this.getTextNodesInRange(range);
 
     if (textNodes.length === 0) {
+      if (isCopilot) {
+        console.log('🏷️ ThreadCub: Using Copilot-specific anchor highlighting');
+      }
       // Simple fallback
       const contents = range.extractContents();
       const span = document.createElement('span');
@@ -2116,6 +2228,7 @@ applySmartAnchorHighlight(range, anchorId) {
       span.style.cssText = `
         background-color: rgba(124, 58, 237, 0.15) !important;
         cursor: pointer !important;
+        display: inline !important;
       `;
       span.appendChild(contents);
 
@@ -3352,7 +3465,7 @@ handleTextSelection(e) {
     const selectedText = selection.toString().trim();
     
     // Check if we have a reasonable text selection (2+ characters minimum)
-    if (selectedText.length > 1 && selectedText.length < 5000) {
+    if (selectedText.length > 1) {
       // Additional check: make sure we're not selecting input field content
       if (selection.rangeCount > 0) {
         const range = selection.getRangeAt(0);
@@ -3771,7 +3884,7 @@ getXPathForElement(element) {
 // SMART APPROACH: Preserve original structure while highlighting
 applySmartHighlight(range, tagId) {
   try {
-    console.log('🏷️ ThreadCub: Applying smart highlight for Claude - tagId:', tagId);
+    console.log('🏷️ ThreadCub: Applying smart highlight - tagId:', tagId);
     console.log('🏷️ ThreadCub: Range details:', range.toString().substring(0, 50));
     
     // Store original range data for restoration
@@ -3782,16 +3895,58 @@ applySmartHighlight(range, tagId) {
     // Clone the range to avoid modification
     const workingRange = range.cloneRange();
     
-    // Get all text nodes within the range
-    const textNodes = this.getTextNodesInRange(workingRange);
+    // COPILOT FIX: Detect if we're on Copilot and use simple fallback method
+    // Copilot's fragmented text nodes cause issues with getTextNodesInRange
+    const isCopilot = window.location.hostname.includes('copilot.microsoft.com');
     
-    console.log('🏷️ ThreadCub: Found text nodes:', textNodes.length);
-    
-    if (textNodes.length === 0) {
-      console.log('🏷️ ThreadCub: No text nodes found in range - Claude DOM issue');
+    if (isCopilot) {
+      console.log('🏷️ ThreadCub: Copilot platform detected - using simple highlight method');
+      
+      try {
+        const contents = workingRange.extractContents();
+        const span = document.createElement('span');
+        span.className = 'threadcub-highlight';
+        span.setAttribute('data-tag-id', tagId);
+        span.style.cssText = `
+          background-color: #FFD700 !important;
+          cursor: pointer !important;
+          transition: background-color 0.2s ease !important;
+          padding: 2px 0 !important;
+          display: inline !important;
+        `;
 
-      // CLAUDE FALLBACK: Use simple span wrapping approach
-      console.log('🏷️ ThreadCub: Trying Claude fallback highlighting...');
+        span.appendChild(contents);
+        workingRange.insertNode(span);
+
+        // Add click listener to open side panel to tags tab
+        span.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.showSidePanel('tags');
+        });
+
+        // Store for cleanup
+        if (!this.highlightElements) {
+          this.highlightElements = new Map();
+        }
+        this.highlightElements.set(tagId, [span]);
+
+        console.log('🏷️ ThreadCub: ✅ Copilot highlighting applied successfully');
+        return;
+
+      } catch (error) {
+        console.log('🏷️ ThreadCub: Copilot simple highlighting failed:', error);
+        return;
+      }
+    }
+    
+    // GROK FIX: Detect if we're on Grok/X and use simple fallback method
+    // Grok's DOM structure causes issues with text node traversal across formatting boundaries
+    const isGrok = window.location.hostname.includes('x.com') || 
+                   window.location.hostname.includes('grok.com') ||
+                   window.location.hostname.includes('grok.x.ai');
+    
+    if (isGrok) {
+      console.log('🏷️ ThreadCub: Grok platform detected - using simple highlight method');
       
       try {
         const contents = workingRange.extractContents();
@@ -3819,11 +3974,57 @@ applySmartHighlight(range, tagId) {
         }
         this.highlightElements.set(tagId, [span]);
 
-        console.log('🏷️ ThreadCub: ✅ Claude fallback highlighting applied');
+        console.log('🏷️ ThreadCub: ✅ Grok simple highlighting applied');
         return;
 
       } catch (error) {
-        console.log('🏷️ ThreadCub: Claude fallback failed:', error);
+        console.log('🏷️ ThreadCub: Grok simple highlighting failed:', error);
+        return;
+      }
+    }
+    
+    // Get all text nodes within the range
+    const textNodes = this.getTextNodesInRange(workingRange);
+    
+    console.log('🏷️ ThreadCub: Found text nodes:', textNodes.length);
+    
+    if (textNodes.length === 0) {
+      console.log('🏷️ ThreadCub: No text nodes found in range - DOM issue');
+
+      // FALLBACK: Use simple span wrapping approach
+      console.log('🏷️ ThreadCub: Trying fallback highlighting...');
+      
+      try {
+        const contents = workingRange.extractContents();
+        const span = document.createElement('span');
+        span.className = 'threadcub-highlight';
+        span.setAttribute('data-tag-id', tagId);
+        span.style.cssText = `
+          background: #FFD700 !important;
+          cursor: pointer !important;
+          transition: background-color 0.2s ease !important;
+        `;
+
+        span.appendChild(contents);
+        workingRange.insertNode(span);
+
+        // Add click listener to open side panel to tags tab
+        span.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.showSidePanel('tags');
+        });
+
+        // Store for cleanup
+        if (!this.highlightElements) {
+          this.highlightElements = new Map();
+        }
+        this.highlightElements.set(tagId, [span]);
+
+        console.log('🏷️ ThreadCub: ✅ Fallback highlighting applied');
+        return;
+
+      } catch (error) {
+        console.log('🏷️ ThreadCub: Fallback highlighting failed:', error);
       }
       
       return;
@@ -4387,5 +4588,6 @@ filterTagsByPriority(priority) {
 
 // Export the class to window for global access
 window.ThreadCubTagging = ThreadCubTagging;
+
 
 // === END SECTION 1H REPLACEMENT ===

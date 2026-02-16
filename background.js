@@ -115,6 +115,38 @@ function handleTrackEvent(request, sendResponse) {
         self.Analytics.trackContinuationStarted(data.platform);
         break;
       
+      case 'length_prompt_shown':
+        // Track when the 10+ message modal is shown
+        console.log('📊 Analytics: Length prompt shown', data);
+        if (self.Analytics.trackEvent) {
+          self.Analytics.trackEvent('length_prompt_shown', data);
+        }
+        break;
+      
+      case 'length_prompt_download_clicked':
+        // Track when user clicks Download in the modal
+        console.log('📊 Analytics: Length prompt download clicked', data);
+        if (self.Analytics.trackEvent) {
+          self.Analytics.trackEvent('length_prompt_download_clicked', data);
+        }
+        break;
+      
+      case 'length_prompt_continue_clicked':
+        // Track when user clicks Continue Chat in the modal
+        console.log('📊 Analytics: Length prompt continue clicked', data);
+        if (self.Analytics.trackEvent) {
+          self.Analytics.trackEvent('length_prompt_continue_clicked', data);
+        }
+        break;
+      
+      case 'length_prompt_dismissed':
+        // Track when user dismisses the modal
+        console.log('📊 Analytics: Length prompt dismissed', data);
+        if (self.Analytics.trackEvent) {
+          self.Analytics.trackEvent('length_prompt_dismissed', data);
+        }
+        break;
+      
       case 'error':
         self.Analytics.trackError(data.errorType, data.errorMessage);
         break;
@@ -284,6 +316,7 @@ function handleGetContinuationData(sender, sendResponse) {
   });
 }
 
+// Handler for initiating conversation continuation from the length detector modal
 // === SECTION 5: Tab Management & Prompt Injection ===
 
 // Platform configurations for prompt injection

@@ -1,4 +1,4 @@
-console.log('Loading: platform-adapters.js');
+console.log('🔄 LOADING: platform-adapters.js - START');
 
 /**
  * Platform Adapters Module
@@ -42,6 +42,8 @@ const CHATGPT_SELECTORS = {
 
 const CLAUDE_SELECTORS = {
   messageContainers: [
+    '.font-claude-response',              // Claude's actual response class (NEW!)
+    '[class*="standard-markdown"]',       // Markdown container (NEW!)
     '[data-testid*="message"]',
     'div[class*="Message"]',
     '.font-claude-message',
@@ -159,6 +161,8 @@ const DEEPSEEK_SELECTORS = {
     'p'
   ]
 };
+
+console.log('✓ CHECKPOINT 1: All selector constants defined');
 
 // ============================================================================
 // Base Adapter Class
@@ -703,6 +707,8 @@ class DeepSeekAdapter extends BasePlatformAdapter {
   }
 }
 
+console.log('✓ CHECKPOINT 2: All adapter classes defined');
+
 // ============================================================================
 // Platform Adapter Manager
 // ============================================================================
@@ -750,10 +756,12 @@ const PlatformAdapters = {
   }
 };
 
+console.log('✓ CHECKPOINT 3: PlatformAdapters object created');
+
 // Export to global scope
 window.PlatformAdapters = PlatformAdapters;
 window.CHATGPT_SELECTORS = CHATGPT_SELECTORS;
 window.CLAUDE_SELECTORS = CLAUDE_SELECTORS;
 window.DEEPSEEK_SELECTORS = DEEPSEEK_SELECTORS;
 
-console.log('Platform adapters loaded. Current adapter:', PlatformAdapters.getAdapter()?.name || 'none');
+console.log('✅ SUCCESS: Platform adapters loaded! Current adapter:', PlatformAdapters.getAdapter()?.name || 'none');

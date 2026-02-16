@@ -10,13 +10,16 @@
   height: auto;
   padding: var(--spacing-2) var(--spacing-3); /* 8px 12px */
   pointer-events: auto; /* Interactive — override base toast's pointer-events:none */
-  cursor: pointer;
-  gap: var(--spacing-2); /* 8px between body and dismiss */
+  cursor: default;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
   white-space: normal; /* Allow text wrapping */
   max-width: 420px;
+  position: relative;
 }
 
-/* The clickable body (icon + text) */
+/* The header (icon + text) */
 .threadcub-length-prompt-body {
   display: flex;
   align-items: center;
@@ -37,8 +40,74 @@
   line-height: var(--line-height-tight);
 }
 
+/* Action buttons container */
+.threadcub-length-prompt-actions {
+  display: flex;
+  gap: var(--spacing-2); /* 8px */
+  margin-top: var(--spacing-2); /* 8px */
+  width: 100%;
+}
+
+/* Action buttons */
+.threadcub-length-prompt-button {
+  flex: 1;
+  padding: var(--spacing-1) var(--spacing-2); /* 4px 8px */
+  border: none;
+  border-radius: var(--border-radius-base);
+  font-size: 13px;
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-tight);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.threadcub-length-prompt-button svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* Primary action button (Continue) */
+.threadcub-length-prompt-button--primary {
+  background: rgba(99, 102, 241, 0.12);
+  color: rgb(99, 102, 241);
+}
+
+.threadcub-length-prompt-button--primary:hover {
+  background: rgba(99, 102, 241, 0.2);
+  transform: translateY(-1px);
+}
+
+.threadcub-length-prompt-button--primary:active {
+  transform: translateY(0);
+}
+
+/* Secondary action button (Download) */
+.threadcub-length-prompt-button--secondary {
+  background: rgba(0, 0, 0, 0.06);
+  color: inherit;
+  opacity: 0.8;
+}
+
+.threadcub-length-prompt-button--secondary:hover {
+  background: rgba(0, 0, 0, 0.1);
+  opacity: 1;
+  transform: translateY(-1px);
+}
+
+.threadcub-length-prompt-button--secondary:active {
+  transform: translateY(0);
+}
+
 /* Dismiss button */
 .threadcub-length-prompt-dismiss {
+  position: absolute;
+  top: var(--spacing-2); /* 8px */
+  right: var(--spacing-2); /* 8px */
   flex-shrink: 0;
   width: 20px;
   height: 20px;

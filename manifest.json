@@ -84,6 +84,7 @@
       "src/utils/platform-detector.js",
       "src/utils/utilities.js",
       "src/services/storage-service.js",
+      "src/services/auth-service.js",
       "src/services/api-service.js",
       "src/adapters/platform-adapters.js",
       "src/core/conversation-extractor.js",
@@ -113,6 +114,13 @@
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
     }
+  },
+
+  "externally_connectable": {
+    "matches": [
+      "https://threadcub.com/*",
+      "https://*.threadcub.com/*"
+    ]
   },
 
   "homepage_url": "https://threadcub.com"

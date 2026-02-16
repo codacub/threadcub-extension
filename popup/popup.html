@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ThreadCub</title>
     <link rel="stylesheet" href="../assets/tokens.css">
-    <link rel="stylesheet" href="../styles/base.css">
-    <link rel="stylesheet" href="../styles/components.css">
     <link rel="stylesheet" href="popup.css">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,8 +12,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Averia+Sans+Libre:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="popup-container launch-version">
-        
+    <div class="popup-container">
+
         <!-- HEADER -->
         <div class="header">
             <div class="logo"></div>
@@ -25,45 +23,129 @@
             </div>
         </div>
 
-        <!-- MAIN CONTENT -->
-        <div class="content">
-            <!-- Welcome Message -->
-            <div class="welcome-message">
-                <p class="message-text">
-                    Sorry it's empty at the moment. We decided to launch with just the floating button whilst we carry on in the background getting other areas completed, this being one of them.
-                </p>
-                <p class="message-text">
-                    Actually, whilst you're here, I'd love to know what you expected to see or what you'd find helpful having.
-                </p>
+        <!-- AUTH STATUS INDICATOR (loading state) -->
+        <div id="authLoading" class="auth-loading">
+            <div class="loading-spinner"></div>
+            <span>Checking login status...</span>
+        </div>
+
+        <!-- AUTHENTICATED VIEW -->
+        <div id="authedView" class="content" style="display: none;">
+            <!-- User Info -->
+            <div class="user-info-card">
+                <div class="user-info-row">
+                    <div class="user-avatar" id="userAvatar">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                    </div>
+                    <div class="user-details">
+                        <span class="user-email" id="userEmail">Loading...</span>
+                        <span class="user-status">Logged in</span>
+                    </div>
+                    <button id="logoutBtn" class="logout-btn" title="Log out">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                            <polyline points="16 17 21 12 16 7"></polyline>
+                            <line x1="21" y1="12" x2="9" y2="12"></line>
+                        </svg>
+                        <span>Log out</span>
+                    </button>
+                </div>
             </div>
 
-            <!-- Feedback Form -->
-            <div class="feedback-section">
-                <label for="feedbackInput" class="feedback-label">Got a suggestion?</label>
-                <textarea 
-                    id="feedbackInput" 
-                    class="feedback-textarea" 
-                    placeholder="Any ideas or feedback much appreciated!"
-                    rows="4"
-                ></textarea>
-                <button id="submitFeedback" class="cta-button feedback-submit">
-                    <span>Send now</span>
+            <!-- Quick Actions -->
+            <div class="actions-section">
+                <h3 class="actions-title">Quick Actions</h3>
+                <ul class="actions-list">
+                    <li class="action-item">
+                        <button id="openDashboardBtn" class="action-btn">
+                            <div class="action-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="3" width="7" height="7"></rect>
+                                    <rect x="14" y="3" width="7" height="7"></rect>
+                                    <rect x="14" y="14" width="7" height="7"></rect>
+                                    <rect x="3" y="14" width="7" height="7"></rect>
+                                </svg>
+                            </div>
+                            <div class="action-text">
+                                <span class="action-title">Open Dashboard</span>
+                                <span class="action-desc">View your saved conversations</span>
+                            </div>
+                            <div class="action-arrow">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="9 18 15 12 9 6"></polyline>
+                                </svg>
+                            </div>
+                        </button>
+                    </li>
+                    <li class="action-item">
+                        <button id="openDiscordBtn" class="action-btn">
+                            <div class="action-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                                </svg>
+                            </div>
+                            <div class="action-text">
+                                <span class="action-title">Join Discord</span>
+                                <span class="action-desc">Get help and share feedback</span>
+                            </div>
+                            <div class="action-arrow">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="9 18 15 12 9 6"></polyline>
+                                </svg>
+                            </div>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- NOT AUTHENTICATED VIEW -->
+        <div id="unauthedView" class="content" style="display: none;">
+            <div class="login-prompt">
+                <div class="login-icon">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#925FE2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                </div>
+                <h3 class="login-title">Sign in to ThreadCub</h3>
+                <p class="login-description">
+                    Log in to save conversations to your account, access them from any device, and keep your threads organized.
+                </p>
+                <button id="loginBtn" class="cta-button login-button">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                        <polyline points="10 17 15 12 10 7"></polyline>
+                        <line x1="15" y1="12" x2="3" y2="12"></line>
+                    </svg>
+                    <span>Log in</span>
                 </button>
             </div>
 
+            <div class="info-note">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+                <span>The floating button still works without logging in. Sign in to sync conversations to your account.</span>
+            </div>
         </div>
 
         <!-- FOOTER -->
         <div class="footer">
             <div class="footer-links">
-                <a href="https://discord.gg/PDjByPDqRR" target="_blank" class="footer-link">Join our Discord</a> - 
-                <a href="https://github.com/codacub/threadcub-extension" target="_blank" class="footer-link">Github</a>
+                <a href="https://discord.gg/PDjByPDqRR" target="_blank" class="footer-link">Discord</a>
+                <a href="https://github.com/codacub/threadcub-extension" target="_blank" class="footer-link">GitHub</a>
             </div>
-            <div class="version">v1.0.4</div>
+            <div class="version">v1.0.6</div>
         </div>
 
     </div>
-    
+
     <script src="popup.js"></script>
 </body>
 </html>

@@ -328,9 +328,19 @@ class ThreadCubSidePanel {
       }
 
       if (score >= 0.5) { // Lower threshold for better matching
-        // Found good match - scroll and flash
-        message.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        this.flashElement(message);
+        // Found good match - try to scroll to exact highlight first
+        const highlightSpan = message.querySelector(`.threadcub-highlight[data-tag-id="${tag.id}"]`);
+        
+        if (highlightSpan) {
+          // Scroll to the specific highlighted text (more accurate)
+          highlightSpan.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          this.flashElement(highlightSpan);
+        } else {
+          // Fallback: scroll to message
+          message.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          this.flashElement(message);
+        }
+        
         return { success: true, method: 'rangeInfo' };
       }
     }
@@ -353,8 +363,17 @@ class ThreadCubSidePanel {
       const messageText = message.textContent || '';
 
       if (messageText.includes(tag.text)) {
-        message.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        this.flashElement(message);
+        // Try to scroll to exact highlight first
+        const highlightSpan = message.querySelector(`.threadcub-highlight[data-tag-id="${tag.id}"]`);
+        
+        if (highlightSpan) {
+          highlightSpan.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          this.flashElement(highlightSpan);
+        } else {
+          message.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          this.flashElement(message);
+        }
+        
         return { success: true, method: 'textSearch' };
       }
     }
@@ -394,8 +413,18 @@ class ThreadCubSidePanel {
       if (nodeText.includes(searchText)) {
         const element = textNode.parentElement;
         if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          this.flashElement(element);
+          // Try to find the actual highlight span first
+          const highlightSpan = element.closest('.threadcub-highlight') || 
+                                element.querySelector('.threadcub-highlight');
+          
+          if (highlightSpan) {
+            highlightSpan.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            this.flashElement(highlightSpan);
+          } else {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            this.flashElement(element);
+          }
+          
           return { success: true, method: 'fullTextSearch' };
         }
       }

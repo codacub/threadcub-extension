@@ -1,4 +1,4 @@
-console.log('Loading: platform-adapters.js');
+console.log('🔄 LOADING: platform-adapters.js - START');
 
 /**
  * Platform Adapters Module
@@ -42,6 +42,8 @@ const CHATGPT_SELECTORS = {
 
 const CLAUDE_SELECTORS = {
   messageContainers: [
+    '.font-claude-response',              // Claude's actual response class (NEW!)
+    '[class*="standard-markdown"]',       // Markdown container (NEW!)
     '[data-testid*="message"]',
     'div[class*="Message"]',
     '.font-claude-message',
@@ -92,19 +94,75 @@ const GEMINI_SELECTORS = {
 };
 
 const GROK_SELECTORS = {
+  // Grok.com selectors
   messageContainers: [
-    '[class*="message"]',
-    '[data-testid*="message"]'
+    'div.message-bubble',                        // Primary message bubble (grok.com)
+    'div[class*="message-bubble"]',              // Variations with modifiers (grok.com)
+    'div.relative.flex > div.w-full',            // Message structure (grok.com)
+    '[data-testid*="message"]',                  // Testid-based
+    'div[class*="prose"]',                       // Markdown content
+    'article',                                   // Semantic message container
+    'div[role="article"]'                        // ARIA role
+  ],
+  // X.com Grok selectors (Twitter/X DOM structure)
+  xcomMessageContainers: [
+    'div[data-testid="cellInnerDiv"]',           // X.com message cells
+    'article[role="article"]',                   // X.com article wrapper
+    'div[data-testid^="conversation-"]',         // X.com conversation elements
+    '[class*="css-"][class*="r-"]'               // X.com CSS-in-JS pattern (last resort)
   ],
   conversationWrapper: [
     'main',
-    '[class*="chat"]'
+    'div[class*="chat"]',
+    'div[class*="conversation"]',
+    'div[class*="thread"]',
+    '[role="log"]',
+    'div[class*="scroll"]',
+    '[data-testid="primaryColumn"]'              // X.com main column
   ],
   messageContent: [
-    'p',
-    '.prose'
+    '.prose',
+    'div[class*="markdown"]',
+    'div[class*="prose"]',
+    'div[data-testid="tweetText"]',              // X.com tweet text
+    'span[class*="css-"]',                       // X.com text spans
+    'p'
+  ],
+  // Elements to EXCLUDE from search
+  excludeSelectors: [
+    '#threadcub-side-panel',
+    '.threadcub-floating-button',
+    '[class*="threadcub"]',
+    '.anchor-item',
+    '.tag-item',
+    '[data-testid="sidebarColumn"]',             // X.com sidebar
+    '[data-testid="navigationBar"]',             // X.com navigation
+    'header',                                    // Page headers
+    'nav'                                        // Navigation elements
   ]
 };
+
+const DEEPSEEK_SELECTORS = {
+  messageContainers: [
+    '[class*="ChatMessage"]',
+    '[class*="ds-message"]',
+    'div[class*="message-content"]',
+    '[data-role="user"]',
+    '[data-role="assistant"]'
+  ],
+  conversationWrapper: [
+    'main',
+    '[class*="chat-container"]',
+    '[class*="conversation"]'
+  ],
+  messageContent: [
+    '.markdown',
+    '[class*="prose"]',
+    'p'
+  ]
+};
+
+console.log('✓ CHECKPOINT 1: All selector constants defined');
 
 // ============================================================================
 // Base Adapter Class
@@ -394,7 +452,262 @@ class GrokAdapter extends BasePlatformAdapter {
     return url.includes('grok.x.ai') || url.includes('grok.com') ||
            (url.includes('x.com') && url.includes('/i/grok'));
   }
+
+  /**
+   * Check if we're on X.com or Grok.com
+   * @returns {boolean} true if on x.com
+   */
+  isXcomGrok() {
+    return window.location.hostname.includes('x.com');
+  }
+
+  /**
+   * Extract conversation ID from Grok URL
+   * Patterns:
+   * - https://x.com/i/grok?conversation={ID} (query parameter)
+   * - https://x.com/i/grok/{conversation-id} (path - future?)
+   * - https://grok.com/ (no ID - use fallback)
+   * @param {string} url - The URL to extract from
+   * @returns {string|null} - The conversation ID or null
+   */
+  getConversationId(url = window.location.href) {
+    // X.com Grok pattern: query parameter
+    if (url.includes('x.com')) {
+      // First try query parameter (current X.com format)
+      const urlObj = new URL(url);
+      const conversationParam = urlObj.searchParams.get('conversation');
+      if (conversationParam) {
+        return conversationParam;
+      }
+      
+      // Fallback: path-based (in case they change URL structure)
+      const xPattern = /\/i\/grok\/([a-zA-Z0-9_-]+)/;
+      const match = url.match(xPattern);
+      return match ? match[1] : null;
+    }
+    
+    // Grok.com pattern: might have conversation ID in URL or local storage
+    // For now, return null to use fallback ID generation
+    return null;
+  }
+
+  /**
+   * Check if two URLs are the same conversation
+   * @param {string} url1 
+   * @param {string} url2 
+   * @returns {boolean}
+   */
+  isSameConversation(url1, url2) {
+    const id1 = this.getConversationId(url1);
+    const id2 = this.getConversationId(url2);
+    
+    // If both have IDs, compare them
+    if (id1 && id2) {
+      return id1 === id2;
+    }
+    
+    // Otherwise use URL comparison
+    return url1 === url2;
+  }
+
+  /**
+   * Get the conversation wrapper - Grok uses a specific scrollable container
+   * @returns {Element|null}
+   */
+  getConversationWrapper() {
+    // X.com uses primaryColumn
+    if (this.isXcomGrok()) {
+      const primaryColumn = document.querySelector('[data-testid="primaryColumn"]');
+      if (primaryColumn) return primaryColumn;
+      
+      // Fallback: find scrollable main area
+      const scrollable = document.querySelector('main [style*="overflow"]');
+      if (scrollable) return scrollable;
+    }
+    
+    // Grok.com: try to find Grok's main scrollable container
+    const scrollableMain = document.querySelector('main div[class*="overflow-y-auto"]');
+    if (scrollableMain) return scrollableMain;
+
+    const scrollable = document.querySelector('main div[class*="scroll"]');
+    if (scrollable) return scrollable;
+
+    // Fallback to main or body
+    return document.querySelector('main') || document.body;
+  }
+
+  /**
+   * Check if element should be excluded from search
+   * @param {Element} element
+   * @returns {boolean}
+   */
+  shouldExcludeElement(element) {
+    if (!element) return true;
+    
+    // Check if element or any parent matches exclude selectors
+    let current = element;
+    let depth = 0;
+    while (current && current !== document.body && depth < 10) {
+      // Check against exclude selectors
+      for (const selector of this.selectors.excludeSelectors || []) {
+        try {
+          if (current.matches && current.matches(selector)) {
+            return true;
+          }
+        } catch (e) {
+          continue;
+        }
+      }
+      
+      // Check for threadcub classes
+      if (current.id && current.id.includes('threadcub')) return true;
+      if (current.className && typeof current.className === 'string') {
+        if (current.className.includes('threadcub')) return true;
+      }
+      
+      current = current.parentElement;
+      depth++;
+    }
+    
+    return false;
+  }
+
+  /**
+   * Check if element is a valid message container
+   * More sophisticated filtering for X.com
+   * @param {Element} element
+   * @returns {boolean}
+   */
+  isValidMessageContainer(element) {
+    if (!element) return false;
+    if (this.shouldExcludeElement(element)) return false;
+    
+    // Must have some text content
+    const text = element.textContent?.trim() || '';
+    if (text.length < 10) return false; // Too short to be a real message
+    
+    // X.com specific: must be in main content area
+    if (this.isXcomGrok()) {
+      const inSidebar = element.closest('[data-testid="sidebarColumn"]');
+      const inNav = element.closest('nav');
+      const inHeader = element.closest('header');
+      if (inSidebar || inNav || inHeader) return false;
+    }
+    
+    return true;
+  }
+
+  /**
+   * Get message elements - handles both grok.com and x.com
+   * Excludes ThreadCub UI elements
+   * @returns {Element[]}
+   */
+  getMessageElements() {
+    let elements = [];
+    
+    // Strategy depends on which site we're on
+    if (this.isXcomGrok()) {
+      console.log('Using X.com Grok selectors');
+      
+      // Try X.com specific selectors first
+      const xcomSelectors = this.selectors.xcomMessageContainers || [];
+      for (const selector of xcomSelectors) {
+        try {
+          const found = document.querySelectorAll(selector);
+          if (found.length > 0) {
+            console.log(`X.com selector '${selector}' found ${found.length} elements`);
+            elements = Array.from(found);
+            break;
+          }
+        } catch (e) {
+          console.log(`X.com selector '${selector}' failed:`, e);
+        }
+      }
+      
+      // If no X.com selectors worked, try to find messages by content structure
+      if (elements.length === 0) {
+        console.log('X.com selectors failed, using content-based search');
+        // Find all divs with substantial text content in main area
+        const main = document.querySelector('main') || document.body;
+        const allDivs = main.querySelectorAll('div');
+        elements = Array.from(allDivs).filter(div => {
+          const text = div.textContent?.trim() || '';
+          // Look for divs with 50+ chars of text
+          return text.length > 50 && 
+                 !this.shouldExcludeElement(div) &&
+                 // Not too large (probably a container)
+                 text.length < 10000;
+        });
+        console.log(`Content-based search found ${elements.length} candidate elements`);
+      }
+      
+    } else {
+      console.log('Using Grok.com selectors');
+      
+      // Grok.com: try message-bubble class (most specific)
+      elements = document.querySelectorAll('div.message-bubble');
+      if (elements.length > 0) {
+        elements = Array.from(elements);
+      } else {
+        // Try class*="message-bubble"
+        elements = document.querySelectorAll('div[class*="message-bubble"]');
+        if (elements.length > 0) {
+          elements = Array.from(elements);
+        } else {
+          // Fallback to base implementation
+          elements = super.getMessageElements();
+        }
+      }
+    }
+    
+    // Filter with validation
+    const filtered = elements.filter(el => this.isValidMessageContainer(el));
+    console.log(`Filtered from ${elements.length} to ${filtered.length} valid messages`);
+    
+    return filtered;
+  }
 }
+
+// ============================================================================
+// DeepSeek Adapter
+// ============================================================================
+
+class DeepSeekAdapter extends BasePlatformAdapter {
+  constructor() {
+    super('DeepSeek', DEEPSEEK_SELECTORS);
+  }
+
+  matchesUrl(url) {
+    return url.includes('chat.deepseek.com') || url.includes('deepseek.com/chat');
+  }
+
+  /**
+   * Extract conversation ID from DeepSeek URL
+   * Pattern: https://chat.deepseek.com/a/chat/s/{UUID}
+   * @param {string} url - The URL to extract from
+   * @returns {string|null} - The conversation UUID or null
+   */
+  getConversationId(url = window.location.href) {
+    // DeepSeek URL pattern: /chat/s/{UUID}
+    const pattern = /\/chat\/s\/([a-f0-9-]{36})/;
+    const match = url.match(pattern);
+    return match ? match[1] : null;
+  }
+
+  /**
+   * Check if two URLs are the same conversation
+   * @param {string} url1 
+   * @param {string} url2 
+   * @returns {boolean}
+   */
+  isSameConversation(url1, url2) {
+    const id1 = this.getConversationId(url1);
+    const id2 = this.getConversationId(url2);
+    return id1 && id2 && id1 === id2;
+  }
+}
+
+console.log('✓ CHECKPOINT 2: All adapter classes defined');
 
 // ============================================================================
 // Platform Adapter Manager
@@ -406,7 +719,8 @@ const PlatformAdapters = {
     new ClaudeAdapter(),
     new PerplexityAdapter(),
     new GeminiAdapter(),
-    new GrokAdapter()
+    new GrokAdapter(),
+    new DeepSeekAdapter()
   ],
 
   /**
@@ -442,9 +756,12 @@ const PlatformAdapters = {
   }
 };
 
+console.log('✓ CHECKPOINT 3: PlatformAdapters object created');
+
 // Export to global scope
 window.PlatformAdapters = PlatformAdapters;
 window.CHATGPT_SELECTORS = CHATGPT_SELECTORS;
 window.CLAUDE_SELECTORS = CLAUDE_SELECTORS;
+window.DEEPSEEK_SELECTORS = DEEPSEEK_SELECTORS;
 
-console.log('Platform adapters loaded. Current adapter:', PlatformAdapters.getAdapter()?.name || 'none');
+console.log('✅ SUCCESS: Platform adapters loaded! Current adapter:', PlatformAdapters.getAdapter()?.name || 'none');

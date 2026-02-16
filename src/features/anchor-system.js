@@ -56,11 +56,16 @@ class AnchorSystem {
     if (!this.adapter) {
       this.adapter = window.PlatformAdapters?.getAdapter() || null;
     }
+    console.log('🔍 DEBUG: Adapter available:', this.adapter?.name || 'none');
 
     // Find the message container
     const messageContainer = this.adapter
       ? this.adapter.findMessageContainer(range.startContainer)
       : this.findGenericContainer(range.startContainer);
+    
+    console.log('🔍 DEBUG: Message container found:', messageContainer);
+    console.log('🔍 DEBUG: Container tag:', messageContainer?.tagName);
+    console.log('🔍 DEBUG: Container classes:', messageContainer?.className);
 
     // Capture context
     const { prefix, suffix } = this.captureContext(range, messageContainer);
@@ -98,23 +103,60 @@ class AnchorSystem {
     let prefix = '';
     let suffix = '';
 
+    console.log('🔍 DEBUG captureContext: Container is:', container);
+    console.log('🔍 DEBUG captureContext: Container type:', container?.nodeType);
+    console.log('🔍 DEBUG captureContext: Range:', range.toString());
+
     try {
+      // Helper function to find first/last text node
+      const getFirstTextNode = (node) => {
+        if (node.nodeType === Node.TEXT_NODE) return node;
+        const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+        return walker.nextNode();
+      };
+
+      const getLastTextNode = (node) => {
+        if (node.nodeType === Node.TEXT_NODE) return node;
+        const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+        let lastNode = null;
+        let current = walker.nextNode();
+        while (current) {
+          lastNode = current;
+          current = walker.nextNode();
+        }
+        return lastNode;
+      };
+
       // Get text before the selection within the container
-      const beforeRange = document.createRange();
-      beforeRange.setStart(container, 0);
-      beforeRange.setEnd(range.startContainer, range.startOffset);
-      const beforeText = beforeRange.toString();
-      prefix = this.normalizeWhitespace(beforeText).slice(-ANCHOR_CONFIG.PREFIX_LENGTH);
+      const firstTextNode = getFirstTextNode(container);
+      console.log('🔍 DEBUG: First text node:', firstTextNode);
+      if (firstTextNode) {
+        const beforeRange = document.createRange();
+        beforeRange.setStart(firstTextNode, 0);
+        beforeRange.setEnd(range.startContainer, range.startOffset);
+        const beforeText = beforeRange.toString();
+        prefix = this.normalizeWhitespace(beforeText).slice(-ANCHOR_CONFIG.PREFIX_LENGTH);
+        console.log('🔍 DEBUG: Prefix captured:', prefix.substring(0, 20) + '...');
+      } else {
+        console.log('⚠️ DEBUG: No first text node found!');
+      }
 
       // Get text after the selection within the container
-      const afterRange = document.createRange();
-      afterRange.setStart(range.endContainer, range.endOffset);
-      afterRange.setEndAfter(container);
-      const afterText = afterRange.toString();
-      suffix = this.normalizeWhitespace(afterText).slice(0, ANCHOR_CONFIG.SUFFIX_LENGTH);
+      const lastTextNode = getLastTextNode(container);
+      console.log('🔍 DEBUG: Last text node:', lastTextNode);
+      if (lastTextNode) {
+        const afterRange = document.createRange();
+        afterRange.setStart(range.endContainer, range.endOffset);
+        afterRange.setEnd(lastTextNode, lastTextNode.length);
+        const afterText = afterRange.toString();
+        suffix = this.normalizeWhitespace(afterText).slice(0, ANCHOR_CONFIG.SUFFIX_LENGTH);
+        console.log('🔍 DEBUG: Suffix captured:', suffix.substring(0, 20) + '...');
+      } else {
+        console.log('⚠️ DEBUG: No last text node found!');
+      }
 
     } catch (error) {
-      console.log('Error capturing context:', error);
+      console.log('❌ Error capturing context:', error);
 
       // Fallback: use the container's text content
       try {
@@ -125,12 +167,14 @@ class AnchorSystem {
         if (exactIndex !== -1) {
           prefix = this.normalizeWhitespace(containerText.slice(0, exactIndex)).slice(-ANCHOR_CONFIG.PREFIX_LENGTH);
           suffix = this.normalizeWhitespace(containerText.slice(exactIndex + exact.length)).slice(0, ANCHOR_CONFIG.SUFFIX_LENGTH);
+          console.log('✅ DEBUG: Fallback context captured - prefix:', prefix.substring(0, 20));
         }
       } catch (e) {
-        console.log('Fallback context capture failed:', e);
+        console.log('❌ Fallback context capture failed:', e);
       }
     }
 
+    console.log('🔍 DEBUG: Final context - prefix:', prefix.substring(0, 20), 'suffix:', suffix.substring(0, 20));
     return { prefix, suffix };
   }
 
@@ -169,6 +213,35 @@ class AnchorSystem {
   }
 
   /**
+   * Check if element is part of ThreadCub's UI (should be excluded)
+   * @param {Element} element
+   * @returns {boolean}
+   */
+  isThreadCubElement(element) {
+    if (!element) return false;
+    
+    let current = element;
+    let depth = 0;
+    
+    while (current && current !== document.body && depth < 10) {
+      // Check ID
+      if (current.id && current.id.includes('threadcub')) return true;
+      
+      // Check classes
+      if (current.className && typeof current.className === 'string') {
+        if (current.className.includes('threadcub')) return true;
+        if (current.className.includes('anchor-item')) return true;
+        if (current.className.includes('tag-item')) return true;
+      }
+      
+      current = current.parentElement;
+      depth++;
+    }
+    
+    return false;
+  }
+
+  /**
    * Strategy C: Full DOM text search (walks all text nodes)
    */
   async jumpViaFullTextSearch(anchor) {
@@ -182,6 +255,10 @@ class AnchorSystem {
           // Skip script, style, and hidden elements
           const parent = node.parentElement;
           if (!parent) return NodeFilter.FILTER_REJECT;
+          
+          // Skip ThreadCub UI elements
+          if (this.isThreadCubElement(parent)) return NodeFilter.FILTER_REJECT;
+          
           const tagName = parent.tagName.toLowerCase();
           if (tagName === 'script' || tagName === 'style' || tagName === 'noscript') {
             return NodeFilter.FILTER_REJECT;
@@ -207,6 +284,13 @@ class AnchorSystem {
           range.setEnd(textNode, exactIndex + anchor.exact.length);
 
           const element = textNode.parentElement;
+          
+          // Double-check this isn't a ThreadCub element
+          if (this.isThreadCubElement(element)) {
+            console.log('Skipping ThreadCub UI element in full text search');
+            continue;
+          }
+          
           this.scrollToElement(element);
           this.flashElement(element);
           return { success: true, method: 'full-text-search', approximate: false };
@@ -271,6 +355,14 @@ class AnchorSystem {
     if (!messages || messages.length === 0) {
       console.log('Broad search returned nothing, using all divs');
       messages = document.querySelectorAll('div, p, article');
+    }
+
+    // Filter out ThreadCub UI elements
+    messages = Array.from(messages).filter(msg => !this.isThreadCubElement(msg));
+    
+    if (messages.length === 0) {
+      console.log('All messages filtered out as ThreadCub elements');
+      return { success: false, method: 'message-search', approximate: false };
     }
 
     let bestMatch = null;
@@ -514,14 +606,93 @@ class AnchorSystem {
 
   /**
    * Scroll an element into view
+   * Improved to handle custom scroll containers
    */
   scrollToElement(element) {
     if (!element) return;
 
-    element.scrollIntoView({
-      behavior: 'smooth',
-      block: 'center'
-    });
+    console.log('Scrolling to element:', element.tagName, element.className);
+
+    // Strategy 1: Try standard scrollIntoView first
+    try {
+      element.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+        inline: 'nearest'
+      });
+      
+      // Give it a moment to scroll
+      setTimeout(() => {
+        // Verify scroll happened by checking if element is in viewport
+        const rect = element.getBoundingClientRect();
+        const inViewport = (
+          rect.top >= 0 &&
+          rect.left >= 0 &&
+          rect.bottom <= window.innerHeight &&
+          rect.right <= window.innerWidth
+        );
+        
+        if (!inViewport) {
+          console.log('Element not in viewport after scroll, trying scroll container method');
+          this.scrollViaContainer(element);
+        }
+      }, 500);
+      
+    } catch (error) {
+      console.log('scrollIntoView failed, trying container method:', error);
+      this.scrollViaContainer(element);
+    }
+  }
+
+  /**
+   * Scroll by finding and scrolling the parent container
+   */
+  scrollViaContainer(element) {
+    if (!element) return;
+
+    // Find the scrollable parent
+    let scrollParent = element.parentElement;
+    while (scrollParent && scrollParent !== document.body) {
+      const style = window.getComputedStyle(scrollParent);
+      const isScrollable = 
+        style.overflow === 'auto' ||
+        style.overflow === 'scroll' ||
+        style.overflowY === 'auto' ||
+        style.overflowY === 'scroll';
+
+      if (isScrollable && scrollParent.scrollHeight > scrollParent.clientHeight) {
+        console.log('Found scroll container:', scrollParent.tagName, scrollParent.className);
+        
+        // Calculate scroll position to center the element
+        const containerRect = scrollParent.getBoundingClientRect();
+        const elementRect = element.getBoundingClientRect();
+        const scrollOffset = elementRect.top - containerRect.top - (containerRect.height / 2) + (elementRect.height / 2);
+        
+        scrollParent.scrollBy({
+          top: scrollOffset,
+          behavior: 'smooth'
+        });
+        return;
+      }
+      
+      scrollParent = scrollParent.parentElement;
+    }
+
+    // If no scrollable parent found, try adapter's conversation wrapper
+    if (this.adapter) {
+      const wrapper = this.adapter.getConversationWrapper();
+      if (wrapper && wrapper !== document.body) {
+        console.log('Using adapter conversation wrapper for scroll');
+        const wrapperRect = wrapper.getBoundingClientRect();
+        const elementRect = element.getBoundingClientRect();
+        const scrollOffset = elementRect.top - wrapperRect.top - (wrapperRect.height / 2) + (elementRect.height / 2);
+        
+        wrapper.scrollBy({
+          top: scrollOffset,
+          behavior: 'smooth'
+        });
+      }
+    }
   }
 
   /**
@@ -531,12 +702,16 @@ class AnchorSystem {
     if (!range) return;
 
     try {
-      // Create a highlight span
+      // Clone range to avoid modifying original
+      const workingRange = range.cloneRange();
+      
+      // Use extractContents + insertNode method (works with mixed formatting)
+      // This is more reliable than surroundContents which fails when range partially contains elements
+      const contents = workingRange.extractContents();
       const highlight = document.createElement('span');
       highlight.className = 'threadcub-anchor-flash';
-
-      // Surround the range with the highlight
-      range.surroundContents(highlight);
+      highlight.appendChild(contents);
+      workingRange.insertNode(highlight);
 
       // Remove after flash duration
       setTimeout(() => {
@@ -549,8 +724,8 @@ class AnchorSystem {
         }
       }, ANCHOR_CONFIG.FLASH_DURATION);
     } catch (error) {
-      // Range may span multiple elements - fallback to element flash
-      console.log('Could not flash range, falling back to element flash');
+      // If even extractContents fails, fallback to element flash
+      console.log('Could not flash range, falling back to element flash:', error);
       const element = range.startContainer.parentElement;
       if (element) {
         this.flashElement(element);

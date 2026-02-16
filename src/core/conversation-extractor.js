@@ -435,23 +435,59 @@ const ConversationExtractor = {
     const grokContainers = document.querySelectorAll('div[aria-label="Grok"]');
     console.log(`🤖 ThreadCub: Found ${grokContainers.length} Grok message containers`);
 
-    // Find all text spans (both user and assistant messages use these)
-    const allTextSpans = document.querySelectorAll('span[class*="css-1jxf684"]');
-    console.log(`🤖 ThreadCub: Found ${allTextSpans.length} text spans`);
+    // Try multiple selector strategies for text spans
+    let allTextSpans = document.querySelectorAll('span[class*="css-1jxf684"]');
+    console.log(`🤖 ThreadCub: Found ${allTextSpans.length} text spans with css-1jxf684`);
+
+    // If no spans found with specific class, try broader selectors for grok.com
+    if (allTextSpans.length === 0) {
+      console.log('🤖 ThreadCub: Trying broader span selectors for grok.com...');
+      
+      // Try various span patterns that might exist on grok.com
+      const selectors = [
+        'span[class*="css-"]',           // Any CSS module class
+        'div[class*="message"] span',    // Spans within message containers
+        'article span',                  // Spans within article elements
+        'div[role="article"] span',      // Spans within article role
+        'div.prose span',                // Spans within prose content
+        'p span',                        // Spans within paragraphs
+        'div[class*="text"] span'        // Spans within text containers
+      ];
+
+      for (const selector of selectors) {
+        allTextSpans = document.querySelectorAll(selector);
+        console.log(`🤖 ThreadCub: Trying ${selector}: found ${allTextSpans.length} elements`);
+        if (allTextSpans.length > 0) {
+          break;
+        }
+      }
+    }
+
+    // If still no spans, try getting text from divs/paragraphs directly
+    if (allTextSpans.length === 0) {
+      console.log('🤖 ThreadCub: No spans found, trying div/p elements...');
+      allTextSpans = document.querySelectorAll('div[class*="prose"], p, div[class*="message"], div[class*="text"]');
+      console.log(`🤖 ThreadCub: Found ${allTextSpans.length} text container elements`);
+    }
 
     // Group spans by their message context and determine role
     const processedTexts = new Set();
 
-    allTextSpans.forEach((span) => {
-      const text = span.textContent?.trim() || '';
+    allTextSpans.forEach((element) => {
+      const text = element.textContent?.trim() || '';
 
       // Skip empty or very short texts, and already processed content
       if (text.length < 10 || processedTexts.has(text)) {
         return;
       }
 
-      // Check if this span is inside a Grok (assistant) container
-      const isGrokMessage = this.hasAncestorWithAriaLabel(span, 'Grok');
+      // Skip UI elements
+      if (text === 'Copy' || text === 'Share' || text === 'Grok' || text === 'More') {
+        return;
+      }
+
+      // Check if this element is inside a Grok (assistant) container
+      const isGrokMessage = this.hasAncestorWithAriaLabel(element, 'Grok');
       const role = isGrokMessage ? 'assistant' : 'user';
 
       // Only add substantial messages
@@ -464,7 +500,7 @@ const ConversationExtractor = {
           content: this.simpleCleanContent(text),
           timestamp: new Date().toISOString(),
           extractionMethod: 'grok_aria_label',
-          selector_used: 'span[class*="css-1jxf684"]',
+          selector_used: element.tagName.toLowerCase(),
           hasGrokAncestor: isGrokMessage
         });
       }
@@ -496,19 +532,68 @@ const ConversationExtractor = {
     let messageIndex = 0;
 
     try {
-      // Try to find message spans by class pattern
-      const spans = document.querySelectorAll('span[class*="css-1jxf684"]');
-      console.log(`🤖 ThreadCub: Found ${spans.length} spans with css-1jxf684 class`);
+      // Try multiple selector strategies
+      let elements = document.querySelectorAll('span[class*="css-1jxf684"]');
+      console.log(`🤖 ThreadCub: Found ${elements.length} spans with css-1jxf684 class`);
+
+      // If no elements found, try broader selectors
+      if (elements.length === 0) {
+        console.log('🤖 ThreadCub: Trying broader fallback selectors...');
+        
+        // Try message-like containers
+        const selectors = [
+          'div[class*="message"]',
+          'article',
+          'div[role="article"]',
+          'div.prose',
+          'div[class*="chat"]',
+          'div[class*="conversation"]',
+          'div[class*="flex"] p',
+          'div[class*="text-"]'
+        ];
+
+        for (const selector of selectors) {
+          elements = document.querySelectorAll(selector);
+          console.log(`🤖 ThreadCub: Trying ${selector}: found ${elements.length} elements`);
+          if (elements.length > 5) { // Want meaningful number of messages
+            break;
+          }
+        }
+      }
 
       const processedTexts = new Set();
 
-      spans.forEach((span, index) => {
-        const text = span.textContent?.trim();
-        if (text && text.length > 20 && !processedTexts.has(text)) {
+      elements.forEach((element, index) => {
+        const text = element.textContent?.trim();
+        if (text && text.length > 20 && text.length < 10000 && !processedTexts.has(text)) {
+          // Skip UI elements
+          if (text.includes('Copy') || text.includes('Share') || text === 'Grok' || 
+              element.querySelector('button') || element.querySelector('input')) {
+            return;
+          }
+
           processedTexts.add(text);
 
-          // Use alternating pattern as fallback for role detection
-          const role = index % 2 === 0 ? 'user' : 'assistant';
+          // Try to detect role from content patterns
+          let role = 'user';
+          
+          // Check for aria-label in hierarchy
+          if (this.hasAncestorWithAriaLabel(element, 'Grok')) {
+            role = 'assistant';
+          } 
+          // Check for code or technical patterns (usually assistant)
+          else if (text.includes('```') || text.includes('function') || 
+                   text.includes('const ') || text.length > 500) {
+            role = 'assistant';
+          }
+          // Short messages with questions (usually user)
+          else if (text.includes('?') && text.length < 200) {
+            role = 'user';
+          }
+          // Use alternating pattern as last resort
+          else {
+            role = index % 2 === 0 ? 'user' : 'assistant';
+          }
 
           messages.push({
             id: messageIndex++,
@@ -516,7 +601,7 @@ const ConversationExtractor = {
             content: this.simpleCleanContent(text),
             timestamp: new Date().toISOString(),
             extractionMethod: 'grok_span_fallback',
-            selector_used: 'span[class*="css-1jxf684"]'
+            selector_used: element.tagName.toLowerCase()
           });
         }
       });

@@ -108,8 +108,14 @@ const PlatformDetector = {
       /\/grok\/([^\/\?]+)/,     // /grok/conversation-id
       /([a-f0-9-]{36})/         // any uuid in URL
     ],
+    deepseek: [
+      /\/chat\/([^\/\?]+)/,     // /chat/conversation-id
+      /\/c\/([^\/\?]+)/,        // /c/conversation-id
+      /([a-f0-9-]{36})/         // any uuid in URL
+    ],
     perplexity: [
       /\/search\/([^\/\?]+)/,   // /search/conversation-id
+      /\/thread\/([^\/\?]+)/,   // /thread/conversation-id
       /([a-f0-9-]{36})/         // any uuid in URL
     ]
   },

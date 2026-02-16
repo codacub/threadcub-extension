@@ -690,7 +690,7 @@ chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => 
   console.log('🔐 Background: Received external message from:', sender.url);
   console.log('🔐 Background: External message action:', request.action);
 
-  if (request.action === 'authCallback' && request.token) {
+  if (request.action === 'storeAuthToken' && request.token) {
     console.log('🔐 Background: Auth callback received with token');
 
     handleStoreAuthToken({ token: request.token }, sendResponse);

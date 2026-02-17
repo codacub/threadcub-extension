@@ -222,6 +222,11 @@ class ThreadCubFloatingButton {
         clearTimeout(hideTimeout);
 
         showTimeout = setTimeout(() => {
+          // Suppress download button tooltip when flyout is visible
+          if (className === 'threadcub-download-btn' && this.downloadFlyout?.classList.contains('show')) {
+            return;
+          }
+
           // Remove any existing tooltips
           document.querySelectorAll('.threadcub-tooltip').forEach(t => t.remove());
 
@@ -296,25 +301,58 @@ class ThreadCubFloatingButton {
 
     let hideTimeout = null;
 
+    const removeDownloadTooltip = () => {
+      if (this.downloadTooltip && this.downloadTooltip.parentNode) {
+        this.downloadTooltip.parentNode.removeChild(this.downloadTooltip);
+        this.downloadTooltip = null;
+      }
+    };
+
     const showFlyout = () => {
       clearTimeout(hideTimeout);
+
+      // Clear any existing tooltips (from the regular tooltip system)
+      document.querySelectorAll('.threadcub-tooltip').forEach(t => t.remove());
+
+      // Keep the button stack expanded while flyout is active
+      this.button.classList.add('flyout-active');
 
       // Position flyout next to download button
       const btnRect = downloadBtn.getBoundingClientRect();
       const flyoutWidth = this.downloadFlyout.offsetWidth || 100;
       const flyoutHeight = this.downloadFlyout.offsetHeight || 30;
 
-      this.downloadFlyout.style.left = `${btnRect.left - flyoutWidth - 8}px`;
-      this.downloadFlyout.style.top = `${btnRect.top + (btnRect.height - flyoutHeight) / 2}px`;
+      const flyoutLeft = btnRect.left - flyoutWidth - 8;
+      const flyoutTop = btnRect.top + (btnRect.height - flyoutHeight) / 2;
+
+      this.downloadFlyout.style.left = `${flyoutLeft}px`;
+      this.downloadFlyout.style.top = `${flyoutTop}px`;
+
+      // Create "Download" tooltip positioned to the left of the flyout
+      removeDownloadTooltip();
+      this.downloadTooltip = document.createElement('div');
+      this.downloadTooltip.className = 'threadcub-tooltip';
+      this.downloadTooltip.textContent = 'Download';
+      this.downloadTooltip.style.position = 'fixed';
+      this.downloadTooltip.style.pointerEvents = 'none';
+      document.body.appendChild(this.downloadTooltip);
+
+      const tooltipWidth = this.downloadTooltip.offsetWidth;
+      const tooltipHeight = this.downloadTooltip.offsetHeight;
+      this.downloadTooltip.style.left = `${flyoutLeft - tooltipWidth - 8}px`;
+      this.downloadTooltip.style.top = `${flyoutTop + (flyoutHeight - tooltipHeight) / 2}px`;
 
       requestAnimationFrame(() => {
         this.downloadFlyout.classList.add('show');
+        this.downloadTooltip.classList.add('show');
       });
     };
 
     const hideFlyout = () => {
       hideTimeout = setTimeout(() => {
         this.downloadFlyout.classList.remove('show');
+        this.button.classList.remove('flyout-active');
+        removeDownloadTooltip();
       }, 150);
     };
 
@@ -359,6 +397,8 @@ class ThreadCubFloatingButton {
 
       // Hide flyout after click
       this.downloadFlyout.classList.remove('show');
+      this.button.classList.remove('flyout-active');
+      removeDownloadTooltip();
     });
   }
 
@@ -801,10 +841,13 @@ class ThreadCubFloatingButton {
     if (this.borderOverlay && this.borderOverlay.parentNode) {
       this.borderOverlay.parentNode.removeChild(this.borderOverlay);
     }
-    // Also remove any active tooltips and flyout
+    // Also remove any active tooltips, flyout, and managed tooltip
     document.querySelectorAll('.threadcub-tooltip').forEach(t => t.remove());
     if (this.downloadFlyout && this.downloadFlyout.parentNode) {
       this.downloadFlyout.parentNode.removeChild(this.downloadFlyout);
+    }
+    if (this.downloadTooltip && this.downloadTooltip.parentNode) {
+      this.downloadTooltip.parentNode.removeChild(this.downloadTooltip);
     }
     console.log('🐻 ThreadCub: Button destroyed');
   }

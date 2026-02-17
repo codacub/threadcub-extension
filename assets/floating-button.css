@@ -374,6 +374,18 @@
   pointer-events: auto;
 }
 
+/* Keep action buttons visible when download flyout is active */
+#threadcub-edge-btn.flyout-active {
+  transform: scale(1.05);
+  filter: drop-shadow(var(--shadow-floating-btn-hover));
+  background: var(--color-floating-btn-hover-bg);
+}
+
+#threadcub-edge-btn.flyout-active .threadcub-action-buttons {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 /* Scale effect for action buttons on hover of main button */
 #threadcub-edge-btn:hover .threadcub-new-btn,
 #threadcub-edge-btn:hover .threadcub-save-btn,
@@ -383,8 +395,25 @@
   transform: scale(1) !important; /* Return to normal size */
 }
 
+/* Keep action buttons at full scale when flyout is active */
+#threadcub-edge-btn.flyout-active .threadcub-new-btn,
+#threadcub-edge-btn.flyout-active .threadcub-save-btn,
+#threadcub-edge-btn.flyout-active .threadcub-tag-btn,
+#threadcub-edge-btn.flyout-active .threadcub-close-btn {
+  transform: scale(1) !important;
+}
+
+/* Keep download button at its hover appearance when flyout is active */
+#threadcub-edge-btn.flyout-active .threadcub-download-btn {
+  background: var(--color-action-btn-download-bg-hover) !important;
+  color: var(--color-action-btn-download-text-hover) !important;
+  transform: scale(1.1) !important;
+  box-shadow: var(--shadow-action-btn-download-hover) !important;
+}
+
 /* Grip icon visibility on hover */
-#threadcub-edge-btn:hover .threadcub-grip-icon {
+#threadcub-edge-btn:hover .threadcub-grip-icon,
+#threadcub-edge-btn.flyout-active .threadcub-grip-icon {
   opacity: 1;
 }
 

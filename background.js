@@ -1,7 +1,8 @@
-// === SECTION 0: Analytics Integration ===
+// === SECTION 0: Analytics & Auth Integration ===
 
-// Import analytics service
+// Import analytics service and auth service
 importScripts('src/services/analytics.js');
+importScripts('src/services/auth-service.js');
 
 // Track installation and updates
 chrome.runtime.onInstalled.addListener((details) => {
@@ -55,7 +56,23 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     case 'getAuthToken':
       handleGetAuthToken(sendResponse);
       return true;
-    
+
+    case 'storeAuthToken':
+      handleStoreAuthToken(request, sendResponse);
+      return true;
+
+    case 'getStoredAuthToken':
+      handleGetStoredAuthToken(sendResponse);
+      return true;
+
+    case 'validateAuthToken':
+      handleValidateAuthToken(sendResponse);
+      return true;
+
+    case 'authLogout':
+      handleAuthLogout(sendResponse);
+      return true;
+
     case 'trackEvent':
       handleTrackEvent(request, sendResponse);
       return false;
@@ -218,29 +235,26 @@ function handleDownload(request, sendResponse) {
 async function handleSaveConversation(data) {
   try {
     console.log('🐻 Background: Making API call to ThreadCub with data:', data);
-
-    // Use ApiService (Note: ApiService is not available in service worker context)
-    // Keeping original implementation for now as service workers can't access content script modules
     console.log('🐻 Background: API URL:', 'https://threadcub.com/api/conversations/save');
 
-    // TEMPORARY: Test if endpoint exists with GET first
-    console.log('🐻 Background: Testing endpoint accessibility...');
-    try {
-      const testResponse = await fetch('https://threadcub.com/api/conversations/save', {
-        method: 'GET'
-      });
-      console.log('🐻 Background: GET test response:', testResponse.status);
-      console.log('🐻 Background: GET allowed methods:', testResponse.headers.get('Allow'));
-    } catch (error) {
-      console.log('🐻 Background: GET test failed:', error);
+    // Get auth token from storage for Bearer auth
+    const authToken = await self.AuthService.getToken();
+    console.log('🐻 Background: Auth token available:', !!authToken);
+
+    const headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    };
+
+    // Add Bearer token if available
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+      console.log('🐻 Background: Added Authorization header');
     }
 
     const response = await fetch('https://threadcub.com/api/conversations/save', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
+      headers: headers,
       body: JSON.stringify(data)
     });
 
@@ -251,7 +265,12 @@ async function handleSaveConversation(data) {
       const errorText = await response.text();
       console.error('🐻 Background: API error response:', errorText);
 
-      // If 405, try to get more info about allowed methods
+      if (response.status === 401) {
+        console.log('🐻 Background: Auth token expired, clearing...');
+        await self.AuthService.clearToken();
+        throw new Error('Authentication expired. Please log in again.');
+      }
+
       if (response.status === 405) {
         const allowedMethods = response.headers.get('Allow');
         console.error('🐻 Background: Allowed methods:', allowedMethods);
@@ -265,7 +284,7 @@ async function handleSaveConversation(data) {
     console.log('🐻 Background: API call successful:', result);
 
     return result;
-    
+
   } catch (error) {
     console.error('🐻 Background: Error in handleSaveConversation:', error);
     throw error;
@@ -596,9 +615,91 @@ function extractSupabaseAuthToken() {
     
     console.log('🔧 Dashboard: No auth token found in localStorage');
     return { success: false, error: 'No auth token found - make sure you are logged in to ThreadCub' };
-    
+
   } catch (error) {
     console.error('🔧 Dashboard: Error extracting auth token:', error);
     return { success: false, error: `Error: ${error.message}` };
   }
 }
+
+// === SECTION 8: Extension Auth Token Handlers ===
+
+async function handleStoreAuthToken(request, sendResponse) {
+  console.log('🔐 Background: Storing auth token from callback...');
+  try {
+    const { token } = request;
+    if (!token) {
+      sendResponse({ success: false, error: 'No token provided' });
+      return;
+    }
+
+    await self.AuthService.storeToken(token);
+
+    // Validate the token and store user data
+    const userData = await self.AuthService.validateToken(token);
+    if (userData) {
+      await self.AuthService.storeUser(userData);
+      console.log('🔐 Background: Token stored and validated, user:', userData.email || userData.user?.email);
+    }
+
+    sendResponse({ success: true, user: userData });
+  } catch (error) {
+    console.error('🔐 Background: Error storing auth token:', error);
+    sendResponse({ success: false, error: error.message });
+  }
+}
+
+async function handleGetStoredAuthToken(sendResponse) {
+  console.log('🔐 Background: Getting stored auth token...');
+  try {
+    const token = await self.AuthService.getToken();
+    const user = await self.AuthService.getUser();
+    sendResponse({ success: true, token, user });
+  } catch (error) {
+    console.error('🔐 Background: Error getting stored token:', error);
+    sendResponse({ success: false, error: error.message });
+  }
+}
+
+async function handleValidateAuthToken(sendResponse) {
+  console.log('🔐 Background: Validating stored auth token...');
+  try {
+    const result = await self.AuthService.getValidatedAuth();
+    sendResponse({ success: true, ...result });
+  } catch (error) {
+    console.error('🔐 Background: Error validating token:', error);
+    sendResponse({ success: false, error: error.message });
+  }
+}
+
+async function handleAuthLogout(sendResponse) {
+  console.log('🔐 Background: Logging out...');
+  try {
+    await self.AuthService.logout();
+    sendResponse({ success: true });
+  } catch (error) {
+    console.error('🔐 Background: Error during logout:', error);
+    sendResponse({ success: false, error: error.message });
+  }
+}
+
+// === SECTION 9: External Message Listener for Auth Callback ===
+// Listen for messages from the auth callback page (threadcub.com/auth/extension-callback)
+
+chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => {
+  console.log('🔐 Background: Received external message from:', sender.url);
+  console.log('🔐 Background: External message action:', request.action);
+
+  if (request.action === 'storeAuthToken' && request.token) {
+    console.log('🔐 Background: Auth callback received with token');
+
+    handleStoreAuthToken({ token: request.token }, sendResponse);
+    return true;
+  }
+
+  sendResponse({ success: false, error: 'Unknown external action' });
+});
+
+// Also listen for internal messages from content scripts on threadcub.com
+// that relay the auth token from the callback page
+console.log('🔐 ThreadCub: Auth handlers registered in background script');

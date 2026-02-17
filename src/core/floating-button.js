@@ -55,6 +55,13 @@ class ThreadCubFloatingButton {
             <path d="M15 3h6v6"/>
           </svg>
         </div>
+        <div class="threadcub-save-btn" data-action="save">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <path d="m7 10 5-5 5 5"/>
+            <path d="M12 5v12"/>
+          </svg>
+        </div>
         <div class="threadcub-download-btn" data-action="download">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 15V3"/>
@@ -193,6 +200,7 @@ class ThreadCubFloatingButton {
   setupTooltips() {
     const tooltipData = {
       'threadcub-new-btn': 'Continue Your Chat',
+      'threadcub-save-btn': 'Send to ThreadCub',
       'threadcub-download-btn': 'Download',
       'threadcub-tag-btn': 'Pawmarks',
       'threadcub-close-btn': 'Bye For Now'
@@ -272,6 +280,7 @@ class ThreadCubFloatingButton {
 
   setupBearExpressionListeners() {
     const newBtn = this.button.querySelector('.threadcub-new-btn');
+    const saveBtn = this.button.querySelector('.threadcub-save-btn');
     const downloadBtn = this.button.querySelector('.threadcub-download-btn');
     const tagBtn = this.button.querySelector('.threadcub-tag-btn');
     const closeBtn = this.button.querySelector('.threadcub-close-btn');
@@ -281,6 +290,11 @@ class ThreadCubFloatingButton {
     if (newBtn) {
       newBtn.addEventListener('mouseenter', () => this.setBearExpression('happy'));
       newBtn.addEventListener('mouseleave', () => this.setBearExpression('happy'));
+    }
+
+    if (saveBtn) {
+      saveBtn.addEventListener('mouseenter', () => this.setBearExpression('happy'));
+      saveBtn.addEventListener('mouseleave', () => this.setBearExpression('happy'));
     }
 
     if (downloadBtn) {
@@ -385,6 +399,7 @@ class ThreadCubFloatingButton {
 
     // Check for action button clicks
     const newBtn = e.target.closest('.threadcub-new-btn');
+    const saveBtn = e.target.closest('.threadcub-save-btn');
     const downloadBtn = e.target.closest('.threadcub-download-btn');
     const tagBtn = e.target.closest('.threadcub-tag-btn');
     const closeBtn = e.target.closest('.threadcub-close-btn');
@@ -400,6 +415,21 @@ class ThreadCubFloatingButton {
       });
       
       this.saveAndOpenConversation('floating');
+      return;
+    }
+
+    if (saveBtn) {
+      // 🐻 Track save button clicked
+      chrome.runtime.sendMessage({
+        action: 'trackEvent',
+        eventType: 'floating_button_clicked',
+        data: {
+          platform: window.PlatformDetector?.detectPlatform() || 'unknown',
+          action: 'save'
+        }
+      });
+
+      this.saveConversationOnly('floating');
       return;
     }
 
@@ -840,6 +870,95 @@ class ThreadCubFloatingButton {
     this.showErrorToast('Export failed: ' + error.message);
     this.isExporting = false;
   }
+  }
+
+  async saveConversationOnly(source = 'floating') {
+    console.log('🐻 ThreadCub: Starting save-only (no tab open) from:', source);
+
+    // ===== GET USER AUTH TOKEN VIA BACKGROUND SCRIPT =====
+    console.log('🔧 Getting user auth token via background script...');
+    let userAuthToken = null;
+
+    try {
+      const response = await chrome.runtime.sendMessage({ action: 'getAuthToken' });
+      if (response && response.success) {
+        userAuthToken = response.authToken;
+        console.log('🔧 Auth token retrieved from ThreadCub tab:', !!userAuthToken);
+      } else {
+        console.log('🔧 Could not get auth token:', response?.error || 'Unknown error');
+      }
+    } catch (error) {
+      console.log('🔧 Background script communication failed:', error);
+    }
+
+    // Prevent double exports with debounce
+    const now = Date.now();
+    if (this.isExporting || (now - this.lastExportTime) < 2000) {
+      console.log('🐻 ThreadCub: Export already in progress or too soon after last export');
+      return;
+    }
+
+    this.isExporting = true;
+    this.lastExportTime = now;
+
+    try {
+      // Extract conversation data from the current AI platform
+      const conversationData = await window.ConversationExtractor.extractConversation();
+
+      if (!conversationData) {
+        console.error('🐻 ThreadCub: No conversation data returned from extraction');
+        this.showErrorToast('No conversation found to save');
+        this.isExporting = false;
+        return;
+      }
+
+      if (!conversationData.messages || conversationData.messages.length === 0) {
+        console.error('🐻 ThreadCub: No messages found in conversation data');
+        this.showErrorToast('No messages found in conversation');
+        this.isExporting = false;
+        return;
+      }
+
+      console.log(`🐻 ThreadCub: Successfully extracted ${conversationData.messages.length} messages`);
+
+      // Get session ID for anonymous conversation tracking
+      const sessionId = await window.StorageService.getOrCreateSessionId();
+
+      const apiData = {
+        conversationData: conversationData,
+        source: conversationData.platform?.toLowerCase() || 'unknown',
+        title: conversationData.title || 'Untitled Conversation',
+        userAuthToken: userAuthToken,
+        sessionId: sessionId
+      };
+
+      // API call via ApiService - save only, no tab open
+      try {
+        const data = await window.ApiService.saveConversation(apiData);
+        console.log('🐻 ThreadCub: Conversation saved to ThreadCub successfully');
+
+        this.setBearExpression('happy');
+        this.showSuccessToast('Conversation sent to ThreadCub!');
+
+        setTimeout(() => {
+          if (this.currentBearState !== 'default') {
+            this.setBearExpression('default');
+          }
+        }, 2000);
+
+        this.isExporting = false;
+
+      } catch (apiError) {
+        console.error('🐻 ThreadCub: API save failed:', apiError);
+        this.showErrorToast('Failed to save conversation');
+        this.isExporting = false;
+      }
+
+    } catch (error) {
+      console.error('🐻 ThreadCub: Save error:', error);
+      this.showErrorToast('Save failed: ' + error.message);
+      this.isExporting = false;
+    }
   }
 
   async downloadConversationJSON() {

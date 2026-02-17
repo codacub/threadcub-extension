@@ -1,6 +1,7 @@
 // === SECTION 0: Analytics & Auth Integration ===
 
-// Import analytics service, auth service, and crypto service
+// Import CryptoJS, analytics service, auth service, and crypto service
+importScripts('vendor/crypto-js.min.js');
 importScripts('src/services/analytics.js');
 importScripts('src/services/auth-service.js');
 importScripts('src/services/crypto-service.js');

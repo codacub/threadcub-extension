@@ -112,28 +112,45 @@ const ApiService = {
 
       // -----------------------------------------------------------------
       // Step 1: Try sending encrypted payload (if encryption is enabled)
+      // Uses CryptoJS.AES.encrypt with a fixed secret key.
+      // Output is OpenSSL-compatible base64 (starts with "U2FsdGVkX1...").
       // Backend expects: { encrypted_payload: "base64...", title?, source? }
       // -----------------------------------------------------------------
       if (USE_ENCRYPTION) {
         try {
-          const CryptoSvc = (typeof window !== 'undefined' && window.CryptoService) ||
-                             (typeof self !== 'undefined' && self.CryptoService);
+          const CryptoJSLib = (typeof CryptoJS !== 'undefined') ? CryptoJS :
+                              (typeof window !== 'undefined' && window.CryptoJS) ? window.CryptoJS :
+                              (typeof self !== 'undefined' && self.CryptoJS) ? self.CryptoJS : null;
 
-          if (CryptoSvc) {
-            console.log('🔒 ApiService.saveConversation: Encrypting payload before send...');
-            const encryptedBase64 = await CryptoSvc.encryptPayload(apiData);
+          if (CryptoJSLib && CryptoJSLib.AES) {
+            const secretKey = 'threadcub-secure-grok-extension-key-2026-xai-prototype-v1-do-not-share';
 
-            // Match backend schema: encrypted_payload + cleartext title/source for routing
+            // Build the conversationData object to encrypt (same shape the server would store)
+            const conversationData = apiData.conversationData || apiData;
+            const title  = apiData?.title || conversationData?.title || 'Untitled Grok Conversation';
+            const source = apiData?.source || conversationData?.source || conversationData?.platform?.toLowerCase() || 'grok';
+
+            console.log('🔒 Preparing to encrypt conversationData:', JSON.stringify(conversationData, null, 2));
+
+            // CryptoJS.AES.encrypt → OpenSSL format: "Salted__" + salt + ciphertext → base64
+            const encryptedString = CryptoJSLib.AES.encrypt(
+              JSON.stringify(conversationData),
+              secretKey
+            ).toString();
+
+            console.log('🔒 Encrypted payload (first 100 chars):', encryptedString.substring(0, 100));
+            console.log('🔒 Encrypted payload total length:', encryptedString.length, 'chars');
+
             const encryptedPayload = {
-              encrypted_payload: encryptedBase64,
-              source: apiData.source || apiData.conversationData?.platform?.toLowerCase() || 'unknown',
-              title: apiData.title || apiData.conversationData?.title || 'Untitled'
+              encrypted_payload: encryptedString,
+              title: title,
+              source: source
             };
 
-            console.log('🔒 ApiService.saveConversation: Payload encrypted. Sending:', JSON.stringify({
-              encrypted_payload: encryptedBase64.substring(0, 60) + '...[' + encryptedBase64.length + ' chars total]',
-              source: encryptedPayload.source,
-              title: encryptedPayload.title
+            console.log('🔒 ApiService.saveConversation: Sending encrypted payload:', JSON.stringify({
+              encrypted_payload: encryptedString.substring(0, 60) + '...[' + encryptedString.length + ' chars]',
+              title: encryptedPayload.title,
+              source: encryptedPayload.source
             }));
 
             didAttemptEncrypted = true;
@@ -164,13 +181,14 @@ const ApiService = {
             );
             // Fall through to unencrypted send below
           } else {
-            console.warn('🔒 ApiService.saveConversation: CryptoService not available, skipping encryption');
+            console.warn('🔒 ApiService.saveConversation: CryptoJS not available, skipping encryption');
           }
         } catch (encryptError) {
           if (encryptError.message.includes('Authentication expired')) {
             throw encryptError;
           }
-          console.warn('🔒 ApiService.saveConversation: Encryption/send error, falling back to unencrypted:', encryptError.message);
+          console.error('🔒 ApiService.saveConversation: Encryption error:', encryptError);
+          console.warn('🔒 ApiService.saveConversation: Falling back to unencrypted due to encryption error');
         }
       } else {
         console.log('🔒 ApiService.saveConversation: USE_ENCRYPTION=false, sending unencrypted');

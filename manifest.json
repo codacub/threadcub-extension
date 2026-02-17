@@ -81,6 +81,7 @@
       "assets/conversation-prompt.css"
     ],
     "js": [
+      "vendor/crypto-js.min.js",
       "src/services/analytics.js",
       "src/utils/platform-detector.js",
       "src/utils/utilities.js",

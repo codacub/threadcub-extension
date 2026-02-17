@@ -42,7 +42,7 @@ const ConversationExtractor = {
   async extractClaudeConversation() {
     console.log('🐻 ThreadCub: Starting SIMPLE WORKING Claude.ai extraction...');
 
-    const title = document.title.replace(' | Claude', '') || 'Claude Conversation';
+    const title = this.extractClaudeTitle();
 
     try {
       // Use the EXACT approach that worked in the diagnostic
@@ -79,6 +79,51 @@ const ConversationExtractor = {
         error: error.message
       };
     }
+  },
+
+  extractClaudeTitle() {
+    console.log('🐻 ThreadCub: Extracting Claude conversation title...');
+
+    // Method 1: Extract from document.title (format: "Title - Claude" or "Title | Claude")
+    const pageTitle = document.title
+      .replace(/\s*[-–|]\s*Claude\s*$/i, '')
+      .trim();
+
+    if (pageTitle && pageTitle.toLowerCase() !== 'claude' && pageTitle.length > 0) {
+      console.log('🐻 ThreadCub: Title from document.title:', pageTitle);
+      return pageTitle;
+    }
+
+    // Method 2: Try sidebar - find the link matching current conversation URL
+    const chatPath = window.location.pathname;
+    if (chatPath.includes('/chat/')) {
+      // Try exact path match in sidebar
+      const sidebarLink = document.querySelector(`nav a[href="${chatPath}"], a[href="${chatPath}"]`);
+      if (sidebarLink) {
+        const linkText = sidebarLink.textContent?.trim();
+        if (linkText && linkText.length > 0) {
+          console.log('🐻 ThreadCub: Title from sidebar link:', linkText);
+          return linkText;
+        }
+      }
+
+      // Try matching by chat ID in any sidebar link
+      const chatId = chatPath.split('/chat/')[1]?.split('/')[0]?.split('?')[0];
+      if (chatId) {
+        const matchingLink = document.querySelector(`a[href*="${chatId}"]`);
+        if (matchingLink) {
+          const linkText = matchingLink.textContent?.trim();
+          if (linkText && linkText.length > 0) {
+            console.log('🐻 ThreadCub: Title from chat ID match:', linkText);
+            return linkText;
+          }
+        }
+      }
+    }
+
+    // Method 3: Fallback
+    console.log('🐻 ThreadCub: Using fallback title');
+    return 'Untitled Conversation';
   },
 
   simpleWorkingExtraction() {

@@ -53,19 +53,49 @@ const ApiService = {
   },
 
   // =============================================================================
+  // HELPER: Notify user of persistent save failure via chrome.notifications
+  // Requires "notifications" permission in manifest.json.
+  // Falls back to console.error if notifications API unavailable.
+  // =============================================================================
+
+  _notifySaveFailure(errorMsg) {
+    const message = `Save failed: ${errorMsg}`;
+    try {
+      if (typeof chrome !== 'undefined' && chrome.notifications && chrome.notifications.create) {
+        chrome.notifications.create('threadcub-save-error', {
+          type: 'basic',
+          iconUrl: chrome.runtime.getURL('icons/icon48.png'),
+          title: 'ThreadCub — Save Failed',
+          message: message,
+          priority: 2
+        }, (notifId) => {
+          if (chrome.runtime.lastError) {
+            console.warn('🔔 ApiService: Notification failed:', chrome.runtime.lastError.message);
+          }
+        });
+      } else {
+        console.warn('🔔 ApiService: chrome.notifications not available — save error:', message);
+      }
+    } catch (e) {
+      console.warn('🔔 ApiService: Notification error:', e.message);
+    }
+  },
+
+  // =============================================================================
   // SAVE CONVERSATION
   // Extracted from: content.js, floating-button.js, background.js
   // =============================================================================
 
   async saveConversation(apiData) {
     try {
-      console.log('🔍 API Data being sent:', JSON.stringify(apiData, null, 2));
+      console.log('🔍 ApiService.saveConversation: apiData keys:', Object.keys(apiData));
 
       const headers = await this._buildHeaders();
       let didAttemptEncrypted = false;
 
       // -----------------------------------------------------------------
       // Step 1: Try sending encrypted payload (if encryption is enabled)
+      // Backend expects: { encrypted_payload: "base64...", title?, source? }
       // -----------------------------------------------------------------
       if (USE_ENCRYPTION) {
         try {
@@ -76,19 +106,17 @@ const ApiService = {
             console.log('🔒 ApiService.saveConversation: Encrypting payload before send...');
             const encryptedBase64 = await CryptoSvc.encryptPayload(apiData);
 
+            // Match backend schema: encrypted_payload + cleartext title/source for routing
             const encryptedPayload = {
               encrypted_payload: encryptedBase64,
-              platform: apiData.platform || 'unknown',
-              title: apiData.title || 'Untitled',
-              timestamp: new Date().toISOString()
+              source: apiData.source || apiData.conversationData?.platform?.toLowerCase() || 'unknown',
+              title: apiData.title || apiData.conversationData?.title || 'Untitled'
             };
 
-            console.log('🔒 ApiService.saveConversation: Payload encrypted successfully');
-            console.log('🔒 ApiService.saveConversation: Sending encrypted payload:', JSON.stringify({
-              encrypted_payload: encryptedBase64.substring(0, 40) + '...[truncated]',
-              platform: encryptedPayload.platform,
-              title: encryptedPayload.title,
-              timestamp: encryptedPayload.timestamp
+            console.log('🔒 ApiService.saveConversation: Payload encrypted. Sending:', JSON.stringify({
+              encrypted_payload: encryptedBase64.substring(0, 60) + '...[' + encryptedBase64.length + ' chars total]',
+              source: encryptedPayload.source,
+              title: encryptedPayload.title
             }));
 
             didAttemptEncrypted = true;
@@ -97,6 +125,8 @@ const ApiService = {
               headers: headers,
               body: JSON.stringify(encryptedPayload)
             });
+
+            console.log('🔒 ApiService.saveConversation: Encrypted POST response status:', encResponse.status);
 
             if (encResponse.status === 401) {
               await this._handleUnauthorized();
@@ -109,19 +139,17 @@ const ApiService = {
               return data;
             }
 
-            // Encrypted send failed (likely 400 from backend not understanding format)
+            // Encrypted send rejected — log details and fall through to unencrypted
             const errBody = await encResponse.text();
             console.warn(
-              `🔒 ApiService.saveConversation: Encrypted send failed (status ${encResponse.status}) — falling back to unencrypted payload. Response body:`,
-              errBody
+              `🔒 ApiService.saveConversation: Encrypted send failed (status ${encResponse.status}) — falling back to unencrypted payload.`,
+              '\n  Response body:', errBody
             );
             // Fall through to unencrypted send below
           } else {
             console.warn('🔒 ApiService.saveConversation: CryptoService not available, skipping encryption');
           }
         } catch (encryptError) {
-          // Encryption or encrypted-fetch failed — fall back to unencrypted
-          // (unless it was a 401, which we re-throw above)
           if (encryptError.message.includes('Authentication expired')) {
             throw encryptError;
           }
@@ -133,10 +161,15 @@ const ApiService = {
 
       // -----------------------------------------------------------------
       // Step 2: Send original unencrypted payload (primary path or fallback)
+      // apiData already has { conversationData: {...}, source, title, ... }
+      // from the caller (floating-button / download-manager).
       // -----------------------------------------------------------------
       if (didAttemptEncrypted) {
         console.log('🔒 ApiService.saveConversation: Retrying with original unencrypted payload...');
       }
+      console.log('🔍 ApiService.saveConversation: Sending unencrypted body keys:', Object.keys(apiData),
+                   '| title:', apiData.title, '| source:', apiData.source,
+                   '| has conversationData:', !!apiData.conversationData);
 
       const response = await fetch('https://threadcub.com/api/conversations/save', {
         method: 'POST',
@@ -144,22 +177,29 @@ const ApiService = {
         body: JSON.stringify(apiData)
       });
 
+      console.log('🔍 ApiService.saveConversation: Unencrypted POST response status:', response.status);
+
       if (response.status === 401) {
         await this._handleUnauthorized();
         throw new Error('Authentication expired. Please log in again.');
       }
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        console.error('🐻 ApiService.saveConversation: Unencrypted send also failed!',
+                       'Status:', response.status, '| Body:', errorText);
+        this._notifySaveFailure(`Server returned ${response.status}`);
+        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
       }
 
       const data = await response.json();
-      console.log('✅ ThreadCub: Direct API call successful (unencrypted):', data);
+      console.log('✅ ThreadCub: API call successful (unencrypted fallback):', data);
 
       return data;
 
     } catch (error) {
       console.error('🐻 ThreadCub: API call failed:', error);
+      this._notifySaveFailure(error.message);
       throw error;
     }
   },
@@ -171,8 +211,8 @@ const ApiService = {
 
   async handleSaveConversation(data) {
     try {
-      console.log('🐻 Background: Making API call to ThreadCub with data:', data);
-      console.log('🐻 Background: API URL:', 'https://threadcub.com/api/conversations/save');
+      console.log('🐻 ApiService.handleSaveConversation: data keys:', Object.keys(data));
+      console.log('🐻 ApiService.handleSaveConversation: API URL:', 'https://threadcub.com/api/conversations/save');
 
       const headers = await this._buildHeaders({ 'Accept': 'application/json' });
       let didAttemptEncrypted = false;
@@ -191,17 +231,14 @@ const ApiService = {
 
             const encryptedPayload = {
               encrypted_payload: encryptedBase64,
-              platform: data.platform || 'unknown',
-              title: data.title || 'Untitled',
-              timestamp: new Date().toISOString()
+              source: data.source || data.conversationData?.platform?.toLowerCase() || 'unknown',
+              title: data.title || data.conversationData?.title || 'Untitled'
             };
 
-            console.log('🔒 ApiService.handleSaveConversation: Payload encrypted successfully');
-            console.log('🔒 ApiService.handleSaveConversation: Sending encrypted payload:', JSON.stringify({
-              encrypted_payload: encryptedBase64.substring(0, 40) + '...[truncated]',
-              platform: encryptedPayload.platform,
-              title: encryptedPayload.title,
-              timestamp: encryptedPayload.timestamp
+            console.log('🔒 ApiService.handleSaveConversation: Sending encrypted:', JSON.stringify({
+              encrypted_payload: encryptedBase64.substring(0, 60) + '...[' + encryptedBase64.length + ' chars total]',
+              source: encryptedPayload.source,
+              title: encryptedPayload.title
             }));
 
             didAttemptEncrypted = true;
@@ -211,7 +248,7 @@ const ApiService = {
               body: JSON.stringify(encryptedPayload)
             });
 
-            console.log('🐻 Background: Encrypted POST response status:', encResponse.status);
+            console.log('🔒 ApiService.handleSaveConversation: Encrypted POST status:', encResponse.status);
 
             if (encResponse.status === 401) {
               await this._handleUnauthorized();
@@ -220,14 +257,14 @@ const ApiService = {
 
             if (encResponse.ok) {
               const result = await encResponse.json();
-              console.log('✅ Background: Encrypted API call successful:', result);
+              console.log('✅ ApiService.handleSaveConversation: Encrypted call successful:', result);
               return result;
             }
 
             const errBody = await encResponse.text();
             console.warn(
-              `🔒 ApiService.handleSaveConversation: Encrypted send failed (status ${encResponse.status}) — falling back to unencrypted payload. Response body:`,
-              errBody
+              `🔒 ApiService.handleSaveConversation: Encrypted send failed (status ${encResponse.status}) — falling back.`,
+              '\n  Response body:', errBody
             );
           } else {
             console.warn('🔒 ApiService.handleSaveConversation: CryptoService not available, skipping encryption');
@@ -236,7 +273,7 @@ const ApiService = {
           if (encryptError.message.includes('Authentication expired')) {
             throw encryptError;
           }
-          console.warn('🔒 ApiService.handleSaveConversation: Encryption/send error, falling back to unencrypted:', encryptError.message);
+          console.warn('🔒 ApiService.handleSaveConversation: Encryption/send error, falling back:', encryptError.message);
         }
       } else {
         console.log('🔒 ApiService.handleSaveConversation: USE_ENCRYPTION=false, sending unencrypted');
@@ -248,6 +285,9 @@ const ApiService = {
       if (didAttemptEncrypted) {
         console.log('🔒 ApiService.handleSaveConversation: Retrying with original unencrypted payload...');
       }
+      console.log('🔍 ApiService.handleSaveConversation: Sending unencrypted body keys:', Object.keys(data),
+                   '| title:', data.title, '| source:', data.source,
+                   '| has conversationData:', !!data.conversationData);
 
       const response = await fetch('https://threadcub.com/api/conversations/save', {
         method: 'POST',
@@ -255,8 +295,7 @@ const ApiService = {
         body: JSON.stringify(data)
       });
 
-      console.log('🐻 Background: POST response status:', response.status);
-      console.log('🐻 Background: POST response ok:', response.ok);
+      console.log('🔍 ApiService.handleSaveConversation: Unencrypted POST status:', response.status);
 
       if (response.status === 401) {
         await this._handleUnauthorized();
@@ -265,7 +304,8 @@ const ApiService = {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('🐻 Background: API error response:', errorText);
+        console.error('🐻 ApiService.handleSaveConversation: Unencrypted send also failed!',
+                       'Status:', response.status, '| Body:', errorText);
 
         if (response.status === 405) {
           const allowedMethods = response.headers.get('Allow');
@@ -273,16 +313,18 @@ const ApiService = {
           throw new Error(`Method not allowed. Allowed methods: ${allowedMethods || 'unknown'}`);
         }
 
+        this._notifySaveFailure(`Server returned ${response.status}`);
         throw new Error(`API call failed: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
       const result = await response.json();
-      console.log('🐻 Background: API call successful (unencrypted):', result);
+      console.log('✅ ApiService.handleSaveConversation: Unencrypted call successful:', result);
 
       return result;
 
     } catch (error) {
-      console.error('🐻 Background: API error:', error);
+      console.error('🐻 ApiService.handleSaveConversation: API error:', error);
+      this._notifySaveFailure(error.message);
       throw error;
     }
   },

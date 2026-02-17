@@ -171,7 +171,7 @@ function enhanceFloatingButtonWithConversationFeatures() {
           console.log('🐻 ThreadCub: Falling back to direct continuation without API save...');
           
           // FALLBACK: Skip API save and go straight to continuation
-          handleDirectContinuation(conversationData);
+          this.handleDirectContinuation(conversationData);
           this.isExporting = false;
           return;
         }

@@ -238,8 +238,8 @@ const BG_USE_ENCRYPTION = true;
 
 async function handleSaveConversation(data) {
   try {
-    console.log('🐻 Background: Making API call to ThreadCub with data:', data);
-    console.log('🐻 Background: API URL:', 'https://threadcub.com/api/conversations/save');
+    console.log('🐻 Background.handleSaveConversation: data keys:', Object.keys(data));
+    console.log('🐻 Background.handleSaveConversation: API URL:', 'https://threadcub.com/api/conversations/save');
 
     // Get auth token from storage for Bearer auth
     const authToken = await self.AuthService.getToken();
@@ -259,6 +259,7 @@ async function handleSaveConversation(data) {
 
     // -----------------------------------------------------------------
     // Step 1: Try sending encrypted payload (if encryption is enabled)
+    // Backend expects: { encrypted_payload: "base64...", title?, source? }
     // -----------------------------------------------------------------
     if (BG_USE_ENCRYPTION) {
       try {
@@ -266,19 +267,17 @@ async function handleSaveConversation(data) {
           console.log('🔒 Background.handleSaveConversation: Encrypting payload before send...');
           const encryptedBase64 = await self.CryptoService.encryptPayload(data);
 
+          // Match backend schema: source (not platform), title, encrypted_payload
           const encryptedPayload = {
             encrypted_payload: encryptedBase64,
-            platform: data.platform || 'unknown',
-            title: data.title || 'Untitled',
-            timestamp: new Date().toISOString()
+            source: data.source || data.conversationData?.platform?.toLowerCase() || 'unknown',
+            title: data.title || data.conversationData?.title || 'Untitled'
           };
 
-          console.log('🔒 Background.handleSaveConversation: Payload encrypted successfully');
-          console.log('🔒 Background.handleSaveConversation: Sending encrypted payload:', JSON.stringify({
-            encrypted_payload: encryptedBase64.substring(0, 40) + '...[truncated]',
-            platform: encryptedPayload.platform,
-            title: encryptedPayload.title,
-            timestamp: encryptedPayload.timestamp
+          console.log('🔒 Background.handleSaveConversation: Sending encrypted:', JSON.stringify({
+            encrypted_payload: encryptedBase64.substring(0, 60) + '...[' + encryptedBase64.length + ' chars total]',
+            source: encryptedPayload.source,
+            title: encryptedPayload.title
           }));
 
           didAttemptEncrypted = true;
@@ -288,7 +287,7 @@ async function handleSaveConversation(data) {
             body: JSON.stringify(encryptedPayload)
           });
 
-          console.log('🐻 Background: Encrypted POST response status:', encResponse.status);
+          console.log('🔒 Background.handleSaveConversation: Encrypted POST status:', encResponse.status);
 
           if (encResponse.status === 401) {
             console.log('🐻 Background: Auth token expired, clearing...');
@@ -304,8 +303,8 @@ async function handleSaveConversation(data) {
 
           const errBody = await encResponse.text();
           console.warn(
-            `🔒 Background.handleSaveConversation: Encrypted send failed (status ${encResponse.status}) — falling back to unencrypted payload. Response body:`,
-            errBody
+            `🔒 Background.handleSaveConversation: Encrypted send failed (status ${encResponse.status}) — falling back.`,
+            '\n  Response body:', errBody
           );
           // Fall through to unencrypted send below
         } else {
@@ -315,7 +314,7 @@ async function handleSaveConversation(data) {
         if (encryptError.message.includes('Authentication expired')) {
           throw encryptError;
         }
-        console.warn('🔒 Background.handleSaveConversation: Encryption/send error, falling back to unencrypted:', encryptError.message);
+        console.warn('🔒 Background.handleSaveConversation: Encryption/send error, falling back:', encryptError.message);
       }
     } else {
       console.log('🔒 Background.handleSaveConversation: BG_USE_ENCRYPTION=false, sending unencrypted');
@@ -323,10 +322,14 @@ async function handleSaveConversation(data) {
 
     // -----------------------------------------------------------------
     // Step 2: Send original unencrypted payload (primary path or fallback)
+    // data already has { conversationData, source, title, ... } from caller
     // -----------------------------------------------------------------
     if (didAttemptEncrypted) {
       console.log('🔒 Background.handleSaveConversation: Retrying with original unencrypted payload...');
     }
+    console.log('🔍 Background.handleSaveConversation: Sending unencrypted body keys:', Object.keys(data),
+                 '| title:', data.title, '| source:', data.source,
+                 '| has conversationData:', !!data.conversationData);
 
     const response = await fetch('https://threadcub.com/api/conversations/save', {
       method: 'POST',
@@ -334,12 +337,12 @@ async function handleSaveConversation(data) {
       body: JSON.stringify(data)
     });
 
-    console.log('🐻 Background: POST response status:', response.status);
-    console.log('🐻 Background: POST response ok:', response.ok);
+    console.log('🔍 Background.handleSaveConversation: Unencrypted POST status:', response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('🐻 Background: API error response:', errorText);
+      console.error('🐻 Background.handleSaveConversation: Unencrypted send also failed!',
+                     'Status:', response.status, '| Body:', errorText);
 
       if (response.status === 401) {
         console.log('🐻 Background: Auth token expired, clearing...');
@@ -357,7 +360,7 @@ async function handleSaveConversation(data) {
     }
 
     const result = await response.json();
-    console.log('🐻 Background: API call successful (unencrypted):', result);
+    console.log('✅ Background: API call successful (unencrypted fallback):', result);
 
     return result;
 

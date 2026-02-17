@@ -130,7 +130,7 @@ const ApiService = {
             const title  = apiData?.title || conversationData?.title || 'Untitled Grok Conversation';
             const source = apiData?.source || conversationData?.source || conversationData?.platform?.toLowerCase() || 'grok';
 
-            console.log('🔒 Preparing to encrypt conversationData:', JSON.stringify(conversationData, null, 2));
+            console.log('🔒 Full payload before encryption attempt:', JSON.stringify({ conversationData, title, source }, null, 2));
 
             // CryptoJS.AES.encrypt → OpenSSL format: "Salted__" + salt + ciphertext → base64
             const encryptedString = CryptoJSLib.AES.encrypt(
@@ -138,26 +138,24 @@ const ApiService = {
               secretKey
             ).toString();
 
-            console.log('🔒 Encrypted payload (first 100 chars):', encryptedString.substring(0, 100));
-            console.log('🔒 Encrypted payload total length:', encryptedString.length, 'chars');
+            console.log('🔒 Encrypted base64 payload (first 200 chars):', encryptedString.substring(0, 200));
+            console.log('🔒 Encrypted payload full length:', encryptedString.length);
 
-            const encryptedPayload = {
+            console.log('🔒 Sending encrypted body:', JSON.stringify({
               encrypted_payload: encryptedString,
               title: title,
               source: source
-            };
-
-            console.log('🔒 ApiService.saveConversation: Sending encrypted payload:', JSON.stringify({
-              encrypted_payload: encryptedString.substring(0, 60) + '...[' + encryptedString.length + ' chars]',
-              title: encryptedPayload.title,
-              source: encryptedPayload.source
-            }));
+            }, null, 2));
 
             didAttemptEncrypted = true;
             const encResponse = await fetch('https://threadcub.com/api/conversations/save', {
               method: 'POST',
               headers: headers,
-              body: JSON.stringify(encryptedPayload)
+              body: JSON.stringify({
+                encrypted_payload: encryptedString,
+                title: title,
+                source: source
+              })
             });
 
             console.log('🔒 ApiService.saveConversation: Encrypted POST response status:', encResponse.status);
@@ -187,7 +185,7 @@ const ApiService = {
           if (encryptError.message.includes('Authentication expired')) {
             throw encryptError;
           }
-          console.error('🔒 ApiService.saveConversation: Encryption error:', encryptError);
+          console.error('🔒 Encryption failed:', encryptError);
           console.warn('🔒 ApiService.saveConversation: Falling back to unencrypted due to encryption error');
         }
       } else {

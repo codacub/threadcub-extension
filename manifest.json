@@ -85,6 +85,7 @@
       "src/utils/utilities.js",
       "src/services/storage-service.js",
       "src/services/auth-service.js",
+      "src/services/crypto-service.js",
       "src/services/api-service.js",
       "src/adapters/platform-adapters.js",
       "src/core/conversation-extractor.js",

@@ -1,8 +1,9 @@
 // === SECTION 0: Analytics & Auth Integration ===
 
-// Import analytics service and auth service
+// Import analytics service, auth service, and crypto service
 importScripts('src/services/analytics.js');
 importScripts('src/services/auth-service.js');
+importScripts('src/services/crypto-service.js');
 
 // Track installation and updates
 chrome.runtime.onInstalled.addListener((details) => {
@@ -237,6 +238,35 @@ async function handleSaveConversation(data) {
     console.log('🐻 Background: Making API call to ThreadCub with data:', data);
     console.log('🐻 Background: API URL:', 'https://threadcub.com/api/conversations/save');
 
+    // -----------------------------------------------------------------
+    // Encryption step: encrypt the full payload before sending
+    // Uses self.CryptoService which is loaded via importScripts
+    // -----------------------------------------------------------------
+    let payloadToSend;
+    try {
+      if (self.CryptoService) {
+        console.log('🔒 Background.handleSaveConversation: Encrypting payload before send...');
+        const encryptedBase64 = await self.CryptoService.encryptPayload(data);
+
+        // Build encrypted payload structure
+        // platform and title remain in cleartext for server-side routing/display
+        payloadToSend = {
+          encrypted_payload: encryptedBase64,
+          platform: data.platform || 'unknown',
+          title: data.title || 'Untitled',
+          timestamp: new Date().toISOString()
+        };
+
+        console.log('🔒 Background.handleSaveConversation: Payload encrypted successfully');
+      } else {
+        console.warn('🔒 Background.handleSaveConversation: CryptoService not available, sending unencrypted');
+        payloadToSend = data;
+      }
+    } catch (encryptError) {
+      console.error('🔒 Background.handleSaveConversation: Encryption failed, aborting send:', encryptError.message);
+      throw new Error(`Encryption failed: ${encryptError.message}`);
+    }
+
     // Get auth token from storage for Bearer auth
     const authToken = await self.AuthService.getToken();
     console.log('🐻 Background: Auth token available:', !!authToken);
@@ -255,7 +285,7 @@ async function handleSaveConversation(data) {
     const response = await fetch('https://threadcub.com/api/conversations/save', {
       method: 'POST',
       headers: headers,
-      body: JSON.stringify(data)
+      body: JSON.stringify(payloadToSend)
     });
 
     console.log('🐻 Background: POST response status:', response.status);

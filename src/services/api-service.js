@@ -58,12 +58,46 @@ const ApiService = {
     try {
       console.log('🔍 API Data being sent:', JSON.stringify(apiData, null, 2));
 
+      // -----------------------------------------------------------------
+      // Encryption step: encrypt the full payload before sending
+      // If CryptoService is available, encrypt and wrap the payload.
+      // If not available (e.g., loaded before crypto-service.js), send raw.
+      // -----------------------------------------------------------------
+      let payloadToSend;
+      try {
+        const CryptoSvc = (typeof window !== 'undefined' && window.CryptoService) ||
+                           (typeof self !== 'undefined' && self.CryptoService);
+
+        if (CryptoSvc) {
+          console.log('🔒 ApiService.saveConversation: Encrypting payload before send...');
+          const encryptedBase64 = await CryptoSvc.encryptPayload(apiData);
+
+          // Build encrypted payload structure
+          // platform and title remain in cleartext for server-side routing/display
+          payloadToSend = {
+            encrypted_payload: encryptedBase64,
+            platform: apiData.platform || 'unknown',
+            title: apiData.title || 'Untitled',
+            timestamp: new Date().toISOString()
+          };
+
+          console.log('🔒 ApiService.saveConversation: Payload encrypted successfully');
+        } else {
+          console.warn('🔒 ApiService.saveConversation: CryptoService not available, sending unencrypted');
+          payloadToSend = apiData;
+        }
+      } catch (encryptError) {
+        // If encryption fails, abort the send rather than leaking plaintext
+        console.error('🔒 ApiService.saveConversation: Encryption failed, aborting send:', encryptError.message);
+        throw new Error(`Encryption failed: ${encryptError.message}`);
+      }
+
       const headers = await this._buildHeaders();
 
       const response = await fetch('https://threadcub.com/api/conversations/save', {
         method: 'POST',
         headers: headers,
-        body: JSON.stringify(apiData)
+        body: JSON.stringify(payloadToSend)
       });
 
       if (response.status === 401) {
@@ -96,12 +130,42 @@ const ApiService = {
       console.log('🐻 Background: Making API call to ThreadCub with data:', data);
       console.log('🐻 Background: API URL:', 'https://threadcub.com/api/conversations/save');
 
+      // -----------------------------------------------------------------
+      // Encryption step: encrypt the full payload before sending
+      // Same logic as saveConversation() — checks for CryptoService availability
+      // -----------------------------------------------------------------
+      let payloadToSend;
+      try {
+        const CryptoSvc = (typeof window !== 'undefined' && window.CryptoService) ||
+                           (typeof self !== 'undefined' && self.CryptoService);
+
+        if (CryptoSvc) {
+          console.log('🔒 ApiService.handleSaveConversation: Encrypting payload before send...');
+          const encryptedBase64 = await CryptoSvc.encryptPayload(data);
+
+          payloadToSend = {
+            encrypted_payload: encryptedBase64,
+            platform: data.platform || 'unknown',
+            title: data.title || 'Untitled',
+            timestamp: new Date().toISOString()
+          };
+
+          console.log('🔒 ApiService.handleSaveConversation: Payload encrypted successfully');
+        } else {
+          console.warn('🔒 ApiService.handleSaveConversation: CryptoService not available, sending unencrypted');
+          payloadToSend = data;
+        }
+      } catch (encryptError) {
+        console.error('🔒 ApiService.handleSaveConversation: Encryption failed, aborting send:', encryptError.message);
+        throw new Error(`Encryption failed: ${encryptError.message}`);
+      }
+
       const headers = await this._buildHeaders({ 'Accept': 'application/json' });
 
       const response = await fetch('https://threadcub.com/api/conversations/save', {
         method: 'POST',
         headers: headers,
-        body: JSON.stringify(data)
+        body: JSON.stringify(payloadToSend)
       });
 
       console.log('🐻 Background: POST response status:', response.status);

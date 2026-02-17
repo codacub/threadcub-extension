@@ -233,39 +233,13 @@ function handleDownload(request, sendResponse) {
 
 // === SECTION 3: API Handler ===
 
+// Temp flag: set to false to skip encryption entirely (for quick testing)
+const BG_USE_ENCRYPTION = true;
+
 async function handleSaveConversation(data) {
   try {
     console.log('🐻 Background: Making API call to ThreadCub with data:', data);
     console.log('🐻 Background: API URL:', 'https://threadcub.com/api/conversations/save');
-
-    // -----------------------------------------------------------------
-    // Encryption step: encrypt the full payload before sending
-    // Uses self.CryptoService which is loaded via importScripts
-    // -----------------------------------------------------------------
-    let payloadToSend;
-    try {
-      if (self.CryptoService) {
-        console.log('🔒 Background.handleSaveConversation: Encrypting payload before send...');
-        const encryptedBase64 = await self.CryptoService.encryptPayload(data);
-
-        // Build encrypted payload structure
-        // platform and title remain in cleartext for server-side routing/display
-        payloadToSend = {
-          encrypted_payload: encryptedBase64,
-          platform: data.platform || 'unknown',
-          title: data.title || 'Untitled',
-          timestamp: new Date().toISOString()
-        };
-
-        console.log('🔒 Background.handleSaveConversation: Payload encrypted successfully');
-      } else {
-        console.warn('🔒 Background.handleSaveConversation: CryptoService not available, sending unencrypted');
-        payloadToSend = data;
-      }
-    } catch (encryptError) {
-      console.error('🔒 Background.handleSaveConversation: Encryption failed, aborting send:', encryptError.message);
-      throw new Error(`Encryption failed: ${encryptError.message}`);
-    }
 
     // Get auth token from storage for Bearer auth
     const authToken = await self.AuthService.getToken();
@@ -276,16 +250,88 @@ async function handleSaveConversation(data) {
       'Accept': 'application/json'
     };
 
-    // Add Bearer token if available
     if (authToken) {
       headers['Authorization'] = `Bearer ${authToken}`;
       console.log('🐻 Background: Added Authorization header');
     }
 
+    let didAttemptEncrypted = false;
+
+    // -----------------------------------------------------------------
+    // Step 1: Try sending encrypted payload (if encryption is enabled)
+    // -----------------------------------------------------------------
+    if (BG_USE_ENCRYPTION) {
+      try {
+        if (self.CryptoService) {
+          console.log('🔒 Background.handleSaveConversation: Encrypting payload before send...');
+          const encryptedBase64 = await self.CryptoService.encryptPayload(data);
+
+          const encryptedPayload = {
+            encrypted_payload: encryptedBase64,
+            platform: data.platform || 'unknown',
+            title: data.title || 'Untitled',
+            timestamp: new Date().toISOString()
+          };
+
+          console.log('🔒 Background.handleSaveConversation: Payload encrypted successfully');
+          console.log('🔒 Background.handleSaveConversation: Sending encrypted payload:', JSON.stringify({
+            encrypted_payload: encryptedBase64.substring(0, 40) + '...[truncated]',
+            platform: encryptedPayload.platform,
+            title: encryptedPayload.title,
+            timestamp: encryptedPayload.timestamp
+          }));
+
+          didAttemptEncrypted = true;
+          const encResponse = await fetch('https://threadcub.com/api/conversations/save', {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify(encryptedPayload)
+          });
+
+          console.log('🐻 Background: Encrypted POST response status:', encResponse.status);
+
+          if (encResponse.status === 401) {
+            console.log('🐻 Background: Auth token expired, clearing...');
+            await self.AuthService.clearToken();
+            throw new Error('Authentication expired. Please log in again.');
+          }
+
+          if (encResponse.ok) {
+            const result = await encResponse.json();
+            console.log('✅ Background: Encrypted API call successful:', result);
+            return result;
+          }
+
+          const errBody = await encResponse.text();
+          console.warn(
+            `🔒 Background.handleSaveConversation: Encrypted send failed (status ${encResponse.status}) — falling back to unencrypted payload. Response body:`,
+            errBody
+          );
+          // Fall through to unencrypted send below
+        } else {
+          console.warn('🔒 Background.handleSaveConversation: CryptoService not available, skipping encryption');
+        }
+      } catch (encryptError) {
+        if (encryptError.message.includes('Authentication expired')) {
+          throw encryptError;
+        }
+        console.warn('🔒 Background.handleSaveConversation: Encryption/send error, falling back to unencrypted:', encryptError.message);
+      }
+    } else {
+      console.log('🔒 Background.handleSaveConversation: BG_USE_ENCRYPTION=false, sending unencrypted');
+    }
+
+    // -----------------------------------------------------------------
+    // Step 2: Send original unencrypted payload (primary path or fallback)
+    // -----------------------------------------------------------------
+    if (didAttemptEncrypted) {
+      console.log('🔒 Background.handleSaveConversation: Retrying with original unencrypted payload...');
+    }
+
     const response = await fetch('https://threadcub.com/api/conversations/save', {
       method: 'POST',
       headers: headers,
-      body: JSON.stringify(payloadToSend)
+      body: JSON.stringify(data)
     });
 
     console.log('🐻 Background: POST response status:', response.status);
@@ -311,7 +357,7 @@ async function handleSaveConversation(data) {
     }
 
     const result = await response.json();
-    console.log('🐻 Background: API call successful:', result);
+    console.log('🐻 Background: API call successful (unencrypted):', result);
 
     return result;
 

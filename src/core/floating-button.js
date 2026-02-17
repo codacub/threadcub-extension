@@ -218,15 +218,15 @@ class ThreadCubFloatingButton {
       let hideTimeout = null;
 
       const showTooltip = (e) => {
-        // Suppress download button tooltip when flyout is visible
-        if (className === 'threadcub-download-btn' && this.downloadFlyout?.classList.contains('show')) {
-          return;
-        }
-
         clearTimeout(showTimeout);
         clearTimeout(hideTimeout);
 
         showTimeout = setTimeout(() => {
+          // Suppress download button tooltip when flyout is visible
+          if (className === 'threadcub-download-btn' && this.downloadFlyout?.classList.contains('show')) {
+            return;
+          }
+
           // Remove any existing tooltips
           document.querySelectorAll('.threadcub-tooltip').forEach(t => t.remove());
 

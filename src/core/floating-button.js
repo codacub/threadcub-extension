@@ -218,6 +218,11 @@ class ThreadCubFloatingButton {
       let hideTimeout = null;
 
       const showTooltip = (e) => {
+        // Suppress download button tooltip when flyout is visible
+        if (className === 'threadcub-download-btn' && this.downloadFlyout?.classList.contains('show')) {
+          return;
+        }
+
         clearTimeout(showTimeout);
         clearTimeout(hideTimeout);
 
@@ -299,6 +304,12 @@ class ThreadCubFloatingButton {
     const showFlyout = () => {
       clearTimeout(hideTimeout);
 
+      // Hide any existing download tooltip since flyout replaces it
+      document.querySelectorAll('.threadcub-tooltip').forEach(t => t.remove());
+
+      // Keep the button stack expanded while flyout is active
+      this.button.classList.add('flyout-active');
+
       // Position flyout next to download button
       const btnRect = downloadBtn.getBoundingClientRect();
       const flyoutWidth = this.downloadFlyout.offsetWidth || 100;
@@ -315,6 +326,7 @@ class ThreadCubFloatingButton {
     const hideFlyout = () => {
       hideTimeout = setTimeout(() => {
         this.downloadFlyout.classList.remove('show');
+        this.button.classList.remove('flyout-active');
       }, 150);
     };
 
@@ -359,6 +371,7 @@ class ThreadCubFloatingButton {
 
       // Hide flyout after click
       this.downloadFlyout.classList.remove('show');
+      this.button.classList.remove('flyout-active');
     });
   }
 

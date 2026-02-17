@@ -88,7 +88,24 @@ const ApiService = {
 
   async saveConversation(apiData) {
     try {
-      console.log('🔍 ApiService.saveConversation: apiData keys:', Object.keys(apiData));
+      // ---------------------------------------------------------------
+      // Entry-point diagnostics: log exactly what the caller passed in
+      // ---------------------------------------------------------------
+      console.log('🔍 saveConversation called with apiData:', JSON.stringify(apiData, null, 2));
+
+      // Extract messages early so we can inspect them before any send
+      let messages = [];
+      if (apiData?.conversationData?.messages) {
+        messages = apiData.conversationData.messages;
+        console.log('🔍 Messages found at apiData.conversationData.messages');
+      } else if (apiData?.messages) {
+        messages = apiData.messages;
+        console.log('🔍 Messages found at apiData.messages');
+      }
+      console.log('🔍 Extracted messages length:', messages.length);
+      if (messages.length === 0) {
+        console.warn('⚠️ No messages found in payload — server will likely reject this');
+      }
 
       const headers = await this._buildHeaders();
       let didAttemptEncrypted = false;
@@ -162,21 +179,18 @@ const ApiService = {
       // -----------------------------------------------------------------
       // Step 2: Send original unencrypted payload (primary path or fallback)
       // Server expects: { conversationData: { messages, title?, source? }, title?, source? }
-      // apiData may arrive as { conversationData: {...}, ... } from some callers
-      // or as raw { messages: [...], ... } from others — normalise here.
+      // Use the messages extracted at entry; force title/source defaults.
       // -----------------------------------------------------------------
       if (didAttemptEncrypted) {
         console.log('🔒 ApiService.saveConversation: Retrying with original unencrypted payload...');
       }
 
-      // Extract the inner conversation object regardless of how the caller shaped apiData
-      const convData = apiData.conversationData || apiData;
-      const source = apiData.source || convData.source || convData.platform?.toLowerCase() || 'unknown';
-      const title  = apiData.title  || convData.title  || 'Untitled';
+      const title  = apiData?.title || apiData?.conversationData?.title || 'Untitled Grok Conversation';
+      const source = apiData?.source || apiData?.conversationData?.source || apiData?.platform?.toLowerCase() || 'grok';
 
       const unencryptedPayload = {
         conversationData: {
-          messages: convData.messages || [],
+          messages: messages,
           title: title,
           source: source
         },
@@ -184,7 +198,7 @@ const ApiService = {
         source: source
       };
 
-      console.log('🔍 ApiService.saveConversation: Unencrypted payload:', JSON.stringify(unencryptedPayload, null, 2));
+      console.log('🔍 Sending unencrypted payload:', JSON.stringify(unencryptedPayload, null, 2));
 
       const response = await fetch('https://threadcub.com/api/conversations/save', {
         method: 'POST',

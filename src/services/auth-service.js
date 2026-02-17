@@ -1,0 +1,264 @@
+// =============================================================================
+// ThreadCub Auth Service
+// Handles token storage, retrieval, validation, and auth state management
+// =============================================================================
+
+const AuthService = {
+  // Storage key for the auth token
+  TOKEN_KEY: 'threadcub_auth_token',
+  USER_KEY: 'threadcub_auth_user',
+
+  // API endpoints
+  VALIDATE_URL: 'https://threadcub.com/api/auth/validate',
+  LOGIN_URL: 'https://threadcub.com/auth/extension-login',
+
+  // =========================================================================
+  // TOKEN STORAGE
+  // =========================================================================
+
+  /**
+   * Store auth token in chrome.storage.local
+   */
+  async storeToken(token) {
+    console.log('🔐 AuthService: Storing auth token...');
+    return new Promise((resolve, reject) => {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({ [this.TOKEN_KEY]: token }, () => {
+          if (chrome.runtime.lastError) {
+            console.error('🔐 AuthService: Error storing token:', chrome.runtime.lastError);
+            reject(chrome.runtime.lastError);
+          } else {
+            console.log('🔐 AuthService: Token stored successfully');
+            resolve();
+          }
+        });
+      } else {
+        // Fallback to localStorage
+        try {
+          localStorage.setItem(this.TOKEN_KEY, token);
+          console.log('🔐 AuthService: Token stored in localStorage (fallback)');
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
+      }
+    });
+  },
+
+  /**
+   * Get auth token from chrome.storage.local
+   */
+  async getToken() {
+    return new Promise((resolve) => {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.get([this.TOKEN_KEY], (result) => {
+          if (chrome.runtime.lastError) {
+            console.log('🔐 AuthService: Error getting token:', chrome.runtime.lastError);
+            resolve(null);
+          } else {
+            const token = result[this.TOKEN_KEY] || null;
+            console.log('🔐 AuthService: Token retrieved:', !!token);
+            resolve(token);
+          }
+        });
+      } else {
+        // Fallback to localStorage
+        try {
+          const token = localStorage.getItem(this.TOKEN_KEY);
+          resolve(token);
+        } catch (error) {
+          resolve(null);
+        }
+      }
+    });
+  },
+
+  /**
+   * Clear auth token (logout)
+   */
+  async clearToken() {
+    console.log('🔐 AuthService: Clearing auth token...');
+    return new Promise((resolve, reject) => {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.remove([this.TOKEN_KEY, this.USER_KEY], () => {
+          if (chrome.runtime.lastError) {
+            console.error('🔐 AuthService: Error clearing token:', chrome.runtime.lastError);
+            reject(chrome.runtime.lastError);
+          } else {
+            console.log('🔐 AuthService: Token cleared successfully');
+            resolve();
+          }
+        });
+      } else {
+        try {
+          localStorage.removeItem(this.TOKEN_KEY);
+          localStorage.removeItem(this.USER_KEY);
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
+      }
+    });
+  },
+
+  // =========================================================================
+  // USER DATA STORAGE
+  // =========================================================================
+
+  /**
+   * Store user data (email, etc.) from validation response
+   */
+  async storeUser(userData) {
+    console.log('🔐 AuthService: Storing user data...');
+    return new Promise((resolve, reject) => {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({ [this.USER_KEY]: userData }, () => {
+          if (chrome.runtime.lastError) {
+            reject(chrome.runtime.lastError);
+          } else {
+            console.log('🔐 AuthService: User data stored');
+            resolve();
+          }
+        });
+      } else {
+        try {
+          localStorage.setItem(this.USER_KEY, JSON.stringify(userData));
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
+      }
+    });
+  },
+
+  /**
+   * Get stored user data
+   */
+  async getUser() {
+    return new Promise((resolve) => {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.get([this.USER_KEY], (result) => {
+          if (chrome.runtime.lastError) {
+            resolve(null);
+          } else {
+            resolve(result[this.USER_KEY] || null);
+          }
+        });
+      } else {
+        try {
+          const userData = localStorage.getItem(this.USER_KEY);
+          resolve(userData ? JSON.parse(userData) : null);
+        } catch (error) {
+          resolve(null);
+        }
+      }
+    });
+  },
+
+  // =========================================================================
+  // TOKEN VALIDATION
+  // =========================================================================
+
+  /**
+   * Validate token with the API
+   * Returns user data if valid, null if invalid/expired
+   */
+  async validateToken(token) {
+    if (!token) {
+      console.log('🔐 AuthService: No token to validate');
+      return null;
+    }
+
+    console.log('🔐 AuthService: Validating token with API...');
+
+    try {
+      const response = await fetch(this.VALIDATE_URL, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('🔐 AuthService: Token is valid, user:', data);
+        return data;
+      } else if (response.status === 401) {
+        console.log('🔐 AuthService: Token expired or invalid (401)');
+        // Clear expired token
+        await this.clearToken();
+        return null;
+      } else {
+        console.error('🔐 AuthService: Validation request failed:', response.status);
+        return null;
+      }
+    } catch (error) {
+      console.error('🔐 AuthService: Validation error:', error);
+      return null;
+    }
+  },
+
+  // =========================================================================
+  // AUTH STATE HELPERS
+  // =========================================================================
+
+  /**
+   * Check if user is authenticated (has a stored token)
+   */
+  async isAuthenticated() {
+    const token = await this.getToken();
+    return !!token;
+  },
+
+  /**
+   * Get token and validate it, returning user data if valid
+   * Clears token if expired/invalid
+   */
+  async getValidatedAuth() {
+    const token = await this.getToken();
+    if (!token) {
+      return { authenticated: false, token: null, user: null };
+    }
+
+    const userData = await this.validateToken(token);
+    if (userData) {
+      // Store user data for quick access
+      await this.storeUser(userData);
+      return { authenticated: true, token, user: userData };
+    }
+
+    return { authenticated: false, token: null, user: null };
+  },
+
+  /**
+   * Logout: clear token and user data
+   */
+  async logout() {
+    console.log('🔐 AuthService: Logging out...');
+    await this.clearToken();
+    console.log('🔐 AuthService: Logout complete');
+  },
+
+  /**
+   * Open login page in a new tab
+   */
+  openLoginPage() {
+    console.log('🔐 AuthService: Opening login page...');
+    if (typeof chrome !== 'undefined' && chrome.tabs) {
+      chrome.tabs.create({ url: this.LOGIN_URL });
+    } else {
+      window.open(this.LOGIN_URL, '_blank');
+    }
+  }
+};
+
+// Export based on context (content script vs background service worker)
+if (typeof window !== 'undefined') {
+  window.AuthService = AuthService;
+}
+if (typeof self !== 'undefined') {
+  self.AuthService = AuthService;
+}
+
+console.log('🔐 ThreadCub: AuthService module loaded');

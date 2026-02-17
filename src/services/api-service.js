@@ -1,11 +1,53 @@
 // =============================================================================
 // ThreadCub API Service
 // Consolidates all API calls to ThreadCub backend
+// All authenticated endpoints use Authorization: Bearer <token> headers
 // =============================================================================
 
 const ApiService = {
   // Base URL for all API calls
   BASE_URL: 'https://threadcub.com',
+
+  // =============================================================================
+  // HELPER: Build headers with optional Bearer auth
+  // =============================================================================
+
+  async _buildHeaders(extraHeaders = {}) {
+    const headers = {
+      'Content-Type': 'application/json',
+      ...extraHeaders
+    };
+
+    // Get auth token from AuthService if available
+    try {
+      if (typeof window !== 'undefined' && window.AuthService) {
+        const token = await window.AuthService.getToken();
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+          console.log('🔐 ApiService: Added Bearer auth header');
+        }
+      }
+    } catch (error) {
+      console.log('🔐 ApiService: Could not get auth token:', error.message);
+    }
+
+    return headers;
+  },
+
+  // =============================================================================
+  // HELPER: Handle 401 responses (expired token)
+  // =============================================================================
+
+  async _handleUnauthorized() {
+    console.log('🔐 ApiService: Received 401, clearing expired token...');
+    try {
+      if (typeof window !== 'undefined' && window.AuthService) {
+        await window.AuthService.clearToken();
+      }
+    } catch (error) {
+      console.log('🔐 ApiService: Error clearing token:', error.message);
+    }
+  },
 
   // =============================================================================
   // SAVE CONVERSATION
@@ -14,17 +56,20 @@ const ApiService = {
 
   async saveConversation(apiData) {
     try {
-      console.log('🔍 userAuthToken before API call:', !!apiData.userAuthToken);
-      console.log('🔍 userAuthToken length:', apiData.userAuthToken?.length || 'null');
       console.log('🔍 API Data being sent:', JSON.stringify(apiData, null, 2));
+
+      const headers = await this._buildHeaders();
 
       const response = await fetch('https://threadcub.com/api/conversations/save', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: headers,
         body: JSON.stringify(apiData)
       });
+
+      if (response.status === 401) {
+        await this._handleUnauthorized();
+        throw new Error('Authentication expired. Please log in again.');
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -51,35 +96,26 @@ const ApiService = {
       console.log('🐻 Background: Making API call to ThreadCub with data:', data);
       console.log('🐻 Background: API URL:', 'https://threadcub.com/api/conversations/save');
 
-      // TEMPORARY: Test if endpoint exists with GET first
-      console.log('🐻 Background: Testing endpoint accessibility...');
-      try {
-        const testResponse = await fetch('https://threadcub.com/api/conversations/save', {
-          method: 'GET'
-        });
-        console.log('🐻 Background: GET test response:', testResponse.status);
-        console.log('🐻 Background: GET allowed methods:', testResponse.headers.get('Allow'));
-      } catch (error) {
-        console.log('🐻 Background: GET test failed:', error);
-      }
+      const headers = await this._buildHeaders({ 'Accept': 'application/json' });
 
       const response = await fetch('https://threadcub.com/api/conversations/save', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
+        headers: headers,
         body: JSON.stringify(data)
       });
 
       console.log('🐻 Background: POST response status:', response.status);
       console.log('🐻 Background: POST response ok:', response.ok);
 
+      if (response.status === 401) {
+        await this._handleUnauthorized();
+        throw new Error('Authentication expired. Please log in again.');
+      }
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error('🐻 Background: API error response:', errorText);
 
-        // If 405, try to get more info about allowed methods
         if (response.status === 405) {
           const allowedMethods = response.headers.get('Allow');
           console.error('🐻 Background: Allowed methods:', allowedMethods);
@@ -106,9 +142,11 @@ const ApiService = {
   // =============================================================================
 
   async createConversationWithTags(conversationData, tags) {
+    const headers = await this._buildHeaders();
+
     const response = await fetch('https://threadcub.com/api/conversations/tags/create', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: headers,
       body: JSON.stringify({
         conversationData: conversationData,
         tags: tags,
@@ -116,6 +154,11 @@ const ApiService = {
         title: conversationData.title
       })
     });
+
+    if (response.status === 401) {
+      await this._handleUnauthorized();
+      throw new Error('Authentication expired. Please log in again.');
+    }
 
     if (!response.ok) {
       throw new Error('Failed to create conversation with tags');
@@ -132,13 +175,20 @@ const ApiService = {
   // =============================================================================
 
   async addTagsToExistingConversation(conversationId, tags) {
+    const headers = await this._buildHeaders();
+
     const response = await fetch(`https://threadcub.com/api/conversations/${conversationId}/tags`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: headers,
       body: JSON.stringify({
         tags: tags
       })
     });
+
+    if (response.status === 401) {
+      await this._handleUnauthorized();
+      throw new Error('Authentication expired. Please log in again.');
+    }
 
     if (!response.ok) {
       throw new Error('Failed to add tags to conversation');

@@ -57,27 +57,31 @@ function enhanceFloatingButtonWithConversationFeatures() {
   if (window.threadcubButton && typeof window.threadcubButton === 'object') {
     console.log('🐻 ThreadCub: Enhancing modular floating button with conversation features...');
     
-    // FIXED: Override with DIRECT API CALLS (like working main branch) + AUTH TOKEN EXTRACTION
+    // Override with DIRECT API CALLS + AuthService token
     window.threadcubButton.saveAndOpenConversation = async function(source = 'floating') {
       console.log('🐻 ThreadCub: saveAndOpenConversation called from:', source);
-      
-      // ===== GET USER AUTH TOKEN VIA BACKGROUND SCRIPT =====
-        console.log('🔧 Getting user auth token via background script...');
-        let userAuthToken = null;
 
-        try {
+      // ===== GET USER AUTH TOKEN VIA AuthService =====
+      console.log('🔐 Getting user auth token via AuthService...');
+      let userAuthToken = null;
+
+      try {
+        if (window.AuthService) {
+          userAuthToken = await window.AuthService.getToken();
+          console.log('🔐 Auth token from AuthService:', !!userAuthToken);
+        }
+        // Fallback to old method if AuthService token not available
+        if (!userAuthToken) {
           const response = await chrome.runtime.sendMessage({ action: 'getAuthToken' });
           if (response && response.success) {
             userAuthToken = response.authToken;
-            console.log('🔧 Auth token retrieved from ThreadCub tab:', !!userAuthToken);
-            console.log('🔧 Auth token length:', userAuthToken?.length || 'null');
-          } else {
-            console.log('🔧 Could not get auth token:', response?.error || 'Unknown error');
+            console.log('🔐 Auth token retrieved from ThreadCub tab (fallback):', !!userAuthToken);
           }
-        } catch (error) {
-          console.log('🔧 Background script communication failed:', error);
         }
-              
+      } catch (error) {
+        console.log('🔐 Auth token retrieval failed:', error);
+      }
+
       const now = Date.now();
       if (this.isExporting || (now - this.lastExportTime) < 2000) {
         console.log('🐻 ThreadCub: Export already in progress');
@@ -232,14 +236,15 @@ function enhanceFloatingButtonWithConversationFeatures() {
       }
     };
     
-    console.log('🐻 ThreadCub: ✅ Floating button enhanced with DIRECT API calls + AUTH TOKEN EXTRACTION (SIMPLIFIED)');
+    console.log('🐻 ThreadCub: ✅ Floating button enhanced with DIRECT API calls + AuthService token');
   }
 }
 
 window.addEventListener('message', (event) => {
+  // Handle continuation data from dashboard
   if (event.data.type === 'THREADCUB_DASHBOARD_MESSAGE' && event.data.action === 'storeContinuationData') {
     console.log('🔗 Content script received dashboard message:', event.data.data)
-    
+
     // Send to background script using chrome.runtime
     chrome.runtime.sendMessage({
       action: 'storeContinuationData',
@@ -247,6 +252,18 @@ window.addEventListener('message', (event) => {
     }, (response) => {
       console.log('📤 Background script response:', response)
     })
+  }
+
+  // Handle auth callback token from threadcub.com callback page
+  if (event.data.type === 'THREADCUB_AUTH_CALLBACK' && event.data.token) {
+    console.log('🔐 Content script received auth callback token');
+
+    chrome.runtime.sendMessage({
+      action: 'storeAuthToken',
+      token: event.data.token
+    }, (response) => {
+      console.log('🔐 Auth token stored via background:', response);
+    });
   }
 })
 

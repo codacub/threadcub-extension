@@ -79,6 +79,8 @@
   --color-action-btn-download-text-hover: #4C596E; /* From floating-button.js */
   --color-action-btn-tag-bg-hover: #FFD700; /* From floating-button.js */
   --color-action-btn-tag-text-hover: #4C596E; /* From floating-button.js */
+  --color-action-btn-save-bg-hover: #22C55E; /* Green for "Send to ThreadCub" */
+  --color-action-btn-save-text-hover: var(--color-white); /* White text on green */
   --color-action-btn-close-bg-hover: #ef4444; /* From floating-button.js */
   --color-action-btn-close-text-hover: var(--color-white); /* From floating-button.js */
 
@@ -158,6 +160,7 @@
   --shadow-action-btn-new-hover: 0 4px 12px rgba(146, 95, 226, 0.4); /* From floating-button.js */
   --shadow-action-btn-download-hover: 0 4px 12px rgba(153, 218, 250, 0.4); /* From floating-button.js */
   --shadow-action-btn-tag-hover: 0 4px 12px rgba(254, 239, 144, 0.4); /* From floating-button.js */
+  --shadow-action-btn-save-hover: 0 4px 12px rgba(34, 197, 94, 0.4); /* Green shadow for save button */
   --shadow-action-btn-close-hover: 0 4px 12px rgba(239, 68, 68, 0.4); /* From floating-button.js */
   --shadow-tooltip: 0 4px 12px rgba(0, 0, 0, 0.15); /* From floating-button.js */
   --shadow-toast: 0 4px 12px rgba(0, 0, 0, 0.1); /* From floating-button.js */

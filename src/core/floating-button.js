@@ -190,6 +190,9 @@ class ThreadCubFloatingButton {
     // Custom tooltip system
     this.setupTooltips();
 
+    // Download format flyout menu
+    this.setupDownloadFlyout();
+
     // Hover events for bear expressions
     this.setupBearExpressionListeners();
 
@@ -275,6 +278,87 @@ class ThreadCubFloatingButton {
 
       button.addEventListener('mouseenter', showTooltip);
       button.addEventListener('mouseleave', hideTooltip);
+    });
+  }
+
+  setupDownloadFlyout() {
+    const downloadBtn = this.button.querySelector('.threadcub-download-btn');
+    if (!downloadBtn) return;
+
+    // Create flyout element
+    this.downloadFlyout = document.createElement('div');
+    this.downloadFlyout.className = 'threadcub-download-flyout';
+    this.downloadFlyout.innerHTML = `
+      <div class="threadcub-flyout-option" data-format="json">JSON</div>
+      <div class="threadcub-flyout-option" data-format="md">MD</div>
+    `;
+    document.body.appendChild(this.downloadFlyout);
+
+    let hideTimeout = null;
+
+    const showFlyout = () => {
+      clearTimeout(hideTimeout);
+
+      // Position flyout next to download button
+      const btnRect = downloadBtn.getBoundingClientRect();
+      const flyoutWidth = this.downloadFlyout.offsetWidth || 100;
+      const flyoutHeight = this.downloadFlyout.offsetHeight || 30;
+
+      this.downloadFlyout.style.left = `${btnRect.left - flyoutWidth - 8}px`;
+      this.downloadFlyout.style.top = `${btnRect.top + (btnRect.height - flyoutHeight) / 2}px`;
+
+      requestAnimationFrame(() => {
+        this.downloadFlyout.classList.add('show');
+      });
+    };
+
+    const hideFlyout = () => {
+      hideTimeout = setTimeout(() => {
+        this.downloadFlyout.classList.remove('show');
+      }, 150);
+    };
+
+    const cancelHide = () => {
+      clearTimeout(hideTimeout);
+    };
+
+    // Show on download button hover
+    downloadBtn.addEventListener('mouseenter', showFlyout);
+    downloadBtn.addEventListener('mouseleave', hideFlyout);
+
+    // Keep flyout visible when hovering over it
+    this.downloadFlyout.addEventListener('mouseenter', cancelHide);
+    this.downloadFlyout.addEventListener('mouseleave', hideFlyout);
+
+    // Handle format selection clicks
+    this.downloadFlyout.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const option = e.target.closest('.threadcub-flyout-option');
+      if (!option) return;
+
+      const format = option.dataset.format;
+
+      // 🐻 Track download button clicked
+      chrome.runtime.sendMessage({
+        action: 'trackEvent',
+        eventType: 'floating_button_clicked',
+        data: {
+          platform: window.PlatformDetector?.detectPlatform() || 'unknown',
+          action: 'download',
+          format: format
+        }
+      });
+
+      if (format === 'json') {
+        this.downloadConversationJSON();
+      } else if (format === 'md') {
+        this.downloadConversationMarkdown();
+      }
+
+      // Hide flyout after click
+      this.downloadFlyout.classList.remove('show');
     });
   }
 
@@ -434,19 +518,7 @@ class ThreadCubFloatingButton {
     }
 
     if (downloadBtn) {
-      console.log('🐻 ThreadCub: Download button clicked by user - manual download only');
-      
-      // 🐻 Track download button clicked
-      chrome.runtime.sendMessage({
-        action: 'trackEvent',
-        eventType: 'floating_button_clicked',
-        data: {
-          platform: window.PlatformDetector?.detectPlatform() || 'unknown',
-          action: 'download'
-        }
-      });
-      
-      this.downloadConversationJSON();
+      // Download flyout menu handles format selection - just prevent drag
       return;
     }
 
@@ -729,8 +801,11 @@ class ThreadCubFloatingButton {
     if (this.borderOverlay && this.borderOverlay.parentNode) {
       this.borderOverlay.parentNode.removeChild(this.borderOverlay);
     }
-    // Also remove any active tooltips
+    // Also remove any active tooltips and flyout
     document.querySelectorAll('.threadcub-tooltip').forEach(t => t.remove());
+    if (this.downloadFlyout && this.downloadFlyout.parentNode) {
+      this.downloadFlyout.parentNode.removeChild(this.downloadFlyout);
+    }
     console.log('🐻 ThreadCub: Button destroyed');
   }
 
@@ -1013,6 +1088,68 @@ class ThreadCubFloatingButton {
 
       this.createDownloadFromData(emergencyData);
       this.showErrorToast();
+    }
+  }
+
+  async downloadConversationMarkdown() {
+    console.log('🐻 ThreadCub: Starting Markdown download...');
+
+    try {
+      console.log('🐻 ThreadCub: Extracting conversation data for Markdown download...');
+
+      const conversationData = await window.ConversationExtractor.extractConversation();
+
+      if (!conversationData || !conversationData.messages || conversationData.messages.length === 0) {
+        console.error('🐻 ThreadCub: No conversation data found for Markdown');
+        this.showErrorToast('No conversation found to download');
+        return;
+      }
+
+      console.log(`🐻 ThreadCub: Generating Markdown for ${conversationData.messages.length} messages`);
+
+      // Generate Markdown content
+      const title = conversationData.title || 'AI Conversation';
+      const platform = conversationData.platform || 'Unknown';
+      const url = conversationData.url || window.location.href;
+
+      let markdown = `# ${title}\n\n`;
+      markdown += `**Platform:** ${platform}\n`;
+      markdown += `**URL:** ${url}\n`;
+      markdown += `**Exported:** ${new Date().toLocaleString()}\n`;
+      markdown += `**Total Messages:** ${conversationData.messages.length}\n\n`;
+      markdown += `---\n\n`;
+
+      conversationData.messages.forEach((msg, index) => {
+        const role = msg.role === 'user' ? 'User' : 'Assistant';
+        markdown += `### ${role}\n\n`;
+        markdown += `${msg.content}\n\n`;
+        if (index < conversationData.messages.length - 1) {
+          markdown += `---\n\n`;
+        }
+      });
+
+      // Generate filename
+      const sanitizedTitle = window.Utilities.sanitizeFilename(title);
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const filename = `${platform.toLowerCase()}-${sanitizedTitle}-${timestamp}.md`;
+
+      // Download the file
+      const blob = new Blob([markdown], { type: 'text/markdown' });
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+
+      console.log('🐻 ThreadCub: Markdown download completed:', filename);
+      this.showSuccessToast('Conversation downloaded as Markdown!');
+
+    } catch (error) {
+      console.error('🐻 ThreadCub: Markdown download error:', error);
+      this.showErrorToast('Markdown download failed: ' + error.message);
     }
   }
 

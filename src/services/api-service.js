@@ -161,20 +161,35 @@ const ApiService = {
 
       // -----------------------------------------------------------------
       // Step 2: Send original unencrypted payload (primary path or fallback)
-      // apiData already has { conversationData: {...}, source, title, ... }
-      // from the caller (floating-button / download-manager).
+      // Server expects: { conversationData: { messages, title?, source? }, title?, source? }
+      // apiData may arrive as { conversationData: {...}, ... } from some callers
+      // or as raw { messages: [...], ... } from others — normalise here.
       // -----------------------------------------------------------------
       if (didAttemptEncrypted) {
         console.log('🔒 ApiService.saveConversation: Retrying with original unencrypted payload...');
       }
-      console.log('🔍 ApiService.saveConversation: Sending unencrypted body keys:', Object.keys(apiData),
-                   '| title:', apiData.title, '| source:', apiData.source,
-                   '| has conversationData:', !!apiData.conversationData);
+
+      // Extract the inner conversation object regardless of how the caller shaped apiData
+      const convData = apiData.conversationData || apiData;
+      const source = apiData.source || convData.source || convData.platform?.toLowerCase() || 'unknown';
+      const title  = apiData.title  || convData.title  || 'Untitled';
+
+      const unencryptedPayload = {
+        conversationData: {
+          messages: convData.messages || [],
+          title: title,
+          source: source
+        },
+        title: title,
+        source: source
+      };
+
+      console.log('🔍 ApiService.saveConversation: Unencrypted payload:', JSON.stringify(unencryptedPayload, null, 2));
 
       const response = await fetch('https://threadcub.com/api/conversations/save', {
         method: 'POST',
         headers: headers,
-        body: JSON.stringify(apiData)
+        body: JSON.stringify(unencryptedPayload)
       });
 
       console.log('🔍 ApiService.saveConversation: Unencrypted POST response status:', response.status);
@@ -281,18 +296,32 @@ const ApiService = {
 
       // -----------------------------------------------------------------
       // Step 2: Send original unencrypted payload (primary path or fallback)
+      // Server expects: { conversationData: { messages, title?, source? }, title?, source? }
       // -----------------------------------------------------------------
       if (didAttemptEncrypted) {
         console.log('🔒 ApiService.handleSaveConversation: Retrying with original unencrypted payload...');
       }
-      console.log('🔍 ApiService.handleSaveConversation: Sending unencrypted body keys:', Object.keys(data),
-                   '| title:', data.title, '| source:', data.source,
-                   '| has conversationData:', !!data.conversationData);
+
+      const convData = data.conversationData || data;
+      const source = data.source || convData.source || convData.platform?.toLowerCase() || 'unknown';
+      const title  = data.title  || convData.title  || 'Untitled';
+
+      const unencryptedPayload = {
+        conversationData: {
+          messages: convData.messages || [],
+          title: title,
+          source: source
+        },
+        title: title,
+        source: source
+      };
+
+      console.log('🔍 ApiService.handleSaveConversation: Unencrypted payload:', JSON.stringify(unencryptedPayload, null, 2));
 
       const response = await fetch('https://threadcub.com/api/conversations/save', {
         method: 'POST',
         headers: headers,
-        body: JSON.stringify(data)
+        body: JSON.stringify(unencryptedPayload)
       });
 
       console.log('🔍 ApiService.handleSaveConversation: Unencrypted POST status:', response.status);

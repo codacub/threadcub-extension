@@ -306,8 +306,10 @@ async function handleSaveConversation(data) {
           const encryptedPayload = {
             encrypted_payload: encryptedBase64,
             source: data.source || data.conversationData?.platform?.toLowerCase() || 'unknown',
-            title: data.title || data.conversationData?.title || 'Untitled'
+            title: data.title || data.conversationData?.title || 'Untitled',
+            session_id: data.sessionId || null
           };
+          console.log('🔒 Background.handleSaveConversation: session_id included:', !!encryptedPayload.session_id);
 
           console.log('🔒 Background.handleSaveConversation: Sending encrypted:', JSON.stringify({
             encrypted_payload: encryptedBase64.substring(0, 60) + '...[' + encryptedBase64.length + ' chars total]',
@@ -374,8 +376,10 @@ async function handleSaveConversation(data) {
         source: source
       },
       title: title,
-      source: source
+      source: source,
+      session_id: data.sessionId || null
     };
+    console.log('🔍 Background.handleSaveConversation: session_id in unencrypted payload:', !!unencryptedPayload.session_id);
 
     console.log('🔍 Background.handleSaveConversation: Unencrypted payload:', JSON.stringify(unencryptedPayload, null, 2));
 

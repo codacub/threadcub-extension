@@ -181,7 +181,8 @@ const ApiService = {
               body: JSON.stringify({
                 encrypted_payload: encryptedString,
                 title: title,
-                source: source
+                source: source,
+                session_id: apiData?.sessionId || null
               })
             });
 
@@ -189,22 +190,21 @@ const ApiService = {
 
             if (encResponse.status === 401) {
               await this._handleUnauthorized();
-              throw new Error('Authentication expired. Please log in again.');
-            }
-
-            if (encResponse.ok) {
+              console.log('🔐 ApiService.saveConversation: Token expired, clearing and falling back to guest save...');
+              // Fall through to unencrypted guest send below — do NOT throw
+            } else if (encResponse.ok) {
               const data = await encResponse.json();
               console.log('✅ ThreadCub: Encrypted API call successful:', data);
               return data;
+            } else {
+              // Encrypted send rejected — log details and fall through to unencrypted
+              const errBody = await encResponse.text();
+              console.warn(
+                `🔒 ApiService.saveConversation: Encrypted send failed (status ${encResponse.status}) — falling back to unencrypted payload.`,
+                '\n  Response body:', errBody
+              );
+              // Fall through to unencrypted send below
             }
-
-            // Encrypted send rejected — log details and fall through to unencrypted
-            const errBody = await encResponse.text();
-            console.warn(
-              `🔒 ApiService.saveConversation: Encrypted send failed (status ${encResponse.status}) — falling back to unencrypted payload.`,
-              '\n  Response body:', errBody
-            );
-            // Fall through to unencrypted send below
           } else {
             console.warn('🔒 ApiService.saveConversation: CryptoJS not available, skipping encryption');
           }
@@ -238,20 +238,28 @@ const ApiService = {
           source: source
         },
         title: title,
-        source: source
+        source: source,
+        session_id: apiData?.sessionId || null
       };
 
       console.log('🔍 Sending unencrypted payload:', JSON.stringify(unencryptedPayload, null, 2));
+      console.log('🔍 session_id included:', !!unencryptedPayload.session_id);
+
+      // Build guest headers (no auth token — either we never had one or we just cleared it)
+      const guestHeaders = {
+        'Content-Type': 'application/json'
+      };
 
       const response = await fetch(`${API_BASE}/conversations/save`, {
         method: 'POST',
-        headers: headers,
+        headers: guestHeaders,
         body: JSON.stringify(unencryptedPayload)
       });
 
       console.log('🔍 ApiService.saveConversation: Unencrypted POST response status:', response.status);
 
       if (response.status === 401) {
+        // Still 401 without auth header — shouldn't happen for guest saves
         await this._handleUnauthorized();
         throw new Error('Authentication expired. Please log in again.');
       }
@@ -266,6 +274,7 @@ const ApiService = {
 
       const data = await response.json();
       console.log('✅ ThreadCub: API call successful (unencrypted fallback):', data);
+      console.log('🔍 DEBUG: Full save API response:', JSON.stringify(data));
 
       return data;
 

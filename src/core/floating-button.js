@@ -3,6 +3,44 @@ console.log('🔧 LOADING: floating-button.js');
 // ThreadCub Floating Button Module
 // Extracted from Section 4A-4F of content.js
 
+// ---------------------------------------------------------------------------
+// Service worker retry helper
+// The background service worker can go idle and drop sendMessage calls.
+// This wrapper retries once after 500ms if the first attempt fails with a
+// 'Could not establish connection' or similar error.
+// ---------------------------------------------------------------------------
+async function sendMessageWithRetry(message, retryDelay = 500) {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage(message, (response) => {
+      if (chrome.runtime.lastError) {
+        const errMsg = chrome.runtime.lastError.message || '';
+        const isWorkerIdle = errMsg.includes('Could not establish connection') ||
+                             errMsg.includes('Extension context invalidated') ||
+                             errMsg.includes('The message port closed') ||
+                             errMsg.includes('receiving end does not exist');
+        if (isWorkerIdle) {
+          console.warn('🔄 sendMessageWithRetry: worker idle, retrying in', retryDelay, 'ms...', errMsg);
+          setTimeout(() => {
+            chrome.runtime.sendMessage(message, (retryResponse) => {
+              if (chrome.runtime.lastError) {
+                console.error('🔄 sendMessageWithRetry: retry also failed:', chrome.runtime.lastError.message);
+                resolve(null);
+              } else {
+                resolve(retryResponse);
+              }
+            });
+          }, retryDelay);
+        } else {
+          console.error('🔄 sendMessageWithRetry: non-retryable error:', errMsg);
+          resolve(null);
+        }
+      } else {
+        resolve(response);
+      }
+    });
+  });
+}
+
 class ThreadCubFloatingButton {
   constructor() {
     this.button = null;
@@ -379,7 +417,7 @@ class ThreadCubFloatingButton {
       const format = option.dataset.format;
 
       // 🐻 Track download button clicked
-      chrome.runtime.sendMessage({
+      sendMessageWithRetry({
         action: 'trackEvent',
         eventType: 'floating_button_clicked',
         data: {
@@ -530,7 +568,7 @@ class ThreadCubFloatingButton {
 
    if (newBtn) {
       // 🐻 Track continue button clicked
-      chrome.runtime.sendMessage({
+      sendMessageWithRetry({
         action: 'trackEvent',
         eventType: 'floating_button_clicked',
         data: {
@@ -544,7 +582,7 @@ class ThreadCubFloatingButton {
 
     if (saveBtn) {
       // 🐻 Track save button clicked
-      chrome.runtime.sendMessage({
+      sendMessageWithRetry({
         action: 'trackEvent',
         eventType: 'floating_button_clicked',
         data: {
@@ -566,7 +604,7 @@ class ThreadCubFloatingButton {
       console.log('🏷️ ThreadCub: Tag button clicked');
       
       // 🐻 Track tag button clicked
-      chrome.runtime.sendMessage({
+      sendMessageWithRetry({
         action: 'trackEvent',
         eventType: 'floating_button_clicked',
         data: {
@@ -863,7 +901,7 @@ class ThreadCubFloatingButton {
   let userAuthToken = null;
 
   try {
-    const response = await chrome.runtime.sendMessage({ action: 'getAuthToken' });
+    const response = await sendMessageWithRetry({ action: 'getAuthToken' });
     if (response && response.success) {
       userAuthToken = response.authToken;
       console.log('🔧 Auth token retrieved from ThreadCub tab:', !!userAuthToken);
@@ -934,7 +972,26 @@ class ThreadCubFloatingButton {
 
       // Generate continuation prompt and handle platform-specific flow
       const summary = data.summary || window.ConversationExtractor.generateQuickSummary(conversationData.messages);
-      const shareUrl = data.shareableUrl || `https://threadcub.com/api/share/${data.conversationId}`;
+
+      // Log the full API response so we can see exactly what keys are returned
+      console.log('🔍 DEBUG: Full save API response:', JSON.stringify(data));
+
+      // Extract conversation ID — backend may return it under different keys
+      const conversationId = data.conversationId || data.id || data.conversation?.id || data.data?.id || null;
+      console.log('🔍 DEBUG: conversationId resolved as:', conversationId);
+
+      // Build shareUrl — only if we have a real UUID
+      const shareUrl = data.shareableUrl ||
+                       (conversationId ? `https://threadcub.com/api/share/${conversationId}` : null);
+      console.log('🔍 DEBUG: shareUrl:', shareUrl);
+
+      // If no valid shareUrl came back, fall back to direct continuation
+      if (!shareUrl) {
+        console.warn('🐻 ThreadCub: No conversation ID in API response, falling back to direct continuation');
+        this.handleDirectContinuation(conversationData);
+        this.isExporting = false;
+        return;
+      }
 
       // Generate minimal continuation prompt
       const minimalPrompt = window.ConversationExtractor.generateContinuationPrompt(summary, shareUrl, conversationData.platform, conversationData);
@@ -998,7 +1055,7 @@ class ThreadCubFloatingButton {
     let userAuthToken = null;
 
     try {
-      const response = await chrome.runtime.sendMessage({ action: 'getAuthToken' });
+      const response = await sendMessageWithRetry({ action: 'getAuthToken' });
       if (response && response.success) {
         userAuthToken = response.authToken;
         console.log('🔧 Auth token retrieved from ThreadCub tab:', !!userAuthToken);

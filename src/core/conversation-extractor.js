@@ -450,13 +450,20 @@ const ConversationExtractor = {
   extractGrokConversation() {
     console.log('🤖 ThreadCub: Starting Grok extraction (aria-label based)...');
 
-    // Handle Grok's title format (may include "Grok" or "X")
-    const title = document.title
-      .replace(' - Grok', '')
-      .replace(' | Grok', '')
-      .replace(' - X', '')
-      .replace(' | X', '')
-      .trim() || 'Grok Conversation';
+    const hostname = window.location.hostname;
+
+    // Determine the correct platform/source based on which domain we're on
+    // grok.com / grok.x.ai → 'grok', x.com/i/grok → 'x'
+    let platform;
+    if (hostname.includes('grok.com') || hostname.includes('grok.x.ai')) {
+      platform = 'Grok';
+    } else {
+      platform = 'X';
+    }
+    console.log(`🤖 ThreadCub: Grok platform resolved as: ${platform} (hostname: ${hostname})`);
+
+    // Extract conversation title from DOM (document.title is usually just "Grok" or "Grok / X")
+    const title = this.extractGrokTitle();
 
     try {
       // Use aria-label based extraction for Grok
@@ -466,7 +473,7 @@ const ConversationExtractor = {
         title: title,
         url: window.location.href,
         timestamp: new Date().toISOString(),
-        platform: 'Grok',
+        platform: platform,
         total_messages: extractedMessages.length,
         messages: extractedMessages,
         extraction_method: 'grok_aria_label_extraction'
@@ -486,13 +493,150 @@ const ConversationExtractor = {
         title: title,
         url: window.location.href,
         timestamp: new Date().toISOString(),
-        platform: 'Grok',
+        platform: platform,
         total_messages: fallbackMessages.length,
         messages: fallbackMessages,
         extraction_method: 'grok_span_fallback_extraction',
         error: error.message
       };
     }
+  },
+
+  /**
+   * Extract conversation title for Grok.
+   * Tries multiple DOM strategies since document.title is usually just "Grok" or "Grok / X".
+   */
+  extractGrokTitle() {
+    console.log('🤖 ThreadCub: Extracting Grok conversation title...');
+
+    // Strategy 1: Look for a conversation title heading in the chat area
+    // Grok sometimes puts a title/heading above the conversation
+    const headingSelectors = [
+      'h1', 'h2',
+      '[class*="title"]',
+      '[class*="heading"]',
+      '[data-testid*="title"]'
+    ];
+
+    for (const selector of headingSelectors) {
+      try {
+        const headings = document.querySelectorAll(selector);
+        for (const heading of headings) {
+          const text = heading.textContent?.trim();
+          // Must be meaningful text, not just "Grok" or UI labels
+          if (text && text.length > 3 && text.length < 200 &&
+              !['Grok', 'Grok / X', 'X', 'Home', 'Explore', 'Messages', 'Settings'].includes(text) &&
+              !heading.closest('nav') && !heading.closest('header') &&
+              !heading.closest('[data-testid="sidebarColumn"]')) {
+            console.log('🤖 ThreadCub: Title from heading element:', text);
+            return text;
+          }
+        }
+      } catch (e) {
+        // continue to next selector
+      }
+    }
+
+    // Strategy 2: Look for the active/selected conversation in the sidebar
+    const sidebarSelectors = [
+      'nav a[aria-current="page"]',
+      'nav a[class*="active"]',
+      'nav [class*="selected"]',
+      'aside a[aria-current="page"]',
+      'aside a[class*="active"]',
+      '[class*="sidebar"] a[aria-current="page"]',
+      '[class*="sidebar"] [class*="active"]'
+    ];
+
+    for (const selector of sidebarSelectors) {
+      try {
+        const active = document.querySelector(selector);
+        if (active) {
+          const text = active.textContent?.trim();
+          if (text && text.length > 3 && text.length < 200 &&
+              !['Grok', 'Home', 'Explore'].includes(text)) {
+            console.log('🤖 ThreadCub: Title from sidebar active item:', text);
+            return text;
+          }
+        }
+      } catch (e) {
+        // continue
+      }
+    }
+
+    // Strategy 3: Try document.title with Grok/X suffixes stripped
+    const pageTitle = document.title
+      .replace(/\s*[-–|\/]\s*Grok\s*/gi, '')
+      .replace(/\s*[-–|\/]\s*X\s*/gi, '')
+      .replace(/^Grok\s*[-–|\/]?\s*/i, '')
+      .replace(/^X\s*[-–|\/]?\s*/i, '')
+      .trim();
+
+    if (pageTitle && pageTitle.length > 3 &&
+        !['Grok', 'X', 'Grok / X'].includes(pageTitle)) {
+      console.log('🤖 ThreadCub: Title from document.title:', pageTitle);
+      return pageTitle;
+    }
+
+    // Strategy 4: Use the first user message as title (truncated)
+    try {
+      const firstUserMsg = this.getFirstGrokUserMessage();
+      if (firstUserMsg && firstUserMsg.length > 3) {
+        const truncated = firstUserMsg.length > 80
+          ? firstUserMsg.substring(0, 77) + '...'
+          : firstUserMsg;
+        console.log('🤖 ThreadCub: Title from first user message:', truncated);
+        return truncated;
+      }
+    } catch (e) {
+      console.log('🤖 ThreadCub: Could not extract first user message for title:', e.message);
+    }
+
+    // Fallback
+    console.log('🤖 ThreadCub: Using fallback Grok title');
+    return 'Grok Conversation';
+  },
+
+  /**
+   * Get the first user message text from the Grok page for title fallback.
+   */
+  getFirstGrokUserMessage() {
+    // Find text elements NOT inside div[aria-label="Grok"] (i.e., user messages)
+    const grokContainers = document.querySelectorAll('div[aria-label="Grok"]');
+    const grokSet = new Set(grokContainers);
+
+    // Try message containers first
+    const containerSelectors = [
+      'div.message-bubble',
+      'div[class*="message-bubble"]',
+      'div[class*="message"]'
+    ];
+
+    for (const selector of containerSelectors) {
+      const containers = document.querySelectorAll(selector);
+      for (const container of containers) {
+        const text = container.textContent?.trim() || '';
+        if (text.length < 10) continue;
+        // Check it's NOT a Grok (assistant) message
+        let isGrok = grokSet.has(container) ||
+                     container.getAttribute('aria-label') === 'Grok';
+        if (!isGrok) {
+          let parent = container.parentElement;
+          while (parent) {
+            if (parent.getAttribute && parent.getAttribute('aria-label') === 'Grok') {
+              isGrok = true;
+              break;
+            }
+            parent = parent.parentElement;
+          }
+        }
+        if (!isGrok) {
+          return text;
+        }
+      }
+    }
+
+    return null;
   },
 
   // Grok extraction using aria-label="Grok" to identify assistant messages

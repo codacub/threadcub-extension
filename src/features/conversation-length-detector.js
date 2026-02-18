@@ -490,7 +490,7 @@ class ConversationLengthDetector {
     window.StorageService.storeWithChrome(continuationData)
       .then(() => {
         console.log('✅ Grok continuation data stored');
-        window.open('https://x.com/i/grok', '_blank');
+        window.open(this._getGrokNewChatUrl(), '_blank');
       })
       .catch(() => {
         this._handleGrokFlowFallback(continuationData);
@@ -578,10 +578,17 @@ class ConversationLengthDetector {
   _handleGrokFlowFallback(continuationData) {
     try {
       localStorage.setItem('threadcubContinuationData', JSON.stringify(continuationData));
-      window.open('https://x.com/i/grok', '_blank');
+      window.open(this._getGrokNewChatUrl(), '_blank');
     } catch (error) {
       console.error('Failed to store continuation data:', error);
     }
+  }
+
+  _getGrokNewChatUrl() {
+    const hostname = window.location.hostname;
+    if (hostname.includes('grok.com')) return 'https://grok.com/';
+    if (hostname.includes('grok.x.ai')) return 'https://grok.x.ai/';
+    return 'https://x.com/i/grok';
   }
 
   _handleDeepSeekFlowFallback(continuationData) {

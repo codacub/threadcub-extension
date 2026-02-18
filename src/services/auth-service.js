@@ -5,7 +5,7 @@
 
 // ⚠️ CHANGE BACK TO PRODUCTION BEFORE RELOADING EXTENSION FOR NORMAL USE
 // Must match IS_LOCAL_DEV in api-service.js
-const AUTH_IS_LOCAL_DEV = true;
+const AUTH_IS_LOCAL_DEV = false;
 const AUTH_BASE = AUTH_IS_LOCAL_DEV ? 'http://localhost:3000' : 'https://threadcub.com';
 
 const AuthService = {

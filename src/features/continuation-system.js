@@ -557,8 +557,25 @@ function attemptGeminiAutoStart() {
 function attemptGrokAutoStart() {
   console.log('🤖 ThreadCub: Attempting Grok auto-start with retry logic...');
 
-  // Grok-specific send button selectors - PRIMARY: "Grok something" aria-label
-  const sendSelectors = [
+  const isGrokCom = window.location.hostname.includes('grok.com');
+  console.log('🤖 ThreadCub: Is grok.com:', isGrokCom);
+
+  // Grok-specific send button selectors
+  // grok.com uses different button labels than x.com
+  const sendSelectors = isGrokCom ? [
+    'button[aria-label="Send message"]',
+    'button[aria-label="Send"]',
+    'button[aria-label*="Send"]',
+    'button[aria-label*="send"]',
+    'button[data-testid="send-button"]',
+    'button[data-testid*="send"]',
+    'button[type="submit"]',
+    'button[class*="send"]',
+    'button[class*="Send"]',
+    // Fallback: find enabled button near textarea
+    'form button:not([disabled])',
+    'button:not([disabled])[class*="primary"]'
+  ] : [
     'button[aria-label="Grok something"]',
     'button[aria-label*="Grok something"]',
     'button[aria-label*="Grok"]',

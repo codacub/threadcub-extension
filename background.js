@@ -236,7 +236,7 @@ function handleDownload(request, sendResponse) {
 
 // ⚠️ CHANGE BACK TO PRODUCTION BEFORE RELOADING EXTENSION FOR NORMAL USE
 // Local dev toggle — set BG_IS_LOCAL_DEV = false for production
-const BG_IS_LOCAL_DEV = true;
+const BG_IS_LOCAL_DEV = false;
 const BG_API_BASE = BG_IS_LOCAL_DEV
   ? 'http://localhost:3000/api'
   : 'https://threadcub.com/api';

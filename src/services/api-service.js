@@ -6,7 +6,7 @@
 
 // ⚠️ CHANGE BACK TO PRODUCTION BEFORE RELOADING EXTENSION FOR NORMAL USE
 // Local dev toggle — set IS_LOCAL_DEV = false for production
-const IS_LOCAL_DEV = true;
+const IS_LOCAL_DEV = false;
 const API_BASE = IS_LOCAL_DEV
   ? 'http://localhost:3000/api'
   : 'https://threadcub.com/api';

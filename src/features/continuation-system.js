@@ -148,13 +148,22 @@ function executeStreamlinedContinuation(fullPrompt, shareUrl, continuationData) 
   // STEP 1: Auto-populate the input field with retry logic
   console.log('🔧 Auto-populating input field...');
   console.log('🔧 Is file-based:', isFileBased);
-  
+
+  // Grok (especially grok.com) is a SPA that may need time to render its input field
+  const isGrok = continuationData.grokFlow ||
+                 platform === window.PlatformDetector.PLATFORMS.GROK ||
+                 platform === 'grok';
+
   if (isFileBased) {
     // File-based platforms (ChatGPT, Gemini, DeepSeek, Perplexity) need retry logic
     console.log('🔧 Using retry logic for file-based platform:', platform);
     fillInputFieldWithRetry(fullPrompt, 5, 500);
+  } else if (isGrok) {
+    // Grok: URL-based but needs retry since grok.com is a SPA with delayed input rendering
+    console.log('🔧 Using retry logic for Grok (SPA input field):', platform);
+    fillInputFieldWithRetry(fullPrompt, 10, 800);
   } else {
-    // URL-based platforms (Claude, Grok)
+    // URL-based platforms (Claude) - single fill usually sufficient
     console.log('🔧 Using single fill for URL-based platform');
     const populateSuccess = fillInputFieldWithPrompt(fullPrompt);
     console.log('🔧 Population result:', populateSuccess);
@@ -166,10 +175,12 @@ function executeStreamlinedContinuation(fullPrompt, shareUrl, continuationData) 
   // Auto-start ONLY for URL-based platforms (Claude, Grok)
   // File-based platforms (ChatGPT, Gemini, DeepSeek, Perplexity) - user reviews and uploads file
   if (!isFileBased) {
+    // Grok (SPA) needs a longer delay to allow retry-based fill to complete
+    const autoStartDelay = isGrok ? 10000 : 1500;
     setTimeout(() => {
       console.log('🔧 Auto-starting conversation for URL-based platform...');
       attemptAutoStart(platform);
-    }, 1500);
+    }, autoStartDelay);
   } else {
     console.log('📁 File-based flow - skipping auto-start. User will review prompt and upload file.');
   }
@@ -546,8 +557,25 @@ function attemptGeminiAutoStart() {
 function attemptGrokAutoStart() {
   console.log('🤖 ThreadCub: Attempting Grok auto-start with retry logic...');
 
-  // Grok-specific send button selectors - PRIMARY: "Grok something" aria-label
-  const sendSelectors = [
+  const isGrokCom = window.location.hostname.includes('grok.com');
+  console.log('🤖 ThreadCub: Is grok.com:', isGrokCom);
+
+  // Grok-specific send button selectors
+  // grok.com uses different button labels than x.com
+  const sendSelectors = isGrokCom ? [
+    'button[aria-label="Send message"]',
+    'button[aria-label="Send"]',
+    'button[aria-label*="Send"]',
+    'button[aria-label*="send"]',
+    'button[data-testid="send-button"]',
+    'button[data-testid*="send"]',
+    'button[type="submit"]',
+    'button[class*="send"]',
+    'button[class*="Send"]',
+    // Fallback: find enabled button near textarea
+    'form button:not([disabled])',
+    'button:not([disabled])[class*="primary"]'
+  ] : [
     'button[aria-label="Grok something"]',
     'button[aria-label*="Grok something"]',
     'button[aria-label*="Grok"]',

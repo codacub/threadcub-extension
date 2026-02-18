@@ -33,10 +33,12 @@
     "activeTab",
     "downloads",
     "storage",
-    "scripting"
+    "scripting",
+    "notifications"
   ],
   
   "host_permissions": [
+    "http://localhost:3000/*",
     "https://claude.ai/*",
     "https://chat.openai.com/*",
     "https://chatgpt.com/*",
@@ -80,11 +82,13 @@
       "assets/conversation-prompt.css"
     ],
     "js": [
+      "vendor/crypto-js.min.js",
       "src/services/analytics.js",
       "src/utils/platform-detector.js",
       "src/utils/utilities.js",
       "src/services/storage-service.js",
       "src/services/auth-service.js",
+      "src/services/crypto-service.js",
       "src/services/api-service.js",
       "src/adapters/platform-adapters.js",
       "src/core/conversation-extractor.js",

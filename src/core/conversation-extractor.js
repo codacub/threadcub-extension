@@ -334,26 +334,52 @@ const ConversationExtractor = {
     const messages = [];
     let messageIndex = 0;
 
-    const messageElements = document.querySelectorAll('[data-testid^="conversation-turn"]');
-    console.log(`🤖 ThreadCub: Found ${messageElements.length} ChatGPT message elements`);
+    // Primary strategy: use data-message-author-role attribute (most reliable)
+    const roleElements = document.querySelectorAll('[data-message-author-role]');
+    console.log(`🤖 ThreadCub: Found ${roleElements.length} elements with data-message-author-role`);
 
-    messageElements.forEach((messageElement, index) => {
-      try {
-        const text = messageElement.innerText?.trim();
-        if (text && text.length > 10) {
-          const role = index % 2 === 0 ? 'user' : 'assistant';
-
-          messages.push({
-            id: messageIndex++,
-            role: role,
-            content: text,
-            timestamp: new Date().toISOString()
-          });
+    if (roleElements.length > 0) {
+      roleElements.forEach((element, index) => {
+        try {
+          const text = element.innerText?.trim();
+          if (text && text.length > 10) {
+            const role = element.getAttribute('data-message-author-role');
+            messages.push({
+              id: messageIndex++,
+              role: (role === 'assistant') ? 'assistant' : 'user',
+              content: text,
+              timestamp: new Date().toISOString()
+            });
+          }
+        } catch (error) {
+          console.log(`🤖 ThreadCub: Error extracting message ${index}:`, error);
         }
-      } catch (error) {
-        console.log(`🤖 ThreadCub: Error extracting message ${index}:`, error);
-      }
-    });
+      });
+    } else {
+      // Fallback: use conversation-turn elements and look for role attribute inside
+      const turnElements = document.querySelectorAll('[data-testid^="conversation-turn"]');
+      console.log(`🤖 ThreadCub: Falling back to conversation-turn elements: ${turnElements.length}`);
+
+      turnElements.forEach((turnElement, index) => {
+        try {
+          const text = turnElement.innerText?.trim();
+          if (text && text.length > 10) {
+            // Look for data-message-author-role on a child element
+            const roleEl = turnElement.querySelector('[data-message-author-role]');
+            const role = roleEl ? roleEl.getAttribute('data-message-author-role') : null;
+
+            messages.push({
+              id: messageIndex++,
+              role: (role === 'assistant') ? 'assistant' : (role === 'user') ? 'user' : (index % 2 === 0 ? 'user' : 'assistant'),
+              content: text,
+              timestamp: new Date().toISOString()
+            });
+          }
+        } catch (error) {
+          console.log(`🤖 ThreadCub: Error extracting turn ${index}:`, error);
+        }
+      });
+    }
 
     const conversationData = {
       title: document.title.replace(' - ChatGPT', '') || 'ChatGPT Conversation',
@@ -424,13 +450,20 @@ const ConversationExtractor = {
   extractGrokConversation() {
     console.log('🤖 ThreadCub: Starting Grok extraction (aria-label based)...');
 
-    // Handle Grok's title format (may include "Grok" or "X")
-    const title = document.title
-      .replace(' - Grok', '')
-      .replace(' | Grok', '')
-      .replace(' - X', '')
-      .replace(' | X', '')
-      .trim() || 'Grok Conversation';
+    const hostname = window.location.hostname;
+
+    // Determine the correct platform/source based on which domain we're on
+    // grok.com / grok.x.ai → 'grok', x.com/i/grok → 'x'
+    let platform;
+    if (hostname.includes('grok.com') || hostname.includes('grok.x.ai')) {
+      platform = 'Grok';
+    } else {
+      platform = 'X';
+    }
+    console.log(`🤖 ThreadCub: Grok platform resolved as: ${platform} (hostname: ${hostname})`);
+
+    // Extract conversation title from DOM (document.title is usually just "Grok" or "Grok / X")
+    const title = this.extractGrokTitle();
 
     try {
       // Use aria-label based extraction for Grok
@@ -440,7 +473,7 @@ const ConversationExtractor = {
         title: title,
         url: window.location.href,
         timestamp: new Date().toISOString(),
-        platform: 'Grok',
+        platform: platform,
         total_messages: extractedMessages.length,
         messages: extractedMessages,
         extraction_method: 'grok_aria_label_extraction'
@@ -460,13 +493,150 @@ const ConversationExtractor = {
         title: title,
         url: window.location.href,
         timestamp: new Date().toISOString(),
-        platform: 'Grok',
+        platform: platform,
         total_messages: fallbackMessages.length,
         messages: fallbackMessages,
         extraction_method: 'grok_span_fallback_extraction',
         error: error.message
       };
     }
+  },
+
+  /**
+   * Extract conversation title for Grok.
+   * Tries multiple DOM strategies since document.title is usually just "Grok" or "Grok / X".
+   */
+  extractGrokTitle() {
+    console.log('🤖 ThreadCub: Extracting Grok conversation title...');
+
+    // Strategy 1: Look for a conversation title heading in the chat area
+    // Grok sometimes puts a title/heading above the conversation
+    const headingSelectors = [
+      'h1', 'h2',
+      '[class*="title"]',
+      '[class*="heading"]',
+      '[data-testid*="title"]'
+    ];
+
+    for (const selector of headingSelectors) {
+      try {
+        const headings = document.querySelectorAll(selector);
+        for (const heading of headings) {
+          const text = heading.textContent?.trim();
+          // Must be meaningful text, not just "Grok" or UI labels
+          if (text && text.length > 3 && text.length < 200 &&
+              !['Grok', 'Grok / X', 'X', 'Home', 'Explore', 'Messages', 'Settings'].includes(text) &&
+              !heading.closest('nav') && !heading.closest('header') &&
+              !heading.closest('[data-testid="sidebarColumn"]')) {
+            console.log('🤖 ThreadCub: Title from heading element:', text);
+            return text;
+          }
+        }
+      } catch (e) {
+        // continue to next selector
+      }
+    }
+
+    // Strategy 2: Look for the active/selected conversation in the sidebar
+    const sidebarSelectors = [
+      'nav a[aria-current="page"]',
+      'nav a[class*="active"]',
+      'nav [class*="selected"]',
+      'aside a[aria-current="page"]',
+      'aside a[class*="active"]',
+      '[class*="sidebar"] a[aria-current="page"]',
+      '[class*="sidebar"] [class*="active"]'
+    ];
+
+    for (const selector of sidebarSelectors) {
+      try {
+        const active = document.querySelector(selector);
+        if (active) {
+          const text = active.textContent?.trim();
+          if (text && text.length > 3 && text.length < 200 &&
+              !['Grok', 'Home', 'Explore'].includes(text)) {
+            console.log('🤖 ThreadCub: Title from sidebar active item:', text);
+            return text;
+          }
+        }
+      } catch (e) {
+        // continue
+      }
+    }
+
+    // Strategy 3: Try document.title with Grok/X suffixes stripped
+    const pageTitle = document.title
+      .replace(/\s*[-–|\/]\s*Grok\s*/gi, '')
+      .replace(/\s*[-–|\/]\s*X\s*/gi, '')
+      .replace(/^Grok\s*[-–|\/]?\s*/i, '')
+      .replace(/^X\s*[-–|\/]?\s*/i, '')
+      .trim();
+
+    if (pageTitle && pageTitle.length > 3 &&
+        !['Grok', 'X', 'Grok / X'].includes(pageTitle)) {
+      console.log('🤖 ThreadCub: Title from document.title:', pageTitle);
+      return pageTitle;
+    }
+
+    // Strategy 4: Use the first user message as title (truncated)
+    try {
+      const firstUserMsg = this.getFirstGrokUserMessage();
+      if (firstUserMsg && firstUserMsg.length > 3) {
+        const truncated = firstUserMsg.length > 80
+          ? firstUserMsg.substring(0, 77) + '...'
+          : firstUserMsg;
+        console.log('🤖 ThreadCub: Title from first user message:', truncated);
+        return truncated;
+      }
+    } catch (e) {
+      console.log('🤖 ThreadCub: Could not extract first user message for title:', e.message);
+    }
+
+    // Fallback
+    console.log('🤖 ThreadCub: Using fallback Grok title');
+    return 'Grok Conversation';
+  },
+
+  /**
+   * Get the first user message text from the Grok page for title fallback.
+   */
+  getFirstGrokUserMessage() {
+    // Find text elements NOT inside div[aria-label="Grok"] (i.e., user messages)
+    const grokContainers = document.querySelectorAll('div[aria-label="Grok"]');
+    const grokSet = new Set(grokContainers);
+
+    // Try message containers first
+    const containerSelectors = [
+      'div.message-bubble',
+      'div[class*="message-bubble"]',
+      'div[class*="message"]'
+    ];
+
+    for (const selector of containerSelectors) {
+      const containers = document.querySelectorAll(selector);
+      for (const container of containers) {
+        const text = container.textContent?.trim() || '';
+        if (text.length < 10) continue;
+        // Check it's NOT a Grok (assistant) message
+        let isGrok = grokSet.has(container) ||
+                     container.getAttribute('aria-label') === 'Grok';
+        if (!isGrok) {
+          let parent = container.parentElement;
+          while (parent) {
+            if (parent.getAttribute && parent.getAttribute('aria-label') === 'Grok') {
+              isGrok = true;
+              break;
+            }
+            parent = parent.parentElement;
+          }
+        }
+        if (!isGrok) {
+          return text;
+        }
+      }
+    }
+
+    return null;
   },
 
   // Grok extraction using aria-label="Grok" to identify assistant messages
@@ -476,83 +646,181 @@ const ConversationExtractor = {
     const messages = [];
     let messageIndex = 0;
 
-    // Find all Grok (assistant) message containers
-    const grokContainers = document.querySelectorAll('div[aria-label="Grok"]');
-    console.log(`🤖 ThreadCub: Found ${grokContainers.length} Grok message containers`);
+    // ---------------------------------------------------------------
+    // Strategy 1: Container-based extraction (most reliable)
+    // Find message containers and check aria-label for role detection
+    // ---------------------------------------------------------------
+    const containerSelectors = [
+      'div.message-bubble',
+      'div[class*="message-bubble"]',
+      'div[class*="message"]',
+      'article',
+      'div[role="article"]'
+    ];
 
-    // Try multiple selector strategies for text spans
-    let allTextSpans = document.querySelectorAll('span[class*="css-1jxf684"]');
-    console.log(`🤖 ThreadCub: Found ${allTextSpans.length} text spans with css-1jxf684`);
-
-    // If no spans found with specific class, try broader selectors for grok.com
-    if (allTextSpans.length === 0) {
-      console.log('🤖 ThreadCub: Trying broader span selectors for grok.com...');
-      
-      // Try various span patterns that might exist on grok.com
-      const selectors = [
-        'span[class*="css-"]',           // Any CSS module class
-        'div[class*="message"] span',    // Spans within message containers
-        'article span',                  // Spans within article elements
-        'div[role="article"] span',      // Spans within article role
-        'div.prose span',                // Spans within prose content
-        'p span',                        // Spans within paragraphs
-        'div[class*="text"] span'        // Spans within text containers
-      ];
-
-      for (const selector of selectors) {
-        allTextSpans = document.querySelectorAll(selector);
-        console.log(`🤖 ThreadCub: Trying ${selector}: found ${allTextSpans.length} elements`);
-        if (allTextSpans.length > 0) {
-          break;
-        }
+    let messageContainers = [];
+    for (const selector of containerSelectors) {
+      const found = document.querySelectorAll(selector);
+      // Filter to elements with substantial text and no ThreadCub UI
+      const filtered = Array.from(found).filter(el => {
+        const text = el.textContent?.trim() || '';
+        if (text.length < 20) return false;
+        // Exclude ThreadCub UI elements
+        if (el.id && el.id.includes('threadcub')) return false;
+        if (el.className && typeof el.className === 'string' && el.className.includes('threadcub')) return false;
+        return true;
+      });
+      if (filtered.length > 0) {
+        console.log(`🤖 ThreadCub: Container selector '${selector}' found ${filtered.length} elements`);
+        messageContainers = filtered;
+        break;
       }
     }
 
-    // If still no spans, try getting text from divs/paragraphs directly
-    if (allTextSpans.length === 0) {
-      console.log('🤖 ThreadCub: No spans found, trying div/p elements...');
-      allTextSpans = document.querySelectorAll('div[class*="prose"], p, div[class*="message"], div[class*="text"]');
-      console.log(`🤖 ThreadCub: Found ${allTextSpans.length} text container elements`);
+    if (messageContainers.length > 0) {
+      const processedTexts = new Set();
+
+      messageContainers.forEach((container) => {
+        const text = container.textContent?.trim() || '';
+        if (text.length < 20 || processedTexts.has(text)) return;
+        // Skip UI-only elements
+        if (['Copy', 'Share', 'Grok', 'More'].includes(text)) return;
+
+        processedTexts.add(text);
+
+        // Check if this container is inside or is a Grok (assistant) container
+        const isGrokMessage = container.getAttribute('aria-label') === 'Grok' ||
+                              this.hasAncestorWithAriaLabel(container, 'Grok');
+
+        messages.push({
+          id: messageIndex++,
+          role: isGrokMessage ? 'assistant' : 'user',
+          content: this.simpleCleanContent(text),
+          timestamp: new Date().toISOString(),
+          extractionMethod: 'grok_container',
+          hasGrokAncestor: isGrokMessage
+        });
+      });
+
+      if (messages.length > 0) {
+        console.log(`🤖 ThreadCub: Container-based extraction found: ${messages.length} messages`);
+        return messages;
+      }
     }
 
-    // Group spans by their message context and determine role
+    // ---------------------------------------------------------------
+    // Strategy 2: Collect all Grok assistant containers and all
+    //             content outside them as user messages
+    // ---------------------------------------------------------------
+    const grokContainers = document.querySelectorAll('div[aria-label="Grok"]');
+    console.log(`🤖 ThreadCub: Found ${grokContainers.length} Grok aria-label containers`);
+
+    if (grokContainers.length > 0) {
+      // Build a set of assistant message positions for DOM ordering
+      const allMessageNodes = [];
+
+      grokContainers.forEach((container) => {
+        const text = container.textContent?.trim() || '';
+        if (text.length > 20) {
+          allMessageNodes.push({
+            element: container,
+            role: 'assistant',
+            content: this.simpleCleanContent(text)
+          });
+        }
+      });
+
+      // Find user messages: siblings or adjacent containers that are NOT inside Grok containers
+      // Walk up from each Grok container to find the parent that holds both user and assistant turns
+      if (grokContainers.length > 0) {
+        const firstGrok = grokContainers[0];
+        const turnParent = firstGrok.parentElement?.parentElement || firstGrok.parentElement;
+        if (turnParent) {
+          const siblings = Array.from(turnParent.children);
+          siblings.forEach((sibling) => {
+            // Skip if this IS a Grok container or contains one
+            if (sibling.getAttribute('aria-label') === 'Grok') return;
+            if (sibling.querySelector('div[aria-label="Grok"]')) return;
+
+            const text = sibling.textContent?.trim() || '';
+            if (text.length > 10 && !['Copy', 'Share', 'Grok', 'More'].includes(text)) {
+              allMessageNodes.push({
+                element: sibling,
+                role: 'user',
+                content: this.simpleCleanContent(text)
+              });
+            }
+          });
+        }
+      }
+
+      // Sort by DOM position
+      allMessageNodes.sort((a, b) => {
+        const pos = a.element.compareDocumentPosition(b.element);
+        return (pos & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1;
+      });
+
+      const processedTexts = new Set();
+      allMessageNodes.forEach((node) => {
+        if (!processedTexts.has(node.content) && node.content.length > 10) {
+          processedTexts.add(node.content);
+          messages.push({
+            id: messageIndex++,
+            role: node.role,
+            content: node.content,
+            timestamp: new Date().toISOString(),
+            extractionMethod: 'grok_aria_siblings'
+          });
+        }
+      });
+
+      if (messages.length > 0) {
+        console.log(`🤖 ThreadCub: Sibling-based extraction found: ${messages.length} messages`);
+        return messages;
+      }
+    }
+
+    // ---------------------------------------------------------------
+    // Strategy 3: Span-based fallback with aria-label check
+    // ---------------------------------------------------------------
+    console.log('🤖 ThreadCub: Falling back to span-based extraction...');
+
+    const spanSelectors = [
+      'span[class*="css-1jxf684"]',
+      'span[class*="css-"]',
+      'div[class*="prose"]',
+      'p'
+    ];
+
+    let allTextSpans = [];
+    for (const selector of spanSelectors) {
+      allTextSpans = document.querySelectorAll(selector);
+      if (allTextSpans.length > 0) {
+        console.log(`🤖 ThreadCub: Span selector '${selector}' found ${allTextSpans.length} elements`);
+        break;
+      }
+    }
+
     const processedTexts = new Set();
 
     allTextSpans.forEach((element) => {
       const text = element.textContent?.trim() || '';
+      if (text.length < 20 || processedTexts.has(text)) return;
+      if (['Copy', 'Share', 'Grok', 'More'].includes(text)) return;
 
-      // Skip empty or very short texts, and already processed content
-      if (text.length < 10 || processedTexts.has(text)) {
-        return;
-      }
+      processedTexts.add(text);
 
-      // Skip UI elements
-      if (text === 'Copy' || text === 'Share' || text === 'Grok' || text === 'More') {
-        return;
-      }
-
-      // Check if this element is inside a Grok (assistant) container
       const isGrokMessage = this.hasAncestorWithAriaLabel(element, 'Grok');
-      const role = isGrokMessage ? 'assistant' : 'user';
-
-      // Only add substantial messages
-      if (text.length > 20) {
-        processedTexts.add(text);
-
-        messages.push({
-          id: messageIndex++,
-          role: role,
-          content: this.simpleCleanContent(text),
-          timestamp: new Date().toISOString(),
-          extractionMethod: 'grok_aria_label',
-          selector_used: element.tagName.toLowerCase(),
-          hasGrokAncestor: isGrokMessage
-        });
-      }
+      messages.push({
+        id: messageIndex++,
+        role: isGrokMessage ? 'assistant' : 'user',
+        content: this.simpleCleanContent(text),
+        timestamp: new Date().toISOString(),
+        extractionMethod: 'grok_span_aria',
+        hasGrokAncestor: isGrokMessage
+      });
     });
 
-    // Sort messages by DOM order (approximate by checking document position)
-    // This helps maintain conversation order
     console.log(`🤖 ThreadCub: Grok aria-label extraction found: ${messages.length} messages`);
     return messages;
   },
@@ -578,64 +846,56 @@ const ConversationExtractor = {
 
     try {
       // Try multiple selector strategies
-      let elements = document.querySelectorAll('span[class*="css-1jxf684"]');
-      console.log(`🤖 ThreadCub: Found ${elements.length} spans with css-1jxf684 class`);
+      const selectors = [
+        'div.message-bubble',
+        'div[class*="message-bubble"]',
+        'span[class*="css-1jxf684"]',
+        'div[class*="message"]',
+        'article',
+        'div[role="article"]',
+        'div.prose',
+        'div[class*="text-"]'
+      ];
 
-      // If no elements found, try broader selectors
-      if (elements.length === 0) {
-        console.log('🤖 ThreadCub: Trying broader fallback selectors...');
-        
-        // Try message-like containers
-        const selectors = [
-          'div[class*="message"]',
-          'article',
-          'div[role="article"]',
-          'div.prose',
-          'div[class*="chat"]',
-          'div[class*="conversation"]',
-          'div[class*="flex"] p',
-          'div[class*="text-"]'
-        ];
-
-        for (const selector of selectors) {
-          elements = document.querySelectorAll(selector);
-          console.log(`🤖 ThreadCub: Trying ${selector}: found ${elements.length} elements`);
-          if (elements.length > 5) { // Want meaningful number of messages
-            break;
-          }
+      let elements = [];
+      for (const selector of selectors) {
+        elements = document.querySelectorAll(selector);
+        console.log(`🤖 ThreadCub: Trying ${selector}: found ${elements.length} elements`);
+        if (elements.length > 1) {
+          break;
         }
       }
 
       const processedTexts = new Set();
 
-      elements.forEach((element, index) => {
+      Array.from(elements).forEach((element, index) => {
         const text = element.textContent?.trim();
         if (text && text.length > 20 && text.length < 10000 && !processedTexts.has(text)) {
           // Skip UI elements
-          if (text.includes('Copy') || text.includes('Share') || text === 'Grok' || 
+          if (text.includes('Copy') || text.includes('Share') || text === 'Grok' ||
               element.querySelector('button') || element.querySelector('input')) {
             return;
           }
+          // Skip ThreadCub UI
+          if (element.id && element.id.includes('threadcub')) return;
+          if (element.className && typeof element.className === 'string' && element.className.includes('threadcub')) return;
 
           processedTexts.add(text);
 
-          // Try to detect role from content patterns
-          let role = 'user';
-          
-          // Check for aria-label in hierarchy
-          if (this.hasAncestorWithAriaLabel(element, 'Grok')) {
-            role = 'assistant';
-          } 
-          // Check for code or technical patterns (usually assistant)
-          else if (text.includes('```') || text.includes('function') || 
-                   text.includes('const ') || text.length > 500) {
+          // Primary: check for aria-label="Grok" in hierarchy
+          let role;
+          if (element.getAttribute('aria-label') === 'Grok' ||
+              this.hasAncestorWithAriaLabel(element, 'Grok')) {
             role = 'assistant';
           }
-          // Short messages with questions (usually user)
+          // Secondary: content-based heuristics
+          else if (text.includes('```') || text.length > 500) {
+            role = 'assistant';
+          }
           else if (text.includes('?') && text.length < 200) {
             role = 'user';
           }
-          // Use alternating pattern as last resort
+          // Last resort: alternating pattern
           else {
             role = index % 2 === 0 ? 'user' : 'assistant';
           }

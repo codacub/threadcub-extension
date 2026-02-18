@@ -304,6 +304,34 @@ const PLATFORM_HANDLERS = {
         }
     },
 
+    // Grok primary domain (grok.com)
+    'grok.com': {
+        name: 'Grok',
+        icon: '🤖',
+        color: '#1da1f2',
+
+        selectors: {
+            messages: 'span[class*="css-1jxf684"]',
+            userMessages: 'span[class*="css-1jxf684"]',
+            assistantMessages: 'div[aria-label="Grok"] span[class*="css-1jxf684"]',
+            inputField: 'textarea[placeholder="Ask anything"], textarea[placeholder*="Ask"], textarea',
+            sendButton: 'button[type="submit"], button[aria-label="Send"]'
+        },
+
+        urls: {
+            newChat: 'https://grok.com/',
+            continue: 'https://claude.ai/chat/new'
+        },
+
+        extractMessage(element) {
+            return PLATFORM_HANDLERS['x.com'].extractMessage(element);
+        },
+
+        async injectPrompt(prompt) {
+            return PLATFORM_HANDLERS['x.com'].injectPrompt.call(this, prompt);
+        }
+    },
+
     // Perplexity - uses h1 for user queries and markdown-content for responses
     'www.perplexity.ai': {
         name: 'Perplexity',

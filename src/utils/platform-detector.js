@@ -58,9 +58,15 @@ const PlatformDetector = {
       'div[contenteditable="true"]'
     ],
     // Grok uses aria-label based DOM structure
+    // grok.com uses different placeholder text than x.com
     grok: [
       'textarea[placeholder="Ask anything"]',
+      'textarea[placeholder="Ask Grok anything"]',
+      'textarea[placeholder*="Ask Grok"]',
       'textarea[placeholder*="Ask"]',
+      'textarea[placeholder*="Message"]',
+      'textarea[placeholder*="Type"]',
+      'div[contenteditable="true"][data-placeholder*="Ask"]',
       'div[contenteditable="true"]',
       'textarea'
     ],

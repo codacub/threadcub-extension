@@ -1450,7 +1450,7 @@ Once you've reviewed it, let me know you're ready to continue from where we left
       window.StorageService.storeWithChrome(continuationData)
         .then(() => {
           console.log('🐻 ThreadCub: Grok data stored successfully');
-          const grokUrl = 'https://x.com/i/grok';
+          const grokUrl = this.getGrokNewChatUrl();
           window.open(grokUrl, '_blank');
           this.showSuccessToast('Opening Grok with conversation context...');
         })
@@ -1515,13 +1515,29 @@ Once you've reviewed it, let me know you're ready to continue from where we left
 
     try {
       localStorage.setItem('threadcubContinuationData', JSON.stringify(continuationData));
-      const grokUrl = 'https://x.com/i/grok';
+      const grokUrl = this.getGrokNewChatUrl();
       window.open(grokUrl, '_blank');
       this.showSuccessToast('Opening Grok with conversation context...');
     } catch (error) {
       console.error('🤖 ThreadCub: localStorage fallback failed:', error);
       this.showErrorToast('Failed to prepare continuation data');
     }
+  }
+
+  /**
+   * Returns the correct Grok new-chat URL based on which domain the user is on.
+   * grok.com → https://grok.com/  |  x.com → https://x.com/i/grok
+   */
+  getGrokNewChatUrl() {
+    const hostname = window.location.hostname;
+    if (hostname.includes('grok.com')) {
+      return 'https://grok.com/';
+    }
+    if (hostname.includes('grok.x.ai')) {
+      return 'https://grok.x.ai/';
+    }
+    // Default: x.com/i/grok (for x.com users)
+    return 'https://x.com/i/grok';
   }
 
   // =============================================================================

@@ -1,8 +1,10 @@
 // === SECTION 0: Analytics & Auth Integration ===
 
-// Import analytics service and auth service
+// Import CryptoJS, analytics service, auth service, and crypto service
+importScripts('vendor/crypto-js.min.js');
 importScripts('src/services/analytics.js');
 importScripts('src/services/auth-service.js');
+importScripts('src/services/crypto-service.js');
 
 // Track installation and updates
 chrome.runtime.onInstalled.addListener((details) => {
@@ -232,10 +234,22 @@ function handleDownload(request, sendResponse) {
 
 // === SECTION 3: API Handler ===
 
+// ⚠️ CHANGE BACK TO PRODUCTION BEFORE RELOADING EXTENSION FOR NORMAL USE
+// Local dev toggle — set BG_IS_LOCAL_DEV = false for production
+const BG_IS_LOCAL_DEV = false;
+const BG_API_BASE = BG_IS_LOCAL_DEV
+  ? 'http://localhost:3000/api'
+  : 'https://threadcub.com/api';
+
+console.log(`🐻 Background: BG_API_BASE = ${BG_API_BASE} (BG_IS_LOCAL_DEV=${BG_IS_LOCAL_DEV})`);
+
+// Temp flag: set to false to skip encryption entirely (for quick testing)
+const BG_USE_ENCRYPTION = true;
+
 async function handleSaveConversation(data) {
   try {
-    console.log('🐻 Background: Making API call to ThreadCub with data:', data);
-    console.log('🐻 Background: API URL:', 'https://threadcub.com/api/conversations/save');
+    console.log('🐻 Background.handleSaveConversation: data keys:', Object.keys(data));
+    console.log('🐻 Background.handleSaveConversation: API URL:', `${BG_API_BASE}/conversations/save`);
 
     // Get auth token from storage for Bearer auth
     const authToken = await self.AuthService.getToken();
@@ -246,24 +260,137 @@ async function handleSaveConversation(data) {
       'Accept': 'application/json'
     };
 
-    // Add Bearer token if available
     if (authToken) {
       headers['Authorization'] = `Bearer ${authToken}`;
       console.log('🐻 Background: Added Authorization header');
     }
 
-    const response = await fetch('https://threadcub.com/api/conversations/save', {
+    let didAttemptEncrypted = false;
+
+    // -----------------------------------------------------------------
+    // Step 1: Try sending encrypted payload (if encryption is enabled)
+    // Backend expects: { encrypted_payload: "base64...", title?, source? }
+    // -----------------------------------------------------------------
+    if (BG_USE_ENCRYPTION) {
+      try {
+        const CryptoJSLib = (typeof CryptoJS !== 'undefined') ? CryptoJS :
+                            (typeof self !== 'undefined' && self.CryptoJS) ? self.CryptoJS : null;
+
+        if (CryptoJSLib && CryptoJSLib.AES) {
+          console.log('🔒 Background.handleSaveConversation: Encrypting payload before send...');
+
+          // Try to use per-user encryption key, fall back to hardcoded key
+          const HARDCODED_KEY = 'threadcub-secure-grok-extension-key-2026-xai-prototype-v1-do-not-share';
+          let secretKey = HARDCODED_KEY;
+          try {
+            if (self.AuthService) {
+              const userKey = await self.AuthService.getEncryptionKey();
+              if (userKey) {
+                secretKey = userKey;
+                console.log('🔒 Background: Using per-user encryption key');
+              } else {
+                console.log('🔒 Background: No per-user key, using hardcoded fallback');
+              }
+            }
+          } catch (keyError) {
+            console.warn('🔒 Background: Error fetching per-user key:', keyError.message);
+          }
+
+          const conversationData = data.conversationData || data;
+          const encryptedBase64 = CryptoJSLib.AES.encrypt(
+            JSON.stringify(conversationData),
+            secretKey
+          ).toString();
+
+          // Match backend schema: source (not platform), title, encrypted_payload
+          const encryptedPayload = {
+            encrypted_payload: encryptedBase64,
+            source: data.source || data.conversationData?.platform?.toLowerCase() || 'unknown',
+            title: data.title || data.conversationData?.title || 'Untitled'
+          };
+
+          console.log('🔒 Background.handleSaveConversation: Sending encrypted:', JSON.stringify({
+            encrypted_payload: encryptedBase64.substring(0, 60) + '...[' + encryptedBase64.length + ' chars total]',
+            source: encryptedPayload.source,
+            title: encryptedPayload.title
+          }));
+
+          didAttemptEncrypted = true;
+          const encResponse = await fetch(`${BG_API_BASE}/conversations/save`, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify(encryptedPayload)
+          });
+
+          console.log('🔒 Background.handleSaveConversation: Encrypted POST status:', encResponse.status);
+
+          if (encResponse.status === 401) {
+            console.log('🐻 Background: Auth token expired, clearing...');
+            await self.AuthService.clearToken();
+            throw new Error('Authentication expired. Please log in again.');
+          }
+
+          if (encResponse.ok) {
+            const result = await encResponse.json();
+            console.log('✅ Background: Encrypted API call successful:', result);
+            return result;
+          }
+
+          const errBody = await encResponse.text();
+          console.warn(
+            `🔒 Background.handleSaveConversation: Encrypted send failed (status ${encResponse.status}) — falling back.`,
+            '\n  Response body:', errBody
+          );
+          // Fall through to unencrypted send below
+        } else {
+          console.warn('🔒 Background.handleSaveConversation: CryptoJS not available, skipping encryption');
+        }
+      } catch (encryptError) {
+        if (encryptError.message.includes('Authentication expired')) {
+          throw encryptError;
+        }
+        console.warn('🔒 Background.handleSaveConversation: Encryption/send error, falling back:', encryptError.message);
+      }
+    } else {
+      console.log('🔒 Background.handleSaveConversation: BG_USE_ENCRYPTION=false, sending unencrypted');
+    }
+
+    // -----------------------------------------------------------------
+    // Step 2: Send original unencrypted payload (primary path or fallback)
+    // Server expects: { conversationData: { messages, title?, source? }, title?, source? }
+    // -----------------------------------------------------------------
+    if (didAttemptEncrypted) {
+      console.log('🔒 Background.handleSaveConversation: Retrying with original unencrypted payload...');
+    }
+
+    const convData = data.conversationData || data;
+    const source = data.source || convData.source || convData.platform?.toLowerCase() || 'unknown';
+    const title  = data.title  || convData.title  || 'Untitled';
+
+    const unencryptedPayload = {
+      conversationData: {
+        messages: convData.messages || [],
+        title: title,
+        source: source
+      },
+      title: title,
+      source: source
+    };
+
+    console.log('🔍 Background.handleSaveConversation: Unencrypted payload:', JSON.stringify(unencryptedPayload, null, 2));
+
+    const response = await fetch(`${BG_API_BASE}/conversations/save`, {
       method: 'POST',
       headers: headers,
-      body: JSON.stringify(data)
+      body: JSON.stringify(unencryptedPayload)
     });
 
-    console.log('🐻 Background: POST response status:', response.status);
-    console.log('🐻 Background: POST response ok:', response.ok);
+    console.log('🔍 Background.handleSaveConversation: Unencrypted POST status:', response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('🐻 Background: API error response:', errorText);
+      console.error('🐻 Background.handleSaveConversation: Unencrypted send also failed!',
+                     'Status:', response.status, '| Body:', errorText);
 
       if (response.status === 401) {
         console.log('🐻 Background: Auth token expired, clearing...');
@@ -281,7 +408,7 @@ async function handleSaveConversation(data) {
     }
 
     const result = await response.json();
-    console.log('🐻 Background: API call successful:', result);
+    console.log('✅ Background: API call successful (unencrypted fallback):', result);
 
     return result;
 
@@ -627,7 +754,7 @@ function extractSupabaseAuthToken() {
 async function handleStoreAuthToken(request, sendResponse) {
   console.log('🔐 Background: Storing auth token from callback...');
   try {
-    const { token } = request;
+    const { token, encryptionKey } = request;
     if (!token) {
       sendResponse({ success: false, error: 'No token provided' });
       return;
@@ -635,11 +762,24 @@ async function handleStoreAuthToken(request, sendResponse) {
 
     await self.AuthService.storeToken(token);
 
+    // If encryptionKey was passed directly in the request, store it immediately
+    if (encryptionKey) {
+      console.log('🔐 Background: Storing per-user encryption key from auth callback...');
+      await self.AuthService.storeEncryptionKey(encryptionKey);
+    }
+
     // Validate the token and store user data
     const userData = await self.AuthService.validateToken(token);
     if (userData) {
       await self.AuthService.storeUser(userData);
       console.log('🔐 Background: Token stored and validated, user:', userData.email || userData.user?.email);
+
+      // Store per-user encryption key from validation response (if present and not already stored)
+      const userEncKey = userData.encryptionKey || userData.user?.encryptionKey;
+      if (userEncKey && !encryptionKey) {
+        console.log('🔐 Background: Storing per-user encryption key from validation response...');
+        await self.AuthService.storeEncryptionKey(userEncKey);
+      }
     }
 
     sendResponse({ success: true, user: userData });
@@ -693,7 +833,7 @@ chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => 
   if (request.action === 'storeAuthToken' && request.token) {
     console.log('🔐 Background: Auth callback received with token');
 
-    handleStoreAuthToken({ token: request.token }, sendResponse);
+    handleStoreAuthToken({ token: request.token, encryptionKey: request.encryptionKey }, sendResponse);
     return true;
   }
 

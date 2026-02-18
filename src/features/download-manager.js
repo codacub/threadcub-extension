@@ -171,7 +171,7 @@ function enhanceFloatingButtonWithConversationFeatures() {
           console.log('🐻 ThreadCub: Falling back to direct continuation without API save...');
           
           // FALLBACK: Skip API save and go straight to continuation
-          handleDirectContinuation(conversationData);
+          this.handleDirectContinuation(conversationData);
           this.isExporting = false;
           return;
         }
@@ -257,10 +257,12 @@ window.addEventListener('message', (event) => {
   // Handle auth callback token from threadcub.com callback page
   if (event.data.type === 'THREADCUB_AUTH_CALLBACK' && event.data.token) {
     console.log('🔐 Content script received auth callback token');
+    console.log('🔐 Content script received encryptionKey:', !!event.data.encryptionKey);
 
     chrome.runtime.sendMessage({
       action: 'storeAuthToken',
-      token: event.data.token
+      token: event.data.token,
+      encryptionKey: event.data.encryptionKey || null
     }, (response) => {
       console.log('🔐 Auth token stored via background:', response);
     });

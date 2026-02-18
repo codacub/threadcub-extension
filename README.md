@@ -1,4 +1,4 @@
-# ThreadCub Chrome Extension (v1.0.5)
+# ThreadCub Chrome Extension (v1.0.8)
 
 ThreadCub helps you stay in control of long AI conversations.
 
@@ -6,6 +6,7 @@ It adds a small floating button to supported AI chat sites so you can:
 - **Save** a full conversation as a structured **JSON, Markdown, or PDF** file
 - **Highlight + tag** key parts of a chat ("Pawmarks") with **anchors** and manage them in a side panel
 - **Continue** a conversation into another AI platform by carrying context forward
+- **Archive** conversations to ThreadCub with a shareable link — works for both logged-in and guest users
 
 > Local-first by default. No required login.
 
@@ -35,10 +36,13 @@ It adds a small floating button to supported AI chat sites so you can:
   - Opens the next platform and auto-fills the prompt
   - Auto-submit supported on some platforms (see below)
 
+- **Send to ThreadCub**
+  - Archives the full conversation to threadcub.com and generates a shareable link
+  - Works for both **logged-in users** (linked to account) and **guests** (anonymous session)
+  - Guest session ID persisted in `chrome.storage.local` — no login required
+
 ### 🔐 Authentication / accounts (optional)
-ThreadCub does **not** use a full auth system in the extension popup.
-It uses an **anonymous session ID** by default, and can optionally read an auth token
-from a ThreadCub dashboard tab (if present) for account linking.
+ThreadCub does **not** require login. It uses an **anonymous session ID** by default, and can optionally authenticate via a ThreadCub account tab for account linking. Login is handled via OAuth in a new tab — the popup updates to show your email and a logout button when authenticated.
 
 ### 📊 Usage Analytics (v1.0.5+)
 ThreadCub includes privacy-first analytics to help improve the extension:
@@ -55,44 +59,33 @@ ThreadCub includes privacy-first analytics to help improve the extension:
 |---|---:|---|
 | Claude.ai | Fully implemented | Strongest extraction + enhanced role detection |
 | ChatGPT (chatgpt.com) | Fully implemented | Alternating role detection |
-| Gemini | Fully implemented | Class-based role detection |
-| Copilot | Fully implemented | More generic selectors / fallbacks |
-| Grok | ⚠️ Partial | Framework exists – needs real DOM selectors |
-| X.com/i/grok | ⚠️ Partial | Framework exists – needs real DOM selectors |
-| DeepSeek | ⚠️ Partial | Framework exists – needs real DOM selectors |
-| Perplexity | ⚠️ Partial | Framework exists – needs real DOM selectors |
+| Gemini | Fully implemented | Enhanced conversation detection |
+| Grok (grok.com / x.com/i/grok) | Fully implemented | Full extraction, download, continue, tagging |
+| DeepSeek (chat.deepseek.com) | Fully implemented | Full extraction, download, continue, tagging |
+| Perplexity (perplexity.ai) | Fully implemented | Full support |
+| Microsoft Copilot | Partial | Tagging/download/continue work; highlights don't persist across chats |
 
 Continuation behaviour:
-- **Claude / X.omc/i/grok / Grok.com:** direct flow, can auto-submit
-- **ChatGPT / Gemini / CoPilot/ DeepSeek / Perplexity:** file-based flow, requires manual upload step before submitting
+- **Claude / Grok / X.com/i/grok:** direct flow, can auto-submit
+- **ChatGPT / Gemini / Copilot / DeepSeek / Perplexity:** file-based flow, requires manual upload step before submitting
 
 ---
 
 ## Project structure (high level)
 
-- `manifest.json` – Manifest V4, content scripts load order
-- `background.js` – service worker (downloads, API calls, auth token lookup, analytics)
-- `content.js` – entry point
+- `manifest.json` — Manifest V3, content scripts load order
+- `background.js` — service worker (downloads, API calls, auth token lookup, analytics)
+- `content.js` — entry point
 - `src/`
-  - `core/` – app initializer, conversation extractor, floating button UI
-  - `features/` – continuation, tagging (tags + anchors), downloads, platform autostart
-  - `services/` – API + storage wrappers, **analytics service**
-  - `ui/` – side panel with tabs + UI utilities
-  - `adapters/` – platform-specific adapters for chat extraction
-  - `utils/` – platform detection + helpers
-- `assets/` – CSS + images/icons
-- `popup/` – minimal popup (feedback form + Discord webhook)
-- `docs/` – audits, quick start, testing guides
-
----
-
-## Install (local development)
-
-1. Clone this repo
-2. Open Chrome → `chrome://extensions`
-3. Enable **Developer mode**
-4. Click **Load unpacked**
-5. Select the repo folder (the one containing `manifest.json`)
+  - `core/` — app initializer, conversation extractor, floating button UI
+  - `features/` — continuation, tagging (tags + anchors), downloads, platform autostart
+  - `services/` — API + storage wrappers, **analytics service**
+  - `ui/` — side panel with tabs + UI utilities
+  - `adapters/` — platform-specific adapters for chat extraction
+  - `utils/` — platform detection + helpers
+- `assets/` — CSS + images/icons
+- `popup/` — minimal popup (auth state, feedback form + Discord webhook)
+- `docs/` — audits, quick start, testing guides
 
 ---
 
@@ -106,6 +99,7 @@ Continuation behaviour:
    - **Side Panel** → view all your tags and anchors with filtering and navigation
    - **Export** → choose JSON, Markdown, or PDF format from the dropdown menu
    - **Continue Chat** → carry the conversation into another platform
+   - **Send to ThreadCub** → archive to threadcub.com and get a shareable link
 
 ---
 
@@ -132,9 +126,64 @@ Professional export featuring:
 
 ---
 
-## What's New in v1.0.5
+## What's New in v1.0.8
 
-### Analytics Integration 🐻
+### Guest Saving & Share Links 🐾
+- **Guest saving now fully works** — no login required to save a conversation to ThreadCub and get a real share URL
+- Guest session ID generated and persisted in `chrome.storage.local` so the same guest identity is reused across saves
+- Fixed: extension was generating timestamp-based fallback URLs (`/fallback/[timestamp]`) instead of real UUIDs — now produces `https://threadcub.com/api/share/[uuid]` for both guests and authenticated users
+- Fixed: stale auth tokens no longer block guest saves — on 401, the extension clears the token and retries as a guest automatically
+- Fixed: guest users no longer trigger a wasted encrypted-payload round trip; encryption is skipped entirely when no auth token is present
+
+### Reliability Improvements
+- **Service worker retry** — `sendMessage` calls now automatically retry once after 500ms if the background service worker has gone idle, reducing the need to manually reload the extension
+- **Duplicate save prevention** — a 60-second soft dedup check prevents the same conversation being saved multiple times if the button is clicked twice in quick succession
+
+### Backend
+- Fixed Postgres error 42P10 (`ON CONFLICT` upsert was referencing columns with no unique constraint) — replaced with plain `INSERT`
+
+---
+
+## Previous Updates
+
+### v1.0.7 - Authentication, Enhanced Saving & Download Improvements
+
+**New Features:**
+- **User Authentication** — Log in to ThreadCub directly from the extension popup. OAuth flow opens in a new tab; popup updates to show authenticated state with email and logout button
+- **Send to ThreadCub button** — 5th action button on the floating stack. Saves the conversation to ThreadCub without opening a new tab
+- **Download format selection** — Download button now shows a flyout menu on hover with [JSON] and [MD] options. Markdown export formats the conversation with a title header, metadata block, and alternating User/Assistant sections
+
+**Bug Fixes:**
+- **Claude.ai title extraction** — Conversations were being saved with the title "Claude" instead of the actual conversation name. Fixed with a 3-tier fallback: regex stripping of " - Claude" suffix, sidebar link matching, then "Untitled Conversation"
+- **Download flyout UX** — Fixed tooltip overlapping flyout menu, button stack collapsing when moving mouse to flyout, and button size shifting on flyout hover
+
+---
+
+### v1.0.6 - Cross Platform Updates
+
+**New Platform Support:**
+- **Grok (grok.com / x.com/i/grok)** — Full conversation extraction, download, continue chat, tagging and anchors, side panel
+- **DeepSeek (chat.deepseek.com)** — Full extraction, download, tagging, continuation
+- **Gemini** — Enhanced conversation detection and length monitoring
+
+**New Features:**
+- **Microsoft Copilot support** — Tagging, anchoring, side panel, download and continue chat. Highlights don't persist across Copilot chat navigation (documented in onboarding modal)
+- **Onboarding modal for Copilot** — First-time users see a friendly explanation of current limitations
+
+**Bug Fixes:**
+- Fixed conversation isolation on DeepSeek (tags/anchors no longer persist across different conversations)
+- Fixed conversation length detector across all platforms
+- Fixed Claude.ai anchor highlighting CSS selector
+- Fixed "Continue Chat" button regressions
+- Fixed Grok download modal
+- Removed 5000 character selection cap for tagging
+- Fixed Copilot "Continue Chat" routing (was defaulting to ChatGPT)
+- Removed 310 lines of non-working experimental Copilot persistence code
+
+---
+
+### v1.0.5 - Google Analytics Integration
+
 - Added Google Analytics 4 tracking for usage insights
 - Privacy-first approach: no conversation content or personal data tracked
 - Track feature usage (tags, anchors, exports, continuations)
@@ -142,21 +191,13 @@ Professional export featuring:
 - Track platform detection (Claude, ChatGPT, Gemini, etc.)
 - Anonymous client IDs only
 
-### Technical Improvements
-- New `analytics.js` service with GA4 Measurement Protocol
-- Enhanced background script with event tracking
-- Added GA4 domain to host permissions
-- Comprehensive tracking across all extension features
-
 ---
-
-## Previous Updates
 
 ### v1.0.4 - Side Panel & Export Enhancements
 
 **Side Panel Improvements:**
-- Fixed tab switching - anchors open to Anchors tab, tags to Tags tab
-- Standardized icon styling across all buttons
+- Fixed tab switching — anchors open to Anchors tab, tags to Tags tab
+- Standardised icon styling across all buttons
 - Added tooltips to all icon buttons
 - Copy-to-clipboard on tag cards
 - Improved visual consistency
@@ -176,15 +217,15 @@ Professional export featuring:
 
 ## Docs
 
-- `docs/PROJECT-AUDIT.md` – deep codebase audit
-- `docs/development/QUICK-START.md` – install + troubleshooting notes
-- `docs/development/GROK_DEEPSEEK_TESTING.md` – how to finish Grok/DeepSeek selectors
+- `docs/PROJECT-AUDIT.md` — deep codebase audit
+- `docs/development/QUICK-START.md` — install + troubleshooting notes
+- `docs/development/GROK_DEEPSEEK_TESTING.md` — how to finish Grok/DeepSeek selectors
 
 ---
 
 ## Links
 
-- **Chrome Web Store**: [Coming soon - v1.0.5 pending review]
+- **Chrome Web Store**: [threadcub.com](https://threadcub.com) (pending v1.0.8 review)
 - **Website**: [https://threadcub.com](https://threadcub.com)
 - **Discord Community**: Join for support and updates
 

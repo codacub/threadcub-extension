@@ -234,13 +234,22 @@ function handleDownload(request, sendResponse) {
 
 // === SECTION 3: API Handler ===
 
+// ⚠️ CHANGE BACK TO PRODUCTION BEFORE RELOADING EXTENSION FOR NORMAL USE
+// Local dev toggle — set BG_IS_LOCAL_DEV = false for production
+const BG_IS_LOCAL_DEV = true;
+const BG_API_BASE = BG_IS_LOCAL_DEV
+  ? 'http://localhost:3000/api'
+  : 'https://threadcub.com/api';
+
+console.log(`🐻 Background: BG_API_BASE = ${BG_API_BASE} (BG_IS_LOCAL_DEV=${BG_IS_LOCAL_DEV})`);
+
 // Temp flag: set to false to skip encryption entirely (for quick testing)
 const BG_USE_ENCRYPTION = true;
 
 async function handleSaveConversation(data) {
   try {
     console.log('🐻 Background.handleSaveConversation: data keys:', Object.keys(data));
-    console.log('🐻 Background.handleSaveConversation: API URL:', 'https://threadcub.com/api/conversations/save');
+    console.log('🐻 Background.handleSaveConversation: API URL:', `${BG_API_BASE}/conversations/save`);
 
     // Get auth token from storage for Bearer auth
     const authToken = await self.AuthService.getToken();
@@ -282,7 +291,7 @@ async function handleSaveConversation(data) {
           }));
 
           didAttemptEncrypted = true;
-          const encResponse = await fetch('https://threadcub.com/api/conversations/save', {
+          const encResponse = await fetch(`${BG_API_BASE}/conversations/save`, {
             method: 'POST',
             headers: headers,
             body: JSON.stringify(encryptedPayload)
@@ -345,7 +354,7 @@ async function handleSaveConversation(data) {
 
     console.log('🔍 Background.handleSaveConversation: Unencrypted payload:', JSON.stringify(unencryptedPayload, null, 2));
 
-    const response = await fetch('https://threadcub.com/api/conversations/save', {
+    const response = await fetch(`${BG_API_BASE}/conversations/save`, {
       method: 'POST',
       headers: headers,
       body: JSON.stringify(unencryptedPayload)

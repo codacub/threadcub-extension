@@ -3,14 +3,19 @@
 // Handles token storage, retrieval, validation, and auth state management
 // =============================================================================
 
+// ⚠️ CHANGE BACK TO PRODUCTION BEFORE RELOADING EXTENSION FOR NORMAL USE
+// Must match IS_LOCAL_DEV in api-service.js
+const AUTH_IS_LOCAL_DEV = true;
+const AUTH_BASE = AUTH_IS_LOCAL_DEV ? 'http://localhost:3000' : 'https://threadcub.com';
+
 const AuthService = {
   // Storage key for the auth token
   TOKEN_KEY: 'threadcub_auth_token',
   USER_KEY: 'threadcub_auth_user',
 
   // API endpoints
-  VALIDATE_URL: 'https://threadcub.com/api/auth/validate',
-  LOGIN_URL: 'https://threadcub.com/auth/extension-login',
+  VALIDATE_URL: `${AUTH_BASE}/api/auth/validate`,
+  LOGIN_URL: `${AUTH_BASE}/auth/extension-login`,
 
   // =========================================================================
   // TOKEN STORAGE

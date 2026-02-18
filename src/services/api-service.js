@@ -4,12 +4,24 @@
 // All authenticated endpoints use Authorization: Bearer <token> headers
 // =============================================================================
 
+// ⚠️ CHANGE BACK TO PRODUCTION BEFORE RELOADING EXTENSION FOR NORMAL USE
+// Local dev toggle — set IS_LOCAL_DEV = false for production
+const IS_LOCAL_DEV = true;
+const API_BASE = IS_LOCAL_DEV
+  ? 'http://localhost:3000/api'
+  : 'https://threadcub.com/api';
+const SITE_BASE = IS_LOCAL_DEV
+  ? 'http://localhost:3000'
+  : 'https://threadcub.com';
+
 // Temp flag: set to false to skip encryption entirely (for quick testing)
 const USE_ENCRYPTION = true;
 
+console.log(`🔌 ThreadCub ApiService: API_BASE = ${API_BASE} (IS_LOCAL_DEV=${IS_LOCAL_DEV})`);
+
 const ApiService = {
   // Base URL for all API calls
-  BASE_URL: 'https://threadcub.com',
+  BASE_URL: SITE_BASE,
 
   // =============================================================================
   // HELPER: Build headers with optional Bearer auth
@@ -148,7 +160,7 @@ const ApiService = {
             }, null, 2));
 
             didAttemptEncrypted = true;
-            const encResponse = await fetch('https://threadcub.com/api/conversations/save', {
+            const encResponse = await fetch(`${API_BASE}/conversations/save`, {
               method: 'POST',
               headers: headers,
               body: JSON.stringify({
@@ -216,7 +228,7 @@ const ApiService = {
 
       console.log('🔍 Sending unencrypted payload:', JSON.stringify(unencryptedPayload, null, 2));
 
-      const response = await fetch('https://threadcub.com/api/conversations/save', {
+      const response = await fetch(`${API_BASE}/conversations/save`, {
         method: 'POST',
         headers: headers,
         body: JSON.stringify(unencryptedPayload)
@@ -257,7 +269,7 @@ const ApiService = {
   async handleSaveConversation(data) {
     try {
       console.log('🐻 ApiService.handleSaveConversation: data keys:', Object.keys(data));
-      console.log('🐻 ApiService.handleSaveConversation: API URL:', 'https://threadcub.com/api/conversations/save');
+      console.log('🐻 ApiService.handleSaveConversation: API URL:', `${API_BASE}/conversations/save`);
 
       const headers = await this._buildHeaders({ 'Accept': 'application/json' });
       let didAttemptEncrypted = false;
@@ -287,7 +299,7 @@ const ApiService = {
             }));
 
             didAttemptEncrypted = true;
-            const encResponse = await fetch('https://threadcub.com/api/conversations/save', {
+            const encResponse = await fetch(`${API_BASE}/conversations/save`, {
               method: 'POST',
               headers: headers,
               body: JSON.stringify(encryptedPayload)
@@ -348,7 +360,7 @@ const ApiService = {
 
       console.log('🔍 ApiService.handleSaveConversation: Unencrypted payload:', JSON.stringify(unencryptedPayload, null, 2));
 
-      const response = await fetch('https://threadcub.com/api/conversations/save', {
+      const response = await fetch(`${API_BASE}/conversations/save`, {
         method: 'POST',
         headers: headers,
         body: JSON.stringify(unencryptedPayload)
@@ -396,7 +408,7 @@ const ApiService = {
   async createConversationWithTags(conversationData, tags) {
     const headers = await this._buildHeaders();
 
-    const response = await fetch('https://threadcub.com/api/conversations/tags/create', {
+    const response = await fetch(`${API_BASE}/conversations/tags/create`, {
       method: 'POST',
       headers: headers,
       body: JSON.stringify({
@@ -429,7 +441,7 @@ const ApiService = {
   async addTagsToExistingConversation(conversationId, tags) {
     const headers = await this._buildHeaders();
 
-    const response = await fetch(`https://threadcub.com/api/conversations/${conversationId}/tags`, {
+    const response = await fetch(`${API_BASE}/conversations/${conversationId}/tags`, {
       method: 'POST',
       headers: headers,
       body: JSON.stringify({
@@ -457,7 +469,7 @@ const ApiService = {
   // =============================================================================
 
   async fetchPrompts() {
-    const response = await fetch('https://threadcub.com/api/prompts');
+    const response = await fetch(`${API_BASE}/prompts`);
     const prompts = await response.json();
     console.log('📋 Loaded prompts:', prompts);
     return prompts;

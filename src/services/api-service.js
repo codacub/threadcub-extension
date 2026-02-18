@@ -120,15 +120,26 @@ const ApiService = {
       }
 
       const headers = await this._buildHeaders();
+
+      // Check if we have an auth token — guests skip encryption entirely
+      let hasAuthToken = false;
+      try {
+        if (typeof window !== 'undefined' && window.AuthService) {
+          const token = await window.AuthService.getToken();
+          hasAuthToken = !!token;
+        }
+      } catch (e) { /* ignore */ }
+      console.log('🔐 ApiService.saveConversation: hasAuthToken:', hasAuthToken);
+
       let didAttemptEncrypted = false;
 
       // -----------------------------------------------------------------
-      // Step 1: Try sending encrypted payload (if encryption is enabled)
+      // Step 1: Try sending encrypted payload (authenticated users only)
       // Uses CryptoJS.AES.encrypt with a fixed secret key.
       // Output is OpenSSL-compatible base64 (starts with "U2FsdGVkX1...").
       // Backend expects: { encrypted_payload: "base64...", title?, source? }
       // -----------------------------------------------------------------
-      if (USE_ENCRYPTION) {
+      if (USE_ENCRYPTION && hasAuthToken) {
         try {
           const CryptoJSLib = (typeof CryptoJS !== 'undefined') ? CryptoJS :
                               (typeof window !== 'undefined' && window.CryptoJS) ? window.CryptoJS :

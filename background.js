@@ -273,9 +273,34 @@ async function handleSaveConversation(data) {
     // -----------------------------------------------------------------
     if (BG_USE_ENCRYPTION) {
       try {
-        if (self.CryptoService) {
+        const CryptoJSLib = (typeof CryptoJS !== 'undefined') ? CryptoJS :
+                            (typeof self !== 'undefined' && self.CryptoJS) ? self.CryptoJS : null;
+
+        if (CryptoJSLib && CryptoJSLib.AES) {
           console.log('🔒 Background.handleSaveConversation: Encrypting payload before send...');
-          const encryptedBase64 = await self.CryptoService.encryptPayload(data);
+
+          // Try to use per-user encryption key, fall back to hardcoded key
+          const HARDCODED_KEY = 'threadcub-secure-grok-extension-key-2026-xai-prototype-v1-do-not-share';
+          let secretKey = HARDCODED_KEY;
+          try {
+            if (self.AuthService) {
+              const userKey = await self.AuthService.getEncryptionKey();
+              if (userKey) {
+                secretKey = userKey;
+                console.log('🔒 Background: Using per-user encryption key');
+              } else {
+                console.log('🔒 Background: No per-user key, using hardcoded fallback');
+              }
+            }
+          } catch (keyError) {
+            console.warn('🔒 Background: Error fetching per-user key:', keyError.message);
+          }
+
+          const conversationData = data.conversationData || data;
+          const encryptedBase64 = CryptoJSLib.AES.encrypt(
+            JSON.stringify(conversationData),
+            secretKey
+          ).toString();
 
           // Match backend schema: source (not platform), title, encrypted_payload
           const encryptedPayload = {
@@ -318,7 +343,7 @@ async function handleSaveConversation(data) {
           );
           // Fall through to unencrypted send below
         } else {
-          console.warn('🔒 Background.handleSaveConversation: CryptoService not available, skipping encryption');
+          console.warn('🔒 Background.handleSaveConversation: CryptoJS not available, skipping encryption');
         }
       } catch (encryptError) {
         if (encryptError.message.includes('Authentication expired')) {
@@ -729,7 +754,7 @@ function extractSupabaseAuthToken() {
 async function handleStoreAuthToken(request, sendResponse) {
   console.log('🔐 Background: Storing auth token from callback...');
   try {
-    const { token } = request;
+    const { token, encryptionKey } = request;
     if (!token) {
       sendResponse({ success: false, error: 'No token provided' });
       return;
@@ -737,11 +762,24 @@ async function handleStoreAuthToken(request, sendResponse) {
 
     await self.AuthService.storeToken(token);
 
+    // If encryptionKey was passed directly in the request, store it immediately
+    if (encryptionKey) {
+      console.log('🔐 Background: Storing per-user encryption key from auth callback...');
+      await self.AuthService.storeEncryptionKey(encryptionKey);
+    }
+
     // Validate the token and store user data
     const userData = await self.AuthService.validateToken(token);
     if (userData) {
       await self.AuthService.storeUser(userData);
       console.log('🔐 Background: Token stored and validated, user:', userData.email || userData.user?.email);
+
+      // Store per-user encryption key from validation response (if present and not already stored)
+      const userEncKey = userData.encryptionKey || userData.user?.encryptionKey;
+      if (userEncKey && !encryptionKey) {
+        console.log('🔐 Background: Storing per-user encryption key from validation response...');
+        await self.AuthService.storeEncryptionKey(userEncKey);
+      }
     }
 
     sendResponse({ success: true, user: userData });
@@ -795,7 +833,7 @@ chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => 
   if (request.action === 'storeAuthToken' && request.token) {
     console.log('🔐 Background: Auth callback received with token');
 
-    handleStoreAuthToken({ token: request.token }, sendResponse);
+    handleStoreAuthToken({ token: request.token, encryptionKey: request.encryptionKey }, sendResponse);
     return true;
   }
 

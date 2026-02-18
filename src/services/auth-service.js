@@ -12,6 +12,7 @@ const AuthService = {
   // Storage key for the auth token
   TOKEN_KEY: 'threadcub_auth_token',
   USER_KEY: 'threadcub_auth_user',
+  ENCRYPTION_KEY: 'threadcub_user_encryption_key',
 
   // API endpoints
   VALIDATE_URL: `${AUTH_BASE}/api/auth/validate`,
@@ -85,7 +86,7 @@ const AuthService = {
     console.log('🔐 AuthService: Clearing auth token...');
     return new Promise((resolve, reject) => {
       if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        chrome.storage.local.remove([this.TOKEN_KEY, this.USER_KEY], () => {
+        chrome.storage.local.remove([this.TOKEN_KEY, this.USER_KEY, this.ENCRYPTION_KEY], () => {
           if (chrome.runtime.lastError) {
             console.error('🔐 AuthService: Error clearing token:', chrome.runtime.lastError);
             reject(chrome.runtime.lastError);
@@ -98,6 +99,7 @@ const AuthService = {
         try {
           localStorage.removeItem(this.TOKEN_KEY);
           localStorage.removeItem(this.USER_KEY);
+          localStorage.removeItem(this.ENCRYPTION_KEY);
           resolve();
         } catch (error) {
           reject(error);
@@ -153,6 +155,66 @@ const AuthService = {
         try {
           const userData = localStorage.getItem(this.USER_KEY);
           resolve(userData ? JSON.parse(userData) : null);
+        } catch (error) {
+          resolve(null);
+        }
+      }
+    });
+  },
+
+  // =========================================================================
+  // ENCRYPTION KEY STORAGE
+  // =========================================================================
+
+  /**
+   * Store per-user encryption key from auth session
+   */
+  async storeEncryptionKey(key) {
+    console.log('🔐 AuthService: Storing per-user encryption key...');
+    return new Promise((resolve, reject) => {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({ [this.ENCRYPTION_KEY]: key }, () => {
+          if (chrome.runtime.lastError) {
+            console.error('🔐 AuthService: Error storing encryption key:', chrome.runtime.lastError);
+            reject(chrome.runtime.lastError);
+          } else {
+            console.log('🔐 AuthService: Per-user encryption key stored successfully');
+            resolve();
+          }
+        });
+      } else {
+        try {
+          localStorage.setItem(this.ENCRYPTION_KEY, key);
+          console.log('🔐 AuthService: Encryption key stored in localStorage (fallback)');
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
+      }
+    });
+  },
+
+  /**
+   * Get per-user encryption key from storage
+   * Returns null if no key stored
+   */
+  async getEncryptionKey() {
+    return new Promise((resolve) => {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.get([this.ENCRYPTION_KEY], (result) => {
+          if (chrome.runtime.lastError) {
+            console.log('🔐 AuthService: Error getting encryption key:', chrome.runtime.lastError);
+            resolve(null);
+          } else {
+            const key = result[this.ENCRYPTION_KEY] || null;
+            console.log('🔐 AuthService: Encryption key retrieved:', !!key);
+            resolve(key);
+          }
+        });
+      } else {
+        try {
+          const key = localStorage.getItem(this.ENCRYPTION_KEY);
+          resolve(key);
         } catch (error) {
           resolve(null);
         }

@@ -135,7 +135,22 @@ const ApiService = {
                               (typeof self !== 'undefined' && self.CryptoJS) ? self.CryptoJS : null;
 
           if (CryptoJSLib && CryptoJSLib.AES) {
-            const secretKey = 'threadcub-secure-grok-extension-key-2026-xai-prototype-v1-do-not-share';
+            // Try to use per-user encryption key, fall back to hardcoded key
+            const HARDCODED_KEY = 'threadcub-secure-grok-extension-key-2026-xai-prototype-v1-do-not-share';
+            let secretKey = HARDCODED_KEY;
+            try {
+              if (typeof window !== 'undefined' && window.AuthService) {
+                const userKey = await window.AuthService.getEncryptionKey();
+                if (userKey) {
+                  secretKey = userKey;
+                  console.log('🔒 Using per-user encryption key from storage');
+                } else {
+                  console.log('🔒 No per-user encryption key found, using hardcoded fallback');
+                }
+              }
+            } catch (keyError) {
+              console.warn('🔒 Error fetching per-user encryption key, using hardcoded fallback:', keyError.message);
+            }
 
             // Build the conversationData object to encrypt (same shape the server would store)
             const conversationData = apiData.conversationData || apiData;
@@ -279,12 +294,37 @@ const ApiService = {
       // -----------------------------------------------------------------
       if (USE_ENCRYPTION) {
         try {
-          const CryptoSvc = (typeof window !== 'undefined' && window.CryptoService) ||
-                             (typeof self !== 'undefined' && self.CryptoService);
+          const CryptoJSLib = (typeof CryptoJS !== 'undefined') ? CryptoJS :
+                              (typeof window !== 'undefined' && window.CryptoJS) ? window.CryptoJS :
+                              (typeof self !== 'undefined' && self.CryptoJS) ? self.CryptoJS : null;
 
-          if (CryptoSvc) {
+          if (CryptoJSLib && CryptoJSLib.AES) {
             console.log('🔒 ApiService.handleSaveConversation: Encrypting payload before send...');
-            const encryptedBase64 = await CryptoSvc.encryptPayload(data);
+
+            // Try to use per-user encryption key, fall back to hardcoded key
+            const HARDCODED_KEY = 'threadcub-secure-grok-extension-key-2026-xai-prototype-v1-do-not-share';
+            let secretKey = HARDCODED_KEY;
+            try {
+              const AuthSvc = (typeof window !== 'undefined' && window.AuthService) ||
+                               (typeof self !== 'undefined' && self.AuthService);
+              if (AuthSvc) {
+                const userKey = await AuthSvc.getEncryptionKey();
+                if (userKey) {
+                  secretKey = userKey;
+                  console.log('🔒 handleSaveConversation: Using per-user encryption key');
+                } else {
+                  console.log('🔒 handleSaveConversation: No per-user key, using hardcoded fallback');
+                }
+              }
+            } catch (keyError) {
+              console.warn('🔒 handleSaveConversation: Error fetching per-user key:', keyError.message);
+            }
+
+            const conversationData = data.conversationData || data;
+            const encryptedBase64 = CryptoJSLib.AES.encrypt(
+              JSON.stringify(conversationData),
+              secretKey
+            ).toString();
 
             const encryptedPayload = {
               encrypted_payload: encryptedBase64,

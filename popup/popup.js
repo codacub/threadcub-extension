@@ -129,9 +129,10 @@ function setupEventListeners() {
     const loginBtn = document.getElementById('loginBtn');
     if (loginBtn) {
         loginBtn.addEventListener('click', () => {
-            console.log('🔐 Popup: Login button clicked');
-            chrome.tabs.create({ url: 'https://threadcub.com/auth/extension-login' });
-        });
+    chrome.tabs.create({ url: 'https://threadcub.com/auth/extension-login' }, (tab) => {
+        chrome.storage.local.set({ threadcub_login_tab_id: tab.id })
+    })
+})
     }
 
     // Logout button

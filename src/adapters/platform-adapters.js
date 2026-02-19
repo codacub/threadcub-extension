@@ -471,25 +471,26 @@ class GrokAdapter extends BasePlatformAdapter {
    * @returns {string|null} - The conversation ID or null
    */
   getConversationId(url = window.location.href) {
-    // X.com Grok pattern: query parameter
-    if (url.includes('x.com')) {
-      // First try query parameter (current X.com format)
-      const urlObj = new URL(url);
-      const conversationParam = urlObj.searchParams.get('conversation');
-      if (conversationParam) {
-        return conversationParam;
-      }
-      
-      // Fallback: path-based (in case they change URL structure)
-      const xPattern = /\/i\/grok\/([a-zA-Z0-9_-]+)/;
-      const match = url.match(xPattern);
-      return match ? match[1] : null;
+  // X.com Grok pattern: query parameter
+  if (url.includes('x.com')) {
+    // First try query parameter (current X.com format)
+    const urlObj = new URL(url);
+    const conversationParam = urlObj.searchParams.get('conversation');
+    if (conversationParam) {
+      return conversationParam;
     }
     
-    // Grok.com pattern: might have conversation ID in URL or local storage
-    // For now, return null to use fallback ID generation
-    return null;
+    // Fallback: path-based (in case they change URL structure)
+    const xPattern = /\/i\/grok\/([a-zA-Z0-9_-]+)/;
+    const match = url.match(xPattern);
+    return match ? match[1] : null;
   }
+  
+  // grok.com pattern: /c/{conversation-id}
+  const grokPattern = /\/c\/([a-zA-Z0-9_-]+)/;
+  const match = url.match(grokPattern);
+  return match ? match[1] : null;
+}
 
   /**
    * Check if two URLs are the same conversation

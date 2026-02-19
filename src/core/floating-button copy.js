@@ -56,7 +56,6 @@ class ThreadCubFloatingButton {
     this.currentBearState = 'default';
     this.isExporting = false;
     this.lastExportTime = 0;
-    this.pendingCount = 0;
 
     console.log('🐻 ThreadCub: Starting floating button...');
 
@@ -69,8 +68,6 @@ class ThreadCubFloatingButton {
     // Removed addStyles() as it will be loaded via external CSS file
     this.setupEventListeners();
     this.loadPosition();
-    this.checkPendingQueue();
-    this.listenForPendingUpdates();
 
     console.log('🐻 ThreadCub: Floating button ready!');
   }
@@ -856,98 +853,6 @@ class ThreadCubFloatingButton {
     }
   }
 
-  // ===== PENDING SAVE QUEUE =====
-
-  /**
-   * Check background for any queued failed saves and update the badge.
-   */
-  async checkPendingQueue() {
-    try {
-      const response = await sendMessageWithRetry({ action: 'getPendingCount' });
-      if (response && response.success) {
-        this.updatePendingBadge(response.count);
-      }
-    } catch (e) {
-      // Background not ready yet — silently ignore
-    }
-  }
-
-  /**
-   * Listen for background notifications about queue changes.
-   */
-  listenForPendingUpdates() {
-    chrome.runtime.onMessage.addListener((message) => {
-      if (message.action === 'pendingSavesUpdated') {
-        this.updatePendingBadge(message.count);
-      }
-    });
-  }
-
-  /**
-   * Show/hide a badge on the bear button indicating pending failed saves.
-   * If count > 0, shows a red dot with a tooltip; clicking it triggers retry.
-   */
-  updatePendingBadge(count) {
-    this.pendingCount = count;
-    const existingBadge = this.button?.querySelector('#tc-pending-badge');
-
-    if (count === 0) {
-      if (existingBadge) existingBadge.remove();
-      return;
-    }
-
-    if (existingBadge) {
-      existingBadge.title = `${count} save(s) pending — click to retry`;
-      return;
-    }
-
-    // Create badge
-    const badge = document.createElement('div');
-    badge.id = 'tc-pending-badge';
-    badge.title = `${count} save(s) pending — click to retry`;
-    badge.style.cssText = `
-      position: absolute;
-      top: 2px;
-      right: 2px;
-      width: 14px;
-      height: 14px;
-      background: #ef4444;
-      border-radius: 50%;
-      border: 2px solid white;
-      cursor: pointer;
-      z-index: 10;
-      animation: tc-pulse 2s infinite;
-    `;
-
-    // Inject keyframe animation if not already present
-    if (!document.getElementById('tc-pending-style')) {
-      const style = document.createElement('style');
-      style.id = 'tc-pending-style';
-      style.textContent = `
-        @keyframes tc-pulse {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.7; transform: scale(1.2); }
-        }
-      `;
-      document.head.appendChild(style);
-    }
-
-    badge.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      badge.style.background = '#f59e0b'; // amber while retrying
-      badge.title = 'Retrying...';
-      try {
-        await sendMessageWithRetry({ action: 'retryPendingQueue' });
-        this.showSuccessToast('Retrying failed saves...');
-      } catch (err) {
-        this.showErrorToast('Retry failed — will try again on next load');
-      }
-    });
-
-    this.button.style.position = 'relative';
-    this.button.appendChild(badge);
-  }
-
   // ===== TOAST NOTIFICATIONS =====
   showSuccessToast(message = '✅ Success!') {
     window.UIComponents.showSuccessToast(message);
@@ -1209,7 +1114,6 @@ class ThreadCubFloatingButton {
 
         this.setBearExpression('happy');
         this.showSuccessToast('Conversation sent to ThreadCub!');
-        this.checkPendingQueue(); // refresh badge in case a retry just cleared items
 
         setTimeout(() => {
           if (this.currentBearState !== 'default') {

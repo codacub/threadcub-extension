@@ -28,6 +28,8 @@ const ConversationExtractor = {
       conversationData = this.extractDeepSeekConversation();
     } else if (hostname.includes('perplexity.ai')) {
       conversationData = this.extractPerplexityConversation();
+    } else if (hostname.includes('copilot.microsoft.com')) {
+      conversationData = this.extractCopilotConversation();
     } else {
       conversationData = this.extractGenericConversation();
     }
@@ -40,45 +42,69 @@ const ConversationExtractor = {
   // =============================================================================
 
   async extractClaudeConversation() {
-    console.log('🐻 ThreadCub: Starting SIMPLE WORKING Claude.ai extraction...');
+    console.log('🐻 ThreadCub: Extracting Claude.ai conversation...');
 
     const title = this.extractClaudeTitle();
+    const messages = [];
+    let messageIndex = 0;
 
-    try {
-      // Use the EXACT approach that worked in the diagnostic
-      const extractedMessages = this.simpleWorkingExtraction();
+    // User turns:      mb-1 mt-6 group
+    // Role is determined by the turn container class, not child elements.
+    const turns = document.querySelectorAll(
+      '[class*="mb-1"][class*="mt-6"][class*="group"], [class*="group relative"][class*="pb-3"]'
+    );
+    console.log(`🐻 ThreadCub: Found ${turns.length} Claude turns`);
 
-      const conversationData = {
-        title: title,
-        url: window.location.href,
-        timestamp: new Date().toISOString(),
-        platform: 'Claude.ai',
-        total_messages: extractedMessages.length,
-        messages: extractedMessages,
-        extraction_method: 'simple_working_extraction'
-      };
+    turns.forEach((turn, index) => {
+      try {
+        const children = Array.from(turn.children);
 
-      console.log(`🐻 ThreadCub: ✅ SIMPLE extraction complete: ${extractedMessages.length} messages`);
+        // Role is determined by the turn container class itself:
+        // mb-1 mt-6 in the class = user turn; pb-3 = assistant turn
+        const turnClass = typeof turn.className === 'string' ? turn.className : '';
+        const isUser = turnClass.includes('mt-6');
+        const role = isUser ? 'user' : 'assistant';
 
-      return conversationData;
+        // Collect text from substantive children — skip empty strings and timestamps like "09:20"
+        // For assistant turns: Claude's tool-use/thinking summaries live in row-start-1 inside
+        // a grid grid-rows-[auto_auto] wrapper. The actual response text is in row-start-2.
+        // We extract row-start-2 if present, otherwise fall back to the full child text.
+        const parts = children
+          .map(child => {
+            if (!isUser) {
+              // Look for the row-start-2 element (actual response content)
+              const responseRow = child.querySelector('[class*="row-start-2"]');
+              if (responseRow) return responseRow.innerText?.trim() || '';
+            }
+            return child.innerText?.trim() || '';
+          })
+          .filter(text => text.length > 10);
 
-    } catch (error) {
-      console.error('🐻 ThreadCub: Simple extraction failed:', error);
+        const text = parts.join('\n\n').trim();
 
-      // Fallback to working method
-      const fallbackMessages = this.workingContainerExtraction();
+        if (text.length > 0) {
+          messages.push({
+            id: messageIndex++,
+            role: role,
+            content: text,
+            timestamp: new Date().toISOString()
+          });
+        }
+      } catch (error) {
+        console.log(`🐻 ThreadCub: Error extracting Claude turn ${index}:`, error);
+      }
+    });
 
-      return {
-        title: title,
-        url: window.location.href,
-        timestamp: new Date().toISOString(),
-        platform: 'Claude.ai',
-        total_messages: fallbackMessages.length,
-        messages: fallbackMessages,
-        extraction_method: 'fallback_working_extraction',
-        error: error.message
-      };
-    }
+    console.log(`🐻 ThreadCub: ✅ Claude extraction complete: ${messages.length} messages`);
+
+    return {
+      title: title,
+      url: window.location.href,
+      timestamp: new Date().toISOString(),
+      platform: 'claude.ai',
+      total_messages: messages.length,
+      messages: messages
+    };
   },
 
   extractClaudeTitle() {
@@ -126,202 +152,12 @@ const ConversationExtractor = {
     return 'Untitled Conversation';
   },
 
-  simpleWorkingExtraction() {
-    console.log('🐻 ThreadCub: Using SIMPLE working extraction - copying diagnostic success...');
-
-    const messages = [];
-    let messageIndex = 0;
-
-    // Use the EXACT selector that worked in diagnostic
-    const elements = document.querySelectorAll('div[class*="flex"][class*="flex-col"]');
-    console.log(`🐻 ThreadCub: Found ${elements.length} flex elements`);
-
-    // Filter for elements with text (same as diagnostic)
-    const textElements = Array.from(elements).filter(el => {
-      const text = el.innerText?.trim() || '';
-      return text.length > 50; // Same threshold as diagnostic
-    });
-
-    console.log(`🐻 ThreadCub: Filtered to ${textElements.length} text elements`);
-
-    // Process each element (same as diagnostic)
-    textElements.forEach((element, index) => {
-      const text = element.innerText?.trim() || '';
-
-      if (text && text.length > 50) {
-        // Use ENHANCED role detection (FIX #1)
-        const role = this.enhancedRoleDetection(text, index);
-
-        messages.push({
-          id: messageIndex++,
-          role: role,
-          content: this.simpleCleanContent(text),
-          timestamp: new Date().toISOString(),
-          extractionMethod: 'simple_working',
-          selector_used: 'div[class*="flex"][class*="flex-col"]',
-          element_classes: element.className,
-          element_data_attrs: this.getDataAttributes(element)
-        });
-      }
-    });
-
-    console.log(`🐻 ThreadCub: Simple extraction found: ${messages.length} messages`);
-    return messages;
-  },
-
-  enhancedRoleDetection(text, index) {
-    console.log(`🔍 Enhanced role detection for message ${index}: "${text.substring(0, 50)}..."`);
-
-    // Method 1: Very specific content patterns from our actual conversation
-    const strongUserPatterns = [
-      /^I need help on a project/i,
-      /^What I don't understand/i,
-      /^Work from this\./i,
-      /^ok i think it work/i,
-      /^this is the new download/i,
-      /^back to \d+kb/i,
-      /^same size file again/i,
-      /^OH NO.*Back to 2KB/i,
-      /are we just guessing now/i,
-      /GOSH.*what did you do/i,
-      /^\d+KB now$/i,
-      /with the issues to fix/i,
-      /as much as i'd love to take snippets/i
-    ];
-
-    const strongAssistantPatterns = [
-      /^Looking at your/i,
-      /^Great! I can see/i,
-      /^You're absolutely right/i,
-      /^The extraction is/i,
-      /^We've gone backwards/i,
-      /^Same 2KB file/i,
-      /^BREAKTHROUGH!/i,
-      /^OH NO! We're back/i,
-      /^EXCELLENT!/i,
-      /^Absolutely!/i,
-      /SECTION 4[A-Z]-\d+:/,
-      /Replace your.*SECTION/i,
-      /Here's how to fix/i,
-      /The key breakthrough/i,
-      /This version is exactly/i,
-      /Looking at the current issues/i,
-      /Here's the complete SECTION/i
-    ];
-
-    // Check strong patterns first
-    for (const pattern of strongUserPatterns) {
-      if (pattern.test(text)) {
-        console.log(`🔍 Strong user pattern matched: ${pattern}`);
-        return 'user';
-      }
-    }
-
-    for (const pattern of strongAssistantPatterns) {
-      if (pattern.test(text)) {
-        console.log(`🔍 Strong assistant pattern matched: ${pattern}`);
-        return 'assistant';
-      }
-    }
-
-    // Method 2: Length-based heuristic (long responses usually assistant)
-    if (text.length > 3000) {
-      console.log(`🔍 Length-based: assistant (${text.length} chars)`);
-      return 'assistant';
-    }
-
-    // Method 3: Code detection (assistant responses often have code)
-    const codePatterns = [
-      /function\s+\w+\s*\(/,
-      /const\s+\w+\s*=/,
-      /console\.log\(/,
-      /document\.querySelector/,
-      /extractClaudeConversation/,
-      /ThreadCub:/,
-      /=>\s*\{/,
-      /async\s+function/,
-      /class\s+\w+/
-    ];
-
-    let codeMatches = 0;
-    codePatterns.forEach(pattern => {
-      if (pattern.test(text)) codeMatches++;
-    });
-
-    if (codeMatches >= 2) {
-      console.log(`🔍 Code-based: assistant (${codeMatches} code patterns)`);
-      return 'assistant';
-    }
-
-    // Method 4: Question vs statement detection
-    if (text.includes('?') && text.length < 500) {
-      console.log(`🔍 Question-based: user`);
-      return 'user';
-    }
-
-    // Method 5: File reference detection (user uploads files)
-    if (/\.(json|js|txt|csv)\b/i.test(text) && text.length < 200) {
-      console.log(`🔍 File reference: user`);
-      return 'user';
-    }
-
-    // Method 6: Fallback to alternating pattern
-    const role = index % 2 === 0 ? 'user' : 'assistant';
-    console.log(`🔍 Fallback alternating: ${role}`);
-    return role;
-  },
-
   simpleCleanContent(text) {
     return text
       .replace(/^\s+|\s+$/g, '')
       .replace(/\n{3,}/g, '\n\n')
       .replace(/^(Copy|Copy code|Share|Regenerate)$/gm, '')
       .trim();
-  },
-
-  getDataAttributes(element) {
-    const dataAttrs = {};
-    if (element && element.attributes) {
-      Array.from(element.attributes).forEach(attr => {
-        if (attr.name.startsWith('data-')) {
-          dataAttrs[attr.name] = attr.value;
-        }
-      });
-    }
-    return dataAttrs;
-  },
-
-  workingContainerExtraction() {
-    console.log('🐻 ThreadCub: Using working container extraction as fallback...');
-
-    const messages = [];
-    let messageIndex = 0;
-
-    try {
-      const containers = document.querySelectorAll('[data-testid^="conversation-turn"]');
-      console.log(`🐻 ThreadCub: Found ${containers.length} conversation turns`);
-
-      containers.forEach((container, index) => {
-        const text = container.innerText?.trim();
-        if (text && text.length > 50) {
-          const role = index % 2 === 0 ? 'user' : 'assistant';
-          messages.push({
-            id: messageIndex++,
-            role: role,
-            content: this.simpleCleanContent(text),
-            timestamp: new Date().toISOString(),
-            extractionMethod: 'working_container',
-            selector_used: '[data-testid^="conversation-turn"]'
-          });
-        }
-      });
-
-    } catch (error) {
-      console.error('🐻 ThreadCub: Container extraction error:', error);
-    }
-
-    console.log(`🐻 ThreadCub: Container extraction found: ${messages.length} messages`);
-    return messages;
   },
 
   // =============================================================================
@@ -443,74 +279,160 @@ const ConversationExtractor = {
   },
 
   // =============================================================================
+  // COPILOT EXTRACTION
+  // =============================================================================
+
+  extractCopilotConversation() {
+  console.log('🔵 ThreadCub: Extracting Copilot conversation...');
+
+  const messages = [];
+  let messageIndex = 0;
+
+  // Select all user and assistant turns in DOM order
+  const allTurns = document.querySelectorAll('[class*="group/user-message"], [class*="group/ai-message"]');
+
+  console.log(`🔵 ThreadCub: Found ${allTurns.length} Copilot turns`);
+
+  allTurns.forEach((element, index) => {
+    try {
+      const isUser = element.className.includes('group/user-message');
+      const role = isUser ? 'user' : 'assistant';
+
+      const text = element.innerText?.trim()
+        .replace(/^You said\s*/i, '')
+        .replace(/^Copilot said\s*/i, '')
+        .trim();
+
+      if (text && text.length > 2) {
+        messages.push({
+          id: messageIndex++,
+          role: role,
+          content: text,
+          timestamp: new Date().toISOString()
+        });
+      }
+    } catch (error) {
+      console.log(`🔵 ThreadCub: Error extracting Copilot turn ${index}:`, error);
+    }
+  });
+
+  // Remove consecutive duplicate messages caused by nested element matching
+  const deduped = messages.filter((msg, i) => {
+    if (i === 0) return true;
+    return msg.content !== messages[i - 1].content;
+  });
+
+  // Re-index after deduplication
+  deduped.forEach((msg, i) => { msg.id = i; });
+
+  // Title from first user message
+  const firstUserMsg = deduped.find(m => m.role === 'user')?.content;
+  const title = firstUserMsg && firstUserMsg.length > 3
+    ? (firstUserMsg.length > 80 ? firstUserMsg.substring(0, 77) + '...' : firstUserMsg)
+    : (document.title || 'Copilot Conversation');
+
+  const conversationData = {
+    title: title,
+    url: window.location.href,
+    timestamp: new Date().toISOString(),
+    platform: 'copilot',
+    total_messages: deduped.length,
+    messages: deduped
+  };
+
+  console.log(`🔵 ThreadCub: ✅ Copilot extraction complete: ${deduped.length} messages`);
+  return conversationData;
+},
+
+  // =============================================================================
   // GROK EXTRACTION
   // Uses aria-label="Grok" to identify assistant messages
   // =============================================================================
 
   extractGrokConversation() {
-    console.log('🤖 ThreadCub: Starting Grok extraction (aria-label based)...');
+  console.log('🤖 ThreadCub: Starting Grok extraction (aria-label based)...');
 
-    const hostname = window.location.hostname;
+  const hostname = window.location.hostname;
+  let platform = 'x';
+  if (hostname.includes('grok.com') || hostname.includes('grok.x.ai')) {
+    platform = 'Grok';
+  }
+  console.log(`🤖 ThreadCub: Grok platform resolved as: ${platform} (hostname: ${hostname})`);
 
-    // Determine the correct platform/source based on which domain we're on
-    // grok.com / grok.x.ai → 'grok', x.com/i/grok → 'x'
-    let platform;
-    if (hostname.includes('grok.com') || hostname.includes('grok.x.ai')) {
-      platform = 'Grok';
-    } else {
-      platform = 'X';
-    }
-    console.log(`🤖 ThreadCub: Grok platform resolved as: ${platform} (hostname: ${hostname})`);
+  try {
+    const extractedMessages = this.grokAriaLabelExtraction();
 
-    // Extract conversation title from DOM (document.title is usually just "Grok" or "Grok / X")
-    const title = this.extractGrokTitle();
+    // Extract title, passing messages so x.com can use first user message
+    const title = this.extractGrokTitle(extractedMessages);
 
-    try {
-      // Use aria-label based extraction for Grok
-      const extractedMessages = this.grokAriaLabelExtraction();
+    return {
+      title: title,
+      url: window.location.href,
+      platform: platform,
+      messages: extractedMessages,
+      total_messages: extractedMessages.length,
+      extraction_method: 'grok_aria_label_extraction'
+    };
 
-      const conversationData = {
-        title: title,
-        url: window.location.href,
-        timestamp: new Date().toISOString(),
-        platform: platform,
-        total_messages: extractedMessages.length,
-        messages: extractedMessages,
-        extraction_method: 'grok_aria_label_extraction'
-      };
+    console.log(`🤖 ThreadCub: ✅ Grok extraction complete: ${extractedMessages.length} messages`);
 
-      console.log(`🤖 ThreadCub: ✅ Grok extraction complete: ${extractedMessages.length} messages`);
+  } catch (error) {
+    console.error('🤖 ThreadCub: Grok extraction failed:', error);
 
-      return conversationData;
+    const fallbackMessages = this.grokSpanFallbackExtraction();
+    const title = this.extractGrokTitle(fallbackMessages);
 
-    } catch (error) {
-      console.error('🤖 ThreadCub: Grok extraction failed:', error);
-
-      // Fallback to span-based extraction
-      const fallbackMessages = this.grokSpanFallbackExtraction();
-
-      return {
-        title: title,
-        url: window.location.href,
-        timestamp: new Date().toISOString(),
-        platform: platform,
-        total_messages: fallbackMessages.length,
-        messages: fallbackMessages,
-        extraction_method: 'grok_span_fallback_extraction',
-        error: error.message
-      };
-    }
-  },
+    return {
+      title: title,
+      url: window.location.href,
+      platform: platform,
+      messages: fallbackMessages,
+      total_messages: fallbackMessages?.length || 0,
+      extraction_method: 'grok_span_fallback_extraction',
+    };
+  }
+},
 
   /**
    * Extract conversation title for Grok.
    * Tries multiple DOM strategies since document.title is usually just "Grok" or "Grok / X".
    */
-  extractGrokTitle() {
-    console.log('🤖 ThreadCub: Extracting Grok conversation title...');
+  extractGrokTitle(messages = []) {
+  console.log('🤖 ThreadCub: Extracting Grok conversation title...');
 
-    // Strategy 1: Look for a conversation title heading in the chat area
-    // Grok sometimes puts a title/heading above the conversation
+  // Strategy 0: Match current URL's conversation ID to a sidebar link
+  try {
+    const currentUrl = window.location.href;
+    let conversationId = null;
+
+    // grok.com: /c/{id}
+    const grokMatch = currentUrl.match(/\/c\/([a-zA-Z0-9_-]+)/);
+    if (grokMatch) conversationId = grokMatch[1];
+
+    // x.com: ?conversation={id}
+    if (!conversationId) {
+      const urlObj = new URL(currentUrl);
+      conversationId = urlObj.searchParams.get('conversation');
+    }
+
+    if (conversationId) {
+      const matchingLink = document.querySelector(`a[href*="${conversationId}"]`);
+      if (matchingLink) {
+        const text = matchingLink.textContent?.trim();
+        if (text && text.length > 3 && text.length < 200 &&
+            !['Grok', 'Grok / X', 'X', 'Home', 'Explore', 'New Chat'].includes(text)) {
+          console.log('🤖 ThreadCub: Title from URL-matched sidebar link:', text);
+          return text;
+        }
+      }
+    }
+  } catch (e) {
+    console.log('🤖 ThreadCub: Strategy 0 failed:', e.message);
+  }
+
+  // Strategy 1: Look for a conversation title heading in the chat area
+  // Skip entirely on x.com - title is not in the DOM when sidebar is closed
+  if (!window.location.hostname.includes('x.com')) {
     const headingSelectors = [
       'h1', 'h2',
       '[class*="title"]',
@@ -523,11 +445,12 @@ const ConversationExtractor = {
         const headings = document.querySelectorAll(selector);
         for (const heading of headings) {
           const text = heading.textContent?.trim();
-          // Must be meaningful text, not just "Grok" or UI labels
           if (text && text.length > 3 && text.length < 200 &&
               !['Grok', 'Grok / X', 'X', 'Home', 'Explore', 'Messages', 'Settings'].includes(text) &&
               !heading.closest('nav') && !heading.closest('header') &&
-              !heading.closest('[data-testid="sidebarColumn"]')) {
+              !heading.closest('[data-testid="sidebarColumn"]') &&
+              !heading.closest('#threadcub-side-panel') &&
+              !heading.closest('[class*="threadcub"]')) {
             console.log('🤖 ThreadCub: Title from heading element:', text);
             return text;
           }
@@ -536,8 +459,11 @@ const ConversationExtractor = {
         // continue to next selector
       }
     }
+  }
 
-    // Strategy 2: Look for the active/selected conversation in the sidebar
+  // Strategy 2: Look for the active/selected conversation in the sidebar
+  // Skip on x.com - sidebar is a closed drawer, links not in DOM
+  if (!window.location.hostname.includes('x.com')) {
     const sidebarSelectors = [
       'nav a[aria-current="page"]',
       'nav a[class*="active"]',
@@ -563,360 +489,110 @@ const ConversationExtractor = {
         // continue
       }
     }
+  }
 
-    // Strategy 3: Try document.title with Grok/X suffixes stripped
-    const pageTitle = document.title
-      .replace(/\s*[-–|\/]\s*Grok\s*/gi, '')
-      .replace(/\s*[-–|\/]\s*X\s*/gi, '')
-      .replace(/^Grok\s*[-–|\/]?\s*/i, '')
-      .replace(/^X\s*[-–|\/]?\s*/i, '')
-      .trim();
+  // Strategy 3: Try document.title with Grok/X suffixes stripped
+  const pageTitle = document.title
+    .replace(/\s*[-–|\/]\s*Grok\s*/gi, '')
+    .replace(/\s*[-–|\/]\s*X\s*/gi, '')
+    .replace(/^Grok\s*[-–|\/]?\s*/i, '')
+    .replace(/^X\s*[-–|\/]?\s*/i, '')
+    .trim();
 
-    if (pageTitle && pageTitle.length > 3 &&
-        !['Grok', 'X', 'Grok / X'].includes(pageTitle)) {
-      console.log('🤖 ThreadCub: Title from document.title:', pageTitle);
-      return pageTitle;
+  if (pageTitle && pageTitle.length > 3 &&
+      !['Grok', 'X', 'Grok / X'].includes(pageTitle)) {
+    console.log('🤖 ThreadCub: Title from document.title:', pageTitle);
+    return pageTitle;
+  }
+
+  // Strategy 4: Use first user message from already-extracted messages array
+  try {
+    const firstUserMsg = messages.find(m => m.role === 'user')?.content;
+    if (firstUserMsg && firstUserMsg.length > 3) {
+      const truncated = firstUserMsg.length > 80
+        ? firstUserMsg.substring(0, 77) + '...'
+        : firstUserMsg;
+      console.log('🤖 ThreadCub: Title from first extracted user message:', truncated);
+      return truncated;
     }
+  } catch (e) {
+    console.log('🤖 ThreadCub: Strategy 4 failed:', e.message);
+  }
 
-    // Strategy 4: Use the first user message as title (truncated)
-    try {
-      const firstUserMsg = this.getFirstGrokUserMessage();
-      if (firstUserMsg && firstUserMsg.length > 3) {
-        const truncated = firstUserMsg.length > 80
-          ? firstUserMsg.substring(0, 77) + '...'
-          : firstUserMsg;
-        console.log('🤖 ThreadCub: Title from first user message:', truncated);
-        return truncated;
-      }
-    } catch (e) {
-      console.log('🤖 ThreadCub: Could not extract first user message for title:', e.message);
-    }
-
-    // Fallback
-    console.log('🤖 ThreadCub: Using fallback Grok title');
-    return 'Grok Conversation';
-  },
+  console.log('🤖 ThreadCub: Using fallback Grok title');
+  return 'Grok Conversation';
+},
 
   /**
    * Get the first user message text from the Grok page for title fallback.
+   * User bubbles are identified by the bg-surface-l1 class.
    */
   getFirstGrokUserMessage() {
-    // Find text elements NOT inside div[aria-label="Grok"] (i.e., user messages)
-    const grokContainers = document.querySelectorAll('div[aria-label="Grok"]');
-    const grokSet = new Set(grokContainers);
-
-    // Try message containers first
-    const containerSelectors = [
-      'div.message-bubble',
-      'div[class*="message-bubble"]',
-      'div[class*="message"]'
-    ];
-
-    for (const selector of containerSelectors) {
-      const containers = document.querySelectorAll(selector);
-      for (const container of containers) {
-        const text = container.textContent?.trim() || '';
-        if (text.length < 10) continue;
-        // Check it's NOT a Grok (assistant) message
-        let isGrok = grokSet.has(container) ||
-                     container.getAttribute('aria-label') === 'Grok';
-        if (!isGrok) {
-          let parent = container.parentElement;
-          while (parent) {
-            if (parent.getAttribute && parent.getAttribute('aria-label') === 'Grok') {
-              isGrok = true;
-              break;
-            }
-            parent = parent.parentElement;
-          }
-        }
-        if (!isGrok) {
-          return text;
-        }
+    const allBubbles = Array.from(document.querySelectorAll('[class*="message-bubble"]'));
+    const topLevel = allBubbles.filter(el => !el.parentElement?.closest('[class*="message-bubble"]'));
+    for (const bubble of topLevel) {
+      const cls = typeof bubble.className === 'string' ? bubble.className : '';
+      if (cls.includes('bg-surface-l1')) {
+        const text = bubble.innerText?.trim() || '';
+        if (text.length > 10) return text;
       }
     }
-
     return null;
   },
 
-  // Grok extraction using aria-label="Grok" to identify assistant messages
+  // Grok extraction using message-bubble class to identify and distinguish messages.
+  // Role detection: user bubbles have bg-surface-l1 class; assistant bubbles do not.
   grokAriaLabelExtraction() {
-    console.log('🤖 ThreadCub: Using Grok aria-label extraction...');
+    console.log('🤖 ThreadCub: Using Grok message-bubble class extraction...');
 
     const messages = [];
     let messageIndex = 0;
 
-    // ---------------------------------------------------------------
-    // Strategy 1: Container-based extraction (most reliable)
-    // Find message containers and check aria-label for role detection
-    // ---------------------------------------------------------------
-    const containerSelectors = [
-      'div.message-bubble',
-      'div[class*="message-bubble"]',
-      'div[class*="message"]',
-      'article',
-      'div[role="article"]'
-    ];
+    // Get all message bubbles, then keep only top-level ones
+    // (filter out nested bubbles that are children of another bubble)
+    const allBubbles = Array.from(document.querySelectorAll('[class*="message-bubble"]'));
+    const topLevelBubbles = allBubbles.filter(el =>
+      !el.parentElement?.closest('[class*="message-bubble"]')
+    );
 
-    let messageContainers = [];
-    for (const selector of containerSelectors) {
-      const found = document.querySelectorAll(selector);
-      // Filter to elements with substantial text and no ThreadCub UI
-      const filtered = Array.from(found).filter(el => {
-        const text = el.textContent?.trim() || '';
-        if (text.length < 20) return false;
-        // Exclude ThreadCub UI elements
-        if (el.id && el.id.includes('threadcub')) return false;
-        if (el.className && typeof el.className === 'string' && el.className.includes('threadcub')) return false;
-        return true;
-      });
-      if (filtered.length > 0) {
-        console.log(`🤖 ThreadCub: Container selector '${selector}' found ${filtered.length} elements`);
-        messageContainers = filtered;
-        break;
-      }
-    }
-
-    if (messageContainers.length > 0) {
-      const processedTexts = new Set();
-
-      messageContainers.forEach((container) => {
-        const text = container.textContent?.trim() || '';
-        if (text.length < 20 || processedTexts.has(text)) return;
-        // Skip UI-only elements
-        if (['Copy', 'Share', 'Grok', 'More'].includes(text)) return;
-
-        processedTexts.add(text);
-
-        // Check if this container is inside or is a Grok (assistant) container
-        const isGrokMessage = container.getAttribute('aria-label') === 'Grok' ||
-                              this.hasAncestorWithAriaLabel(container, 'Grok');
-
-        messages.push({
-          id: messageIndex++,
-          role: isGrokMessage ? 'assistant' : 'user',
-          content: this.simpleCleanContent(text),
-          timestamp: new Date().toISOString(),
-          extractionMethod: 'grok_container',
-          hasGrokAncestor: isGrokMessage
-        });
-      });
-
-      if (messages.length > 0) {
-        console.log(`🤖 ThreadCub: Container-based extraction found: ${messages.length} messages`);
-        return messages;
-      }
-    }
-
-    // ---------------------------------------------------------------
-    // Strategy 2: Collect all Grok assistant containers and all
-    //             content outside them as user messages
-    // ---------------------------------------------------------------
-    const grokContainers = document.querySelectorAll('div[aria-label="Grok"]');
-    console.log(`🤖 ThreadCub: Found ${grokContainers.length} Grok aria-label containers`);
-
-    if (grokContainers.length > 0) {
-      // Build a set of assistant message positions for DOM ordering
-      const allMessageNodes = [];
-
-      grokContainers.forEach((container) => {
-        const text = container.textContent?.trim() || '';
-        if (text.length > 20) {
-          allMessageNodes.push({
-            element: container,
-            role: 'assistant',
-            content: this.simpleCleanContent(text)
-          });
-        }
-      });
-
-      // Find user messages: siblings or adjacent containers that are NOT inside Grok containers
-      // Walk up from each Grok container to find the parent that holds both user and assistant turns
-      if (grokContainers.length > 0) {
-        const firstGrok = grokContainers[0];
-        const turnParent = firstGrok.parentElement?.parentElement || firstGrok.parentElement;
-        if (turnParent) {
-          const siblings = Array.from(turnParent.children);
-          siblings.forEach((sibling) => {
-            // Skip if this IS a Grok container or contains one
-            if (sibling.getAttribute('aria-label') === 'Grok') return;
-            if (sibling.querySelector('div[aria-label="Grok"]')) return;
-
-            const text = sibling.textContent?.trim() || '';
-            if (text.length > 10 && !['Copy', 'Share', 'Grok', 'More'].includes(text)) {
-              allMessageNodes.push({
-                element: sibling,
-                role: 'user',
-                content: this.simpleCleanContent(text)
-              });
-            }
-          });
-        }
-      }
-
-      // Sort by DOM position
-      allMessageNodes.sort((a, b) => {
-        const pos = a.element.compareDocumentPosition(b.element);
-        return (pos & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1;
-      });
-
-      const processedTexts = new Set();
-      allMessageNodes.forEach((node) => {
-        if (!processedTexts.has(node.content) && node.content.length > 10) {
-          processedTexts.add(node.content);
-          messages.push({
-            id: messageIndex++,
-            role: node.role,
-            content: node.content,
-            timestamp: new Date().toISOString(),
-            extractionMethod: 'grok_aria_siblings'
-          });
-        }
-      });
-
-      if (messages.length > 0) {
-        console.log(`🤖 ThreadCub: Sibling-based extraction found: ${messages.length} messages`);
-        return messages;
-      }
-    }
-
-    // ---------------------------------------------------------------
-    // Strategy 3: Span-based fallback with aria-label check
-    // ---------------------------------------------------------------
-    console.log('🤖 ThreadCub: Falling back to span-based extraction...');
-
-    const spanSelectors = [
-      'span[class*="css-1jxf684"]',
-      'span[class*="css-"]',
-      'div[class*="prose"]',
-      'p'
-    ];
-
-    let allTextSpans = [];
-    for (const selector of spanSelectors) {
-      allTextSpans = document.querySelectorAll(selector);
-      if (allTextSpans.length > 0) {
-        console.log(`🤖 ThreadCub: Span selector '${selector}' found ${allTextSpans.length} elements`);
-        break;
-      }
-    }
+    console.log(`🤖 ThreadCub: Found ${allBubbles.length} total, ${topLevelBubbles.length} top-level message bubbles`);
 
     const processedTexts = new Set();
 
-    allTextSpans.forEach((element) => {
-      const text = element.textContent?.trim() || '';
-      if (text.length < 20 || processedTexts.has(text)) return;
+    topLevelBubbles.forEach((bubble) => {
+      // Skip ThreadCub UI elements
+      if (bubble.id?.includes('threadcub')) return;
+      if (typeof bubble.className === 'string' && bubble.className.includes('threadcub')) return;
+
+      const text = bubble.innerText?.trim() || '';
+      if (text.length < 10 || processedTexts.has(text)) return;
       if (['Copy', 'Share', 'Grok', 'More'].includes(text)) return;
 
       processedTexts.add(text);
 
-      const isGrokMessage = this.hasAncestorWithAriaLabel(element, 'Grok');
+      // User bubbles have bg-surface-l1 (styled card with border/padding)
+      // Assistant bubbles have w-full max-w-none (full-width, no background card)
+      const cls = typeof bubble.className === 'string' ? bubble.className : '';
+      const isUser = cls.includes('bg-surface-l1');
+
       messages.push({
         id: messageIndex++,
-        role: isGrokMessage ? 'assistant' : 'user',
+        role: isUser ? 'user' : 'assistant',
         content: this.simpleCleanContent(text),
         timestamp: new Date().toISOString(),
-        extractionMethod: 'grok_span_aria',
-        hasGrokAncestor: isGrokMessage
+        extractionMethod: 'grok_bubble_class'
       });
     });
 
-    console.log(`🤖 ThreadCub: Grok aria-label extraction found: ${messages.length} messages`);
+    console.log(`🤖 ThreadCub: Grok extraction found: ${messages.length} messages`);
     return messages;
   },
 
-  // Helper: Check if element has an ancestor with specific aria-label
-  hasAncestorWithAriaLabel(element, label) {
-    let current = element.parentElement;
-    while (current) {
-      if (current.getAttribute && current.getAttribute('aria-label') === label) {
-        return true;
-      }
-      current = current.parentElement;
-    }
-    return false;
-  },
-
-  // Grok fallback extraction using span classes
+  // Grok fallback extraction — same class-based approach, broader selector
   grokSpanFallbackExtraction() {
-    console.log('🤖 ThreadCub: Using Grok span fallback extraction...');
-
-    const messages = [];
-    let messageIndex = 0;
-
-    try {
-      // Try multiple selector strategies
-      const selectors = [
-        'div.message-bubble',
-        'div[class*="message-bubble"]',
-        'span[class*="css-1jxf684"]',
-        'div[class*="message"]',
-        'article',
-        'div[role="article"]',
-        'div.prose',
-        'div[class*="text-"]'
-      ];
-
-      let elements = [];
-      for (const selector of selectors) {
-        elements = document.querySelectorAll(selector);
-        console.log(`🤖 ThreadCub: Trying ${selector}: found ${elements.length} elements`);
-        if (elements.length > 1) {
-          break;
-        }
-      }
-
-      const processedTexts = new Set();
-
-      Array.from(elements).forEach((element, index) => {
-        const text = element.textContent?.trim();
-        if (text && text.length > 20 && text.length < 10000 && !processedTexts.has(text)) {
-          // Skip UI elements
-          if (text.includes('Copy') || text.includes('Share') || text === 'Grok' ||
-              element.querySelector('button') || element.querySelector('input')) {
-            return;
-          }
-          // Skip ThreadCub UI
-          if (element.id && element.id.includes('threadcub')) return;
-          if (element.className && typeof element.className === 'string' && element.className.includes('threadcub')) return;
-
-          processedTexts.add(text);
-
-          // Primary: check for aria-label="Grok" in hierarchy
-          let role;
-          if (element.getAttribute('aria-label') === 'Grok' ||
-              this.hasAncestorWithAriaLabel(element, 'Grok')) {
-            role = 'assistant';
-          }
-          // Secondary: content-based heuristics
-          else if (text.includes('```') || text.length > 500) {
-            role = 'assistant';
-          }
-          else if (text.includes('?') && text.length < 200) {
-            role = 'user';
-          }
-          // Last resort: alternating pattern
-          else {
-            role = index % 2 === 0 ? 'user' : 'assistant';
-          }
-
-          messages.push({
-            id: messageIndex++,
-            role: role,
-            content: this.simpleCleanContent(text),
-            timestamp: new Date().toISOString(),
-            extractionMethod: 'grok_span_fallback',
-            selector_used: element.tagName.toLowerCase()
-          });
-        }
-      });
-
-    } catch (error) {
-      console.error('🤖 ThreadCub: Grok span fallback extraction error:', error);
-    }
-
-    console.log(`🤖 ThreadCub: Grok span fallback extraction found: ${messages.length} messages`);
-    return messages;
+    console.log('🤖 ThreadCub: Using Grok fallback extraction...');
+    // Delegate to the primary method — same logic works as fallback
+    return this.grokAriaLabelExtraction();
   },
 
   // =============================================================================
@@ -1009,10 +685,18 @@ const ConversationExtractor = {
     console.log('🔮 ThreadCub: Starting Perplexity extraction...');
 
     // Extract title from page title or first user query
-    const title = document.title
-      .replace(' - Perplexity', '')
-      .replace(' | Perplexity', '')
-      .trim() || 'Perplexity Conversation';
+    const rawTitle = document.title
+  .replace(' - Perplexity', '')
+  .replace(' | Perplexity', '')
+  .trim();
+
+// Strip markdown link syntax e.g. [text](url) → text
+const title = (rawTitle
+  .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')  // [text](url) → text
+  .replace(/https?:\/\/\S+/g, '')            // remove bare URLs
+  .trim()
+  .substring(0, 80)
+  || 'Perplexity Conversation');
 
     try {
       const extractedMessages = this.perplexityDOMExtraction();
@@ -1103,19 +787,33 @@ const ConversationExtractor = {
     // Sort by DOM position to maintain conversation order
     allMessages.sort((a, b) => a.position - b.position);
 
-    // Convert to final message format
+    // Merge consecutive assistant messages into one.
+    // Perplexity splits a single response across multiple div[id^="markdown-content"]
+    // elements (e.g. one per source/section block). After sorting by DOM position,
+    // any run of consecutive assistant entries belongs to the same response turn.
+    const merged = [];
     allMessages.forEach((msg) => {
+      const prev = merged[merged.length - 1];
+      if (prev && prev.role === 'assistant' && msg.role === 'assistant') {
+        // Append to the previous assistant turn rather than creating a new one
+        prev.content += '\n\n' + msg.content;
+      } else {
+        merged.push({ role: msg.role, content: msg.content });
+      }
+    });
+
+    // Convert to final message format
+    merged.forEach((msg) => {
       messages.push({
         id: messageIndex++,
         role: msg.role,
         content: msg.content,
         timestamp: new Date().toISOString(),
-        extractionMethod: 'perplexity_dom',
-        selector_used: msg.role === 'user' ? 'h1[class*="group/query"]' : 'div[id^="markdown-content"]'
+        extractionMethod: 'perplexity_dom'
       });
     });
 
-    console.log(`🔮 ThreadCub: Perplexity DOM extraction found: ${messages.length} messages`);
+    console.log(`🔮 ThreadCub: Perplexity DOM extraction found: ${messages.length} messages (merged from ${allMessages.length} raw elements)`);
     return messages;
   },
 

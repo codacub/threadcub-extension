@@ -35,19 +35,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       handleDownload(request, sendResponse);
       return true;
     
-    case 'retryPendingQueue':
-      flushPendingQueue()
-        .then(() => sendResponse({ success: true }))
-        .catch(error => sendResponse({ success: false, error: error.message }));
-      return true;
-
-    case 'getPendingCount':
-      chrome.storage.local.get(TC_PENDING_KEY).then(stored => {
-        const queue = stored[TC_PENDING_KEY] || [];
-        sendResponse({ success: true, count: queue.length });
-      });
-      return true;
-
     case 'saveConversation':
       handleSaveConversation(request.data)
         .then(result => sendResponse({ success: true, data: result }))
@@ -432,100 +419,9 @@ async function handleSaveConversation(data) {
 
   } catch (error) {
     console.error('🐻 Background: Error in handleSaveConversation:', error);
-
-    // Don't queue auth errors — user needs to log in again
-    if (!error.message.includes('Authentication expired')) {
-      await queueFailedSave(data);
-    }
-
     throw error;
   }
 }
-
-// === SECTION 3b: Offline Queue & Retry Logic ===
-
-const TC_PENDING_KEY = 'tc_pending_saves';
-const TC_QUEUE_MAX   = 10;
-
-/**
- * Store a failed save payload in the offline queue.
- * Caps at TC_QUEUE_MAX items (oldest dropped first).
- */
-async function queueFailedSave(data) {
-  try {
-    const stored = await chrome.storage.local.get(TC_PENDING_KEY);
-    const queue  = stored[TC_PENDING_KEY] || [];
-
-    queue.push({ data, queuedAt: Date.now(), attempts: 1 });
-
-    // Drop oldest if over cap
-    while (queue.length > TC_QUEUE_MAX) queue.shift();
-
-    await chrome.storage.local.set({ [TC_PENDING_KEY]: queue });
-    console.log(`🔄 Background: Queued failed save. Queue length: ${queue.length}`);
-
-    // Notify any open content scripts so they can show the badge
-    chrome.tabs.query({}, tabs => {
-      tabs.forEach(tab => {
-        chrome.tabs.sendMessage(tab.id, {
-          action: 'pendingSavesUpdated',
-          count: queue.length
-        }).catch(() => {}); // tabs without content script will reject — that's fine
-      });
-    });
-  } catch (e) {
-    console.warn('🔄 Background: Could not queue save:', e.message);
-  }
-}
-
-/**
- * Attempt to flush all queued saves.
- * Removes items that succeed; leaves items that fail again.
- */
-async function flushPendingQueue() {
-  try {
-    const stored = await chrome.storage.local.get(TC_PENDING_KEY);
-    const queue  = stored[TC_PENDING_KEY] || [];
-
-    if (queue.length === 0) return;
-
-    console.log(`🔄 Background: Flushing ${queue.length} pending save(s)...`);
-
-    const remaining = [];
-
-    for (const item of queue) {
-      try {
-        await handleSaveConversation(item.data);
-        console.log('🔄 Background: Queued save succeeded ✅');
-      } catch (err) {
-        item.attempts = (item.attempts || 1) + 1;
-        console.warn(`🔄 Background: Queued save still failing (attempt ${item.attempts}):`, err.message);
-        remaining.push(item);
-      }
-    }
-
-    await chrome.storage.local.set({ [TC_PENDING_KEY]: remaining });
-    console.log(`🔄 Background: Queue flush done. ${remaining.length} item(s) still pending.`);
-
-    // Notify content scripts of updated count
-    chrome.tabs.query({}, tabs => {
-      tabs.forEach(tab => {
-        chrome.tabs.sendMessage(tab.id, {
-          action: 'pendingSavesUpdated',
-          count: remaining.length
-        }).catch(() => {});
-      });
-    });
-  } catch (e) {
-    console.warn('🔄 Background: Error flushing queue:', e.message);
-  }
-}
-
-// Flush queue on browser/extension startup
-chrome.runtime.onStartup.addListener(() => {
-  console.log('🔄 Background: onStartup — checking for pending saves...');
-  flushPendingQueue();
-});
 
 // === SECTION 4: Cross-Tab Continuation System ===
 
@@ -713,7 +609,6 @@ function injectPromptFunction(prompt, selectors) {
 
 chrome.runtime.onStartup.addListener(() => {
   console.log('🐻 Background: Extension started');
-  // Queue flush is also triggered by the onStartup listener in Section 3b
 });
 
 console.log('🐻 ThreadCub background script loaded and ready');

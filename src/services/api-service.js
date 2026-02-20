@@ -29,6 +29,15 @@ function _getCryptoService() {
   return null;
 }
 
+// ---------------------------------------------------------------------------
+// Helper: resolve AuthService from any context (window or service worker self)
+// ---------------------------------------------------------------------------
+function _getAuthService() {
+  if (typeof window !== 'undefined' && window.AuthService) return window.AuthService;
+  if (typeof self !== 'undefined' && self.AuthService) return self.AuthService;
+  return null;
+}
+
 const ApiService = {
   // Base URL for all API calls
   BASE_URL: SITE_BASE,
@@ -45,8 +54,9 @@ const ApiService = {
 
     // Get auth token from AuthService if available
     try {
-      if (typeof window !== 'undefined' && window.AuthService) {
-        const token = await window.AuthService.getToken();
+      const AuthSvc = _getAuthService();
+      if (AuthSvc) {
+        const token = await AuthSvc.getToken();
         if (token) {
           headers['Authorization'] = `Bearer ${token}`;
           console.log('🔐 ApiService: Added Bearer auth header');
@@ -66,8 +76,9 @@ const ApiService = {
   async _handleUnauthorized() {
     console.log('🔐 ApiService: Received 401, clearing expired token...');
     try {
-      if (typeof window !== 'undefined' && window.AuthService) {
-        await window.AuthService.clearToken();
+      const AuthSvc = _getAuthService();
+      if (AuthSvc) {
+        await AuthSvc.clearToken();
       }
     } catch (error) {
       console.log('🔐 ApiService: Error clearing token:', error.message);
@@ -129,8 +140,9 @@ const ApiService = {
       // Check if we have an auth token — guests skip encryption entirely
       let hasAuthToken = false;
       try {
-        if (typeof window !== 'undefined' && window.AuthService) {
-          const token = await window.AuthService.getToken();
+        const AuthSvc = _getAuthService();
+        if (AuthSvc) {
+          const token = await AuthSvc.getToken();
           hasAuthToken = !!token;
         }
       } catch (e) { /* ignore */ }
@@ -227,11 +239,9 @@ const ApiService = {
 
       console.log('🔍 Sending unencrypted payload:', JSON.stringify(unencryptedPayload, null, 2));
 
-      const guestHeaders = { 'Content-Type': 'application/json' };
-
       const response = await fetch(`${API_BASE}/conversations/save`, {
         method: 'POST',
-        headers: guestHeaders,
+        headers: headers,
         body: JSON.stringify(unencryptedPayload)
       });
 
@@ -286,8 +296,7 @@ const ApiService = {
           if (CryptoSvc) {
             console.log('🔒 ApiService.handleSaveConversation: Encrypting payload with AES-GCM...');
 
-            const AuthSvc = (typeof window !== 'undefined' && window.AuthService) ||
-                             (typeof self !== 'undefined' && self.AuthService);
+            const AuthSvc = _getAuthService();
 
             // Only encrypt if user is authenticated
             let hasKey = false;
@@ -489,6 +498,7 @@ const ApiService = {
 
 };
 
-// Export to global window object
-window.ApiService = ApiService;
+// Export to global context (window for content scripts, self for service workers)
+if (typeof window !== 'undefined') window.ApiService = ApiService;
+if (typeof self !== 'undefined') self.ApiService = ApiService;
 console.log('🔌 ThreadCub: ApiService module loaded');

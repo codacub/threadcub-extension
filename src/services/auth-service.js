@@ -324,7 +324,7 @@ const AuthService = {
   }
 };
 
-// Export based on context (content script vs background service worker)
+// Export based on the context (content script vs background service worker)
 if (typeof window !== 'undefined') {
   window.AuthService = AuthService;
 }

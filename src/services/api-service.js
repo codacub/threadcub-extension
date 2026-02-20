@@ -19,6 +19,16 @@ const USE_ENCRYPTION = true;
 
 console.log(`🔌 ThreadCub ApiService: API_BASE = ${API_BASE} (IS_LOCAL_DEV=${IS_LOCAL_DEV})`);
 
+// ---------------------------------------------------------------------------
+// Helper: resolve CryptoService from any context (window, self, global)
+// ---------------------------------------------------------------------------
+function _getCryptoService() {
+  if (typeof CryptoService !== 'undefined') return CryptoService;
+  if (typeof window !== 'undefined' && window.CryptoService) return window.CryptoService;
+  if (typeof self !== 'undefined' && self.CryptoService) return self.CryptoService;
+  return null;
+}
+
 const ApiService = {
   // Base URL for all API calls
   BASE_URL: SITE_BASE,
@@ -66,8 +76,6 @@ const ApiService = {
 
   // =============================================================================
   // HELPER: Notify user of persistent save failure via chrome.notifications
-  // Requires "notifications" permission in manifest.json.
-  // Falls back to console.error if notifications API unavailable.
   // =============================================================================
 
   _notifySaveFailure(errorMsg) {
@@ -100,9 +108,6 @@ const ApiService = {
 
   async saveConversation(apiData) {
     try {
-      // ---------------------------------------------------------------
-      // Entry-point diagnostics: log exactly what the caller passed in
-      // ---------------------------------------------------------------
       console.log('🔍 saveConversation called with apiData:', JSON.stringify(apiData, null, 2));
 
       // Extract messages early so we can inspect them before any send
@@ -134,48 +139,23 @@ const ApiService = {
       let didAttemptEncrypted = false;
 
       // -----------------------------------------------------------------
-      // Step 1: Try sending encrypted payload (authenticated users only)
-      // Uses CryptoJS.AES.encrypt with a fixed secret key.
-      // Output is OpenSSL-compatible base64 (starts with "U2FsdGVkX1...").
+      // Step 1: Try sending AES-GCM encrypted payload (authenticated users only)
+      // Uses CryptoService (Web Crypto API, AES-GCM 256-bit).
       // Backend expects: { encrypted_payload: "base64...", title?, source? }
       // -----------------------------------------------------------------
       if (USE_ENCRYPTION && hasAuthToken) {
         try {
-          const CryptoJSLib = (typeof CryptoJS !== 'undefined') ? CryptoJS :
-                              (typeof window !== 'undefined' && window.CryptoJS) ? window.CryptoJS :
-                              (typeof self !== 'undefined' && self.CryptoJS) ? self.CryptoJS : null;
+          const CryptoSvc = _getCryptoService();
 
-          if (CryptoJSLib && CryptoJSLib.AES) {
-            // Get per-user encryption key — no fallback (hardcoded key removed).
-            // If no key is available, skip encryption and fall through to plaintext send.
-            let secretKey = null;
-            try {
-              if (typeof window !== 'undefined' && window.AuthService) {
-                secretKey = await window.AuthService.getEncryptionKey();
-                if (secretKey) {
-                  console.log('🔒 Using per-user encryption key from storage');
-                } else {
-                  console.log('🔒 No per-user encryption key found — skipping encryption, sending plaintext');
-                }
-              }
-            } catch (keyError) {
-              console.warn('🔒 Error fetching per-user encryption key — skipping encryption:', keyError.message);
-            }
+          if (CryptoSvc) {
+            const conversationData = apiData.conversationData || apiData;
+            const title  = apiData?.title || conversationData?.title || 'Untitled Conversation';
+            const source = apiData?.source || conversationData?.source || conversationData?.platform?.toLowerCase() || 'unknown';
 
-            if (!secretKey) {
-              // No key available — fall through to unencrypted send below
-            } else {
-              // Build the conversationData object to encrypt (same shape the server would store)
-              const conversationData = apiData.conversationData || apiData;
-              const title  = apiData?.title || conversationData?.title || 'Untitled Conversation';
-              const source = apiData?.source || conversationData?.source || conversationData?.platform?.toLowerCase() || 'unknown';
+            console.log('🔒 ApiService.saveConversation: Encrypting with AES-GCM...');
+            const encryptedString = await CryptoSvc.encrypt(conversationData);
 
-              // CryptoJS.AES.encrypt → OpenSSL format: "Salted__" + salt + ciphertext → base64
-              const encryptedString = CryptoJSLib.AES.encrypt(
-                JSON.stringify(conversationData),
-                secretKey
-              ).toString();
-
+            if (encryptedString) {
               console.log('🔒 Encrypted payload length:', encryptedString.length);
 
               didAttemptEncrypted = true;
@@ -184,6 +164,7 @@ const ApiService = {
                 headers: headers,
                 body: JSON.stringify({
                   encrypted_payload: encryptedString,
+                  encryption_format: 'aes-gcm',
                   title: title,
                   source: source,
                   session_id: apiData?.sessionId || null
@@ -194,24 +175,23 @@ const ApiService = {
 
               if (encResponse.status === 401) {
                 await this._handleUnauthorized();
-                console.log('🔐 ApiService.saveConversation: Token expired, clearing and falling back to guest save...');
-                // Fall through to unencrypted guest send below — do NOT throw
+                console.log('🔐 ApiService.saveConversation: Token expired, falling back to guest save...');
               } else if (encResponse.ok) {
                 const data = await encResponse.json();
                 console.log('✅ ThreadCub: Encrypted API call successful:', data);
                 return data;
               } else {
-                // Encrypted send rejected — log details and fall through to unencrypted
                 const errBody = await encResponse.text();
                 console.warn(
-                  `🔒 ApiService.saveConversation: Encrypted send failed (status ${encResponse.status}) — falling back to unencrypted payload.`,
+                  `🔒 ApiService.saveConversation: Encrypted send failed (status ${encResponse.status}) — falling back.`,
                   '\n  Response body:', errBody
                 );
-                // Fall through to unencrypted send below
               }
+            } else {
+              console.warn('🔒 ApiService.saveConversation: CryptoService.encrypt returned null — skipping encryption');
             }
           } else {
-            console.warn('🔒 ApiService.saveConversation: CryptoJS not available, skipping encryption');
+            console.warn('🔒 ApiService.saveConversation: CryptoService not available, skipping encryption');
           }
         } catch (encryptError) {
           if (encryptError.message.includes('Authentication expired')) {
@@ -221,20 +201,18 @@ const ApiService = {
           console.warn('🔒 ApiService.saveConversation: Falling back to unencrypted due to encryption error');
         }
       } else {
-        console.log('🔒 ApiService.saveConversation: USE_ENCRYPTION=false, sending unencrypted');
+        console.log('🔒 ApiService.saveConversation: USE_ENCRYPTION=false or no auth token, sending unencrypted');
       }
 
       // -----------------------------------------------------------------
-      // Step 2: Send original unencrypted payload (primary path or fallback)
-      // Server expects: { conversationData: { messages, title?, source? }, title?, source? }
-      // Use the messages extracted at entry; force title/source defaults.
+      // Step 2: Send unencrypted payload (primary path or fallback)
       // -----------------------------------------------------------------
       if (didAttemptEncrypted) {
         console.log('🔒 ApiService.saveConversation: Retrying with original unencrypted payload...');
       }
 
-      const title  = apiData?.title || apiData?.conversationData?.title || 'Untitled Grok Conversation';
-      const source = apiData?.source || apiData?.conversationData?.source || apiData?.platform?.toLowerCase() || 'grok';
+      const title  = apiData?.title || apiData?.conversationData?.title || 'Untitled Conversation';
+      const source = apiData?.source || apiData?.conversationData?.source || apiData?.platform?.toLowerCase() || 'unknown';
 
       const unencryptedPayload = {
         conversationData: {
@@ -248,12 +226,8 @@ const ApiService = {
       };
 
       console.log('🔍 Sending unencrypted payload:', JSON.stringify(unencryptedPayload, null, 2));
-      console.log('🔍 session_id included:', !!unencryptedPayload.session_id);
 
-      // Build guest headers (no auth token — either we never had one or we just cleared it)
-      const guestHeaders = {
-        'Content-Type': 'application/json'
-      };
+      const guestHeaders = { 'Content-Type': 'application/json' };
 
       const response = await fetch(`${API_BASE}/conversations/save`, {
         method: 'POST',
@@ -264,7 +238,6 @@ const ApiService = {
       console.log('🔍 ApiService.saveConversation: Unencrypted POST response status:', response.status);
 
       if (response.status === 401) {
-        // Still 401 without auth header — shouldn't happen for guest saves
         await this._handleUnauthorized();
         throw new Error('Authentication expired. Please log in again.');
       }
@@ -278,7 +251,7 @@ const ApiService = {
       }
 
       const data = await response.json();
-      console.log('✅ ThreadCub: API call successful (unencrypted fallback):', data);
+      console.log('✅ ThreadCub: API call successful (unencrypted):', data);
       console.log('🔍 DEBUG: Full save API response:', JSON.stringify(data));
 
       return data;
@@ -304,80 +277,70 @@ const ApiService = {
       let didAttemptEncrypted = false;
 
       // -----------------------------------------------------------------
-      // Step 1: Try sending encrypted payload (if encryption is enabled)
+      // Step 1: Try sending AES-GCM encrypted payload
       // -----------------------------------------------------------------
       if (USE_ENCRYPTION) {
         try {
-          const CryptoJSLib = (typeof CryptoJS !== 'undefined') ? CryptoJS :
-                              (typeof window !== 'undefined' && window.CryptoJS) ? window.CryptoJS :
-                              (typeof self !== 'undefined' && self.CryptoJS) ? self.CryptoJS : null;
+          const CryptoSvc = _getCryptoService();
 
-          if (CryptoJSLib && CryptoJSLib.AES) {
-            console.log('🔒 ApiService.handleSaveConversation: Encrypting payload before send...');
+          if (CryptoSvc) {
+            console.log('🔒 ApiService.handleSaveConversation: Encrypting payload with AES-GCM...');
 
-            // Get per-user encryption key — no fallback (hardcoded key removed).
-            // If no key is available, skip encryption and fall through to plaintext send.
-            let secretKey = null;
-            try {
-              const AuthSvc = (typeof window !== 'undefined' && window.AuthService) ||
-                               (typeof self !== 'undefined' && self.AuthService);
-              if (AuthSvc) {
-                secretKey = await AuthSvc.getEncryptionKey();
-                if (secretKey) {
-                  console.log('🔒 handleSaveConversation: Using per-user encryption key');
-                } else {
-                  console.log('🔒 handleSaveConversation: No per-user key — skipping encryption, sending plaintext');
-                }
-              }
-            } catch (keyError) {
-              console.warn('🔒 handleSaveConversation: Error fetching per-user key — skipping encryption:', keyError.message);
+            const AuthSvc = (typeof window !== 'undefined' && window.AuthService) ||
+                             (typeof self !== 'undefined' && self.AuthService);
+
+            // Only encrypt if user is authenticated
+            let hasKey = false;
+            if (AuthSvc) {
+              try {
+                const key = await AuthSvc.getEncryptionKey();
+                hasKey = !!key;
+              } catch (e) { /* ignore */ }
             }
 
-            if (secretKey) {
+            if (!hasKey) {
+              console.log('🔒 handleSaveConversation: No encryption key — skipping encryption, sending plaintext');
+            } else {
               const conversationData = data.conversationData || data;
-              const encryptedBase64 = CryptoJSLib.AES.encrypt(
-                JSON.stringify(conversationData),
-                secretKey
-              ).toString();
+              const encryptedBase64 = await CryptoSvc.encrypt(conversationData);
 
-              const encryptedPayload = {
-                encrypted_payload: encryptedBase64,
-                source: data.source || data.conversationData?.platform?.toLowerCase() || 'unknown',
-                title: data.title || data.conversationData?.title || 'Untitled'
-              };
+              if (encryptedBase64) {
+                const encryptedPayload = {
+                  encrypted_payload: encryptedBase64,
+                  encryption_format: 'aes-gcm',
+                  source: data.source || data.conversationData?.platform?.toLowerCase() || 'unknown',
+                  title: data.title || data.conversationData?.title || 'Untitled'
+                };
 
-              console.log('🔒 ApiService.handleSaveConversation: Sending encrypted:', JSON.stringify({
-                encrypted_payload: encryptedBase64.substring(0, 60) + '...[' + encryptedBase64.length + ' chars total]',
-                source: encryptedPayload.source,
-                title: encryptedPayload.title
-              }));
+                console.log('🔒 ApiService.handleSaveConversation: Sending encrypted payload');
 
-              didAttemptEncrypted = true;
-              const encResponse = await fetch(`${API_BASE}/conversations/save`, {
-                method: 'POST',
-                headers: headers,
-                body: JSON.stringify(encryptedPayload)
-              });
+                didAttemptEncrypted = true;
+                const encResponse = await fetch(`${API_BASE}/conversations/save`, {
+                  method: 'POST',
+                  headers: headers,
+                  body: JSON.stringify(encryptedPayload)
+                });
 
-              console.log('🔒 ApiService.handleSaveConversation: Encrypted POST status:', encResponse.status);
+                console.log('🔒 ApiService.handleSaveConversation: Encrypted POST status:', encResponse.status);
 
-              if (encResponse.status === 401) {
-                await this._handleUnauthorized();
-                throw new Error('Authentication expired. Please log in again.');
+                if (encResponse.status === 401) {
+                  await this._handleUnauthorized();
+                  throw new Error('Authentication expired. Please log in again.');
+                }
+
+                if (encResponse.ok) {
+                  const result = await encResponse.json();
+                  console.log('✅ ApiService.handleSaveConversation: Encrypted call successful:', result);
+                  return result;
+                }
+
+                const errBody = await encResponse.text();
+                console.warn(
+                  `🔒 ApiService.handleSaveConversation: Encrypted send failed (status ${encResponse.status}) — falling back.`,
+                  '\n  Response body:', errBody
+                );
               }
-
-              if (encResponse.ok) {
-                const result = await encResponse.json();
-                console.log('✅ ApiService.handleSaveConversation: Encrypted call successful:', result);
-                return result;
-              }
-
-              const errBody = await encResponse.text();
-              console.warn(
-                `🔒 ApiService.handleSaveConversation: Encrypted send failed (status ${encResponse.status}) — falling back.`,
-                '\n  Response body:', errBody
-              );
-            } // end if (secretKey)
+            }
           } else {
             console.warn('🔒 ApiService.handleSaveConversation: CryptoService not available, skipping encryption');
           }
@@ -393,7 +356,6 @@ const ApiService = {
 
       // -----------------------------------------------------------------
       // Step 2: Send original unencrypted payload (primary path or fallback)
-      // Server expects: { conversationData: { messages, title?, source? }, title?, source? }
       // -----------------------------------------------------------------
       if (didAttemptEncrypted) {
         console.log('🔒 ApiService.handleSaveConversation: Retrying with original unencrypted payload...');
@@ -457,7 +419,6 @@ const ApiService = {
 
   // =============================================================================
   // CREATE CONVERSATION WITH TAGS
-  // Extracted from: tagging.js
   // =============================================================================
 
   async createConversationWithTags(conversationData, tags) {
@@ -490,7 +451,6 @@ const ApiService = {
 
   // =============================================================================
   // ADD TAGS TO EXISTING CONVERSATION
-  // Extracted from: tagging.js
   // =============================================================================
 
   async addTagsToExistingConversation(conversationId, tags) {
@@ -499,9 +459,7 @@ const ApiService = {
     const response = await fetch(`${API_BASE}/conversations/${conversationId}/tags`, {
       method: 'POST',
       headers: headers,
-      body: JSON.stringify({
-        tags: tags
-      })
+      body: JSON.stringify({ tags: tags })
     });
 
     if (response.status === 401) {
@@ -520,7 +478,6 @@ const ApiService = {
 
   // =============================================================================
   // FETCH PROMPTS
-  // Extracted from: popup/popup.js
   // =============================================================================
 
   async fetchPrompts() {

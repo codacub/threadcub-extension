@@ -275,6 +275,20 @@
   box-shadow: var(--shadow-action-btn-save-hover) !important;
 }
 
+@keyframes threadcub-spin {
+  to { transform: rotate(360deg); }
+}
+.threadcub-save-btn.saving {
+  background: #22C55E !important;
+  color: white !important;
+  pointer-events: none !important;
+  cursor: not-allowed !important;
+}
+.threadcub-save-btn.saving svg {
+  animation: threadcub-spin 0.8s linear infinite !important;
+  stroke: white !important;
+}
+
 .threadcub-download-btn:hover {
   background: var(--color-action-btn-download-bg-hover) !important;
   color: var(--color-action-btn-download-text-hover) !important;

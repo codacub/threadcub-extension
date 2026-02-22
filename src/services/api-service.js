@@ -165,7 +165,7 @@ const ApiService = {
             const source = apiData?.source || conversationData?.source || conversationData?.platform?.toLowerCase() || 'unknown';
 
             console.log('🔒 ApiService.saveConversation: Encrypting with AES-GCM...');
-            const encryptedString = await CryptoSvc.encrypt(conversationData);
+            const encryptedString = await CryptoSvc.encryptPayload(conversationData);
 
             if (encryptedString) {
               console.log('🔒 Encrypted payload length:', encryptedString.length);
@@ -190,7 +190,7 @@ const ApiService = {
                 console.log('🔐 ApiService.saveConversation: Token expired, falling back to guest save...');
               } else if (encResponse.ok) {
                 const data = await encResponse.json();
-                console.log('✅ ThreadCub: Encrypted API call successful:', data);
+                console.log('✅ ThreadCub: Encrypted API call successful:', JSON.stringify(data));
                 return data;
               } else {
                 const errBody = await encResponse.text();
@@ -230,7 +230,8 @@ const ApiService = {
         conversationData: {
           messages: messages,
           title: title,
-          source: source
+          source: source,
+          url: apiData?.conversationData?.url || null
         },
         title: title,
         source: source,
@@ -241,6 +242,7 @@ const ApiService = {
 
       const response = await fetch(`${API_BASE}/conversations/save`, {
         method: 'POST',
+        credentials: 'include',
         headers: headers,
         body: JSON.stringify(unencryptedPayload)
       });
@@ -311,7 +313,7 @@ const ApiService = {
               console.log('🔒 handleSaveConversation: No encryption key — skipping encryption, sending plaintext');
             } else {
               const conversationData = data.conversationData || data;
-              const encryptedBase64 = await CryptoSvc.encrypt(conversationData);
+              const encryptedBase64 = await CryptoSvc.encryptPayload(conversationData);
 
               if (encryptedBase64) {
                 const encryptedPayload = {
@@ -388,6 +390,7 @@ const ApiService = {
 
       const response = await fetch(`${API_BASE}/conversations/save`, {
         method: 'POST',
+        credentials: 'include',
         headers: headers,
         body: JSON.stringify(unencryptedPayload)
       });
@@ -435,6 +438,7 @@ const ApiService = {
 
     const response = await fetch(`${API_BASE}/conversations/tags/create`, {
       method: 'POST',
+      credentials: 'include',
       headers: headers,
       body: JSON.stringify({
         conversationData: conversationData,
@@ -467,6 +471,7 @@ const ApiService = {
 
     const response = await fetch(`${API_BASE}/conversations/${conversationId}/tags`, {
       method: 'POST',
+      credentials: 'include',
       headers: headers,
       body: JSON.stringify({ tags: tags })
     });
@@ -484,6 +489,22 @@ const ApiService = {
     console.log('🏷️ ThreadCub: Tags added to conversation:', data);
     return data;
   },
+
+  // =============================================================================
+  // DELETE CONVERSATION
+  // =============================================================================
+
+  async deleteConversation(conversationId, sessionId) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (sessionId) headers['x-session-id'] = sessionId;
+  const response = await fetch(`${API_BASE}/conversations/${conversationId}`, {
+    method: 'DELETE',
+    headers,
+    credentials: 'include',
+  });
+  if (!response.ok) throw new Error('Delete failed');
+  return response.json();
+},
 
   // =============================================================================
   // FETCH PROMPTS

@@ -145,6 +145,18 @@ window.ThreadCubTagging = class ThreadCubTagging {
   async _processUrlChange(newUrl) {
     console.log('🔍 Processing URL change to:', newUrl);
 
+    // Re-init floating button if it was removed by x.com's soft navigation
+    if (window.location.hostname === 'x.com') {
+      setTimeout(() => {
+        if (!document.querySelector('#threadcub-edge-btn') && window._threadcubInitialized) {
+          console.log('🔍 ThreadCub: Button missing after navigation — re-initialising...');
+          window.threadcubButton = null;
+          window._threadcubInitialized = false;
+          if (window.AppInitializer) window.AppInitializer.initialize();
+        }
+      }, 800);
+    }
+
     const oldStorageKey = this.currentStorageKey;
     const newStorageKey = this.generateConversationKey();
 
@@ -1385,13 +1397,13 @@ addTaggingStyles() {
   /* SIMPLIFIED: Only essential highlight styles - no conflicts */
   /* CHANGING YELLOW MYSELF */
   .threadcub-highlight {
-    background: #FFD700 !important;
+    background: var(--color-highlight-bg) !important;
     cursor: pointer !important;
     transition: background-color 0.2s ease !important;
   }
 
   .threadcub-highlight:hover {
-    background-color: #ffeb3b !important;
+    background-color: var(--color-highlight-bg-hover) !important;
   }
 
   /* Copied feedback toast (used by side panel copy button) */
@@ -1454,7 +1466,7 @@ createContextMenu() {
                           (hostname.includes('x.com') && window.location.pathname.includes('/i/grok'));
 
   // When Find Out More is hidden, remove the border-right divider from Save button
-  const saveBorderStyle = hideFindOutMore ? '' : 'border-right: 1px solid #7C3AED;';
+  const saveBorderStyle = hideFindOutMore ? '' : 'border-right: 1px solid var(--color-primary);';
 
   // Connected button layout with border-right divider
   this.contextMenu.innerHTML = `
@@ -1462,7 +1474,7 @@ createContextMenu() {
       display: flex;
       align-items: center;
       background: #FFFFFF;
-      border: 1px solid #7C3AED;
+      border: 1px solid var(--color-primary);
       border-radius: 4px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       overflow: hidden;
@@ -1483,7 +1495,7 @@ createContextMenu() {
         border: none;
         ${saveBorderStyle}
       ">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>
         </svg>
       </div>
@@ -1503,10 +1515,10 @@ createContextMenu() {
         position: relative;
         background: transparent;
         border: none;
-        border-right: 1px solid #7C3AED;
-        color: #7C3AED;
+        border-right: 1px solid var(--color-primary);
+        color: var(--color-primary);
       ">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>
           <path d="M8 12h.01"/>
           <path d="M12 12h.01"/>
@@ -1527,9 +1539,9 @@ createContextMenu() {
         position: relative;
         background: transparent;
         border: none;
-        color: #7C3AED;
+        color: var(--color-primary);
       ">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 22V8"/>
           <path d="M5 12H2a10 10 0 0 0 20 0h-3"/>
           <circle cx="12" cy="5" r="3"/>
@@ -1543,15 +1555,17 @@ createContextMenu() {
   this.updateSelectionColor();
 }
 
-updateSelectionColor(color = '#FFD700') {
+updateSelectionColor(color = null) {
   const existingStyle = document.querySelector('#threadcub-selection-color');
   if (existingStyle) existingStyle.remove();
-  
+
+  const dark = document.documentElement.style.cssText.includes('color-scheme: dark');
+  const c = dark ? '#836807' : '#F6DB77';
   const style = document.createElement('style');
   style.id = 'threadcub-selection-color';
   style.textContent = `
-    ::selection { background: #F7DC6F !important; color: inherit !important; }
-    ::-moz-selection { background: #F7DC6F !important; color: inherit !important; }
+    ::selection { background: ${c} !important; color: inherit !important; }
+    ::-moz-selection { background: ${c} !important; color: inherit !important; }
   `;
   document.head.appendChild(style);
 }
@@ -1587,7 +1601,7 @@ setupSimplifiedIconListeners() {
       }
       
       this.currentHoveredButton = 'save';
-      saveButton.style.background = '#7C3AED';
+      saveButton.style.background = 'var(--color-primary)';
       
       // Change SVG stroke to white on hover
       const svg = saveButton.querySelector('svg');
@@ -1602,7 +1616,7 @@ setupSimplifiedIconListeners() {
       
       // Change SVG stroke back to purple
       const svg = saveButton.querySelector('svg');
-      if (svg) svg.setAttribute('stroke', '#7C3AED');
+      if (svg) svg.setAttribute('stroke', 'var(--color-primary)');
       
       this.currentHoveredButton = null;
       
@@ -1637,7 +1651,7 @@ setupSimplifiedIconListeners() {
       }
       
       this.currentHoveredButton = 'findout';
-      findoutButton.style.background = '#7C3AED';
+      findoutButton.style.background = 'var(--color-primary)';
       
       // Change SVG stroke to white on hover
       const svg = findoutButton.querySelector('svg');
@@ -1652,7 +1666,7 @@ setupSimplifiedIconListeners() {
 
       // Change SVG stroke back to purple
       const svg = findoutButton.querySelector('svg');
-      if (svg) svg.setAttribute('stroke', '#7C3AED');
+      if (svg) svg.setAttribute('stroke', 'var(--color-primary)');
 
       this.currentHoveredButton = null;
 
@@ -1687,7 +1701,7 @@ setupSimplifiedIconListeners() {
       }
 
       this.currentHoveredButton = 'anchor';
-      anchorButton.style.background = '#7C3AED';
+      anchorButton.style.background = 'var(--color-primary)';
 
       // Change SVG stroke to white on hover
       const svg = anchorButton.querySelector('svg');
@@ -1702,7 +1716,7 @@ setupSimplifiedIconListeners() {
 
       // Change SVG stroke back to purple
       const svg = anchorButton.querySelector('svg');
-      if (svg) svg.setAttribute('stroke', '#7C3AED');
+      if (svg) svg.setAttribute('stroke', 'var(--color-primary)');
 
       this.currentHoveredButton = null;
 
@@ -1797,7 +1811,7 @@ createCopyButton(textContent) {
   copyBtn.className = 'threadcub-copy-btn';
   copyBtn.setAttribute('data-tooltip', 'Copy');
   copyBtn.innerHTML = `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
       <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
     </svg>
@@ -2135,7 +2149,6 @@ applyAnchorHighlight(range, anchorId) {
       span.className = 'threadcub-anchor-highlight';
       span.setAttribute('data-anchor-id', anchorId);
       span.style.cssText = `
-        background-color: rgba(124, 58, 237, 0.15) !important;
         cursor: pointer !important;
         transition: background-color 0.2s ease !important;
       `;
@@ -2147,14 +2160,7 @@ applyAnchorHighlight(range, anchorId) {
         e.stopPropagation();
         this.showSidePanel('anchors');
       });
-
-      // Add hover effects
-      span.addEventListener('mouseenter', () => {
-        span.style.backgroundColor = 'rgba(124, 58, 237, 0.25)';
-      });
-      span.addEventListener('mouseleave', () => {
-        span.style.backgroundColor = 'rgba(124, 58, 237, 0.15)';
-      });
+      // Hover effects handled by CSS class .threadcub-anchor-highlight:hover
 
       // Store reference for cleanup
       if (!this.anchorElements) {
@@ -2172,7 +2178,6 @@ applyAnchorHighlight(range, anchorId) {
     span.className = 'threadcub-anchor-highlight';
     span.setAttribute('data-anchor-id', anchorId);
     span.style.cssText = `
-      background-color: rgba(124, 58, 237, 0.15) !important;
       cursor: pointer !important;
       transition: background-color 0.2s ease !important;
     `;
@@ -2185,14 +2190,7 @@ applyAnchorHighlight(range, anchorId) {
       e.stopPropagation();
       this.showSidePanel('anchors');
     });
-
-    // Add hover effects
-    span.addEventListener('mouseenter', () => {
-      span.style.backgroundColor = 'rgba(124, 58, 237, 0.25)';
-    });
-    span.addEventListener('mouseleave', () => {
-      span.style.backgroundColor = 'rgba(124, 58, 237, 0.15)';
-    });
+      // Hover effects handled by CSS class .threadcub-anchor-highlight:hover
 
     // Store reference for cleanup
     if (!this.anchorElements) {
@@ -2226,7 +2224,6 @@ applySmartAnchorHighlight(range, anchorId) {
       span.className = 'threadcub-anchor-highlight';
       span.setAttribute('data-anchor-id', anchorId);
       span.style.cssText = `
-        background-color: rgba(124, 58, 237, 0.15) !important;
         cursor: pointer !important;
         display: inline !important;
       `;
@@ -2254,7 +2251,6 @@ applySmartAnchorHighlight(range, anchorId) {
       span.className = 'threadcub-anchor-highlight';
       span.setAttribute('data-anchor-id', anchorId);
       span.style.cssText = `
-        background-color: rgba(124, 58, 237, 0.15) !important;
         cursor: pointer !important;
       `;
       span.textContent = textNode.textContent;
@@ -2338,7 +2334,7 @@ showJumpFailedNotification() {
   const notification = document.createElement('div');
   notification.className = 'threadcub-jump-failed';
   notification.innerHTML = `
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="2">
       <circle cx="12" cy="12" r="10"/>
       <line x1="12" y1="8" x2="12" y2="12"/>
       <line x1="12" y1="16" x2="12.01" y2="16"/>
@@ -2482,7 +2478,7 @@ createSidePanel() {
         transition: all 0.2s ease;
         backdrop-filter: blur(10px);
       ">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M18 6 6 18"/>
           <path d="m6 6 12 12"/>
         </svg>
@@ -2528,10 +2524,10 @@ createSidePanel() {
         padding: 12px 16px;
         background: transparent;
         border: none;
-        border-bottom: 2px solid #7C3AED;
+        border-bottom: 2px solid var(--color-primary);
         font-size: 14px;
         font-weight: 600;
-        color: #7C3AED;
+        color: var(--color-primary);
         cursor: pointer;
         transition: all 0.2s ease;
       ">Tags</button>
@@ -2639,7 +2635,7 @@ createSidePanel() {
           gap: 8px;
         ">
           <span>EXPORT</span>
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="1"></circle>
             <circle cx="12" cy="5" r="1"></circle>
             <circle cx="12" cy="19" r="1"></circle>
@@ -3908,7 +3904,6 @@ applySmartHighlight(range, tagId) {
         span.className = 'threadcub-highlight';
         span.setAttribute('data-tag-id', tagId);
         span.style.cssText = `
-          background-color: #FFD700 !important;
           cursor: pointer !important;
           transition: background-color 0.2s ease !important;
           padding: 2px 0 !important;
@@ -3954,7 +3949,6 @@ applySmartHighlight(range, tagId) {
         span.className = 'threadcub-highlight';
         span.setAttribute('data-tag-id', tagId);
         span.style.cssText = `
-          background: #FFD700 !important;
           cursor: pointer !important;
           transition: background-color 0.2s ease !important;
         `;
@@ -4000,7 +3994,6 @@ applySmartHighlight(range, tagId) {
         span.className = 'threadcub-highlight';
         span.setAttribute('data-tag-id', tagId);
         span.style.cssText = `
-          background: #FFD700 !important;
           cursor: pointer !important;
           transition: background-color 0.2s ease !important;
         `;
@@ -4129,7 +4122,6 @@ wrapTextNodeSafely(textNode, tagId) {
     
     // Add highlight-specific styles
     span.style.cssText += `
-      background: #FFD700 !important;
       cursor: pointer !important;
       transition: background-color 0.2s ease !important;
       display: inline !important;
@@ -4149,15 +4141,7 @@ wrapTextNodeSafely(textNode, tagId) {
       e.stopPropagation();
       this.showSidePanel('tags');
     });
-
-    // Add hover effects
-    span.addEventListener('mouseenter', () => {
-      span.style.backgroundColor = '#FFE55C';
-    });
-    
-    span.addEventListener('mouseleave', () => {
-      span.style.backgroundColor = '#FFD700';
-    });
+    // Hover effects handled by CSS class .threadcub-highlight:hover
     
     return span;
     
@@ -4347,12 +4331,12 @@ createTemporaryHighlight() {
         top: ${rect.top}px;
         width: ${rect.width}px;
         height: ${rect.height}px;
-        background: rgba(255, 215, 0, 0.4);
-        border: 2px solid #FFD700;
+        background: var(--color-highlight-bg-dark);
+        border: 2px solid var(--color-highlight-bg);
         border-radius: 3px;
         pointer-events: none;
         z-index: 999997;
-        box-shadow: 0 0 8px rgba(255, 215, 0, 0.3);
+        box-shadow: 0 0 8px var(--color-highlight-bg-dark);
       `;
       
       this.tempHighlightContainer.appendChild(highlightRect);
@@ -4427,8 +4411,8 @@ setupTabStyling() {
       // Update styles for all tabs
       tabs.forEach(t => {
         if (t.getAttribute('data-tab') === this.sidePanelUI.currentTab) {
-          t.style.borderBottomColor = '#7C3AED';
-          t.style.color = '#7C3AED';
+          t.style.borderBottomColor = 'var(--color-primary)';
+          t.style.color = 'var(--color-primary)';
           t.style.fontWeight = '600';
           t.classList.add('active');
         } else {

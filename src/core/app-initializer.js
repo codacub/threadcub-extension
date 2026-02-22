@@ -156,4 +156,53 @@ console.log('🧵 ThreadCub: App initializer module loaded');
 console.log('🧵 ThreadCub: Starting initialization...');
 initializeThreadCub();
 
+
+// === X.com Dark Mode Toggle Watcher ===
+// x.com modifies the html element's style when toggling dark/light mode,
+// which destroys and rebuilds the React tree, removing the ThreadCub button.
+// This observer detects that change and re-injects the button if it's gone.
+if (window.location.hostname.includes('x.com') && window.location.pathname.includes('/i/grok')) {
+  console.log('🧵 ThreadCub: x.com detected — starting dark mode toggle watcher');
+
+  let _reinjectTimeout = null;
+
+  const _xcomWatcher = new MutationObserver(() => {
+    const buttonInDOM = !!document.querySelector('#threadcub-edge-btn');
+    if (!buttonInDOM) {
+      // Debounce — x.com fires multiple mutations during a theme switch
+      clearTimeout(_reinjectTimeout);
+      _reinjectTimeout = setTimeout(() => {
+        console.log('🧵 ThreadCub: 🔄 Button removed by x.com theme switch — re-injecting...');
+        // Reset instance so startThreadCub creates a fresh one
+        window.threadcubButton = null;
+        window.AppInitializer.initialize();
+      }, 300);
+    }
+  });
+
+  // Also watch for URL changes (x.com navigates client-side between conversations)
+  let _lastUrl = window.location.href;
+  setInterval(() => {
+    if (window.location.href !== _lastUrl) {
+      _lastUrl = window.location.href;
+      console.log('🧵 ThreadCub: x.com URL changed — checking button...');
+      setTimeout(() => {
+        if (!document.querySelector('#threadcub-edge-btn')) {
+          console.log('🧵 ThreadCub: 🔄 Button gone after navigation — re-injecting...');
+          window.threadcubButton = null;
+          window.AppInitializer.initialize();
+        }
+      }, 500);
+    }
+  }, 500);
+
+  _xcomWatcher.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['style', 'class']
+  });
+
+  console.log('🧵 ThreadCub: ✅ x.com dark mode watcher active');
+}
+// === END X.com Dark Mode Toggle Watcher ===
+
 // === END SECTION 5A ===

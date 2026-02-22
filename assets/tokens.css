@@ -165,6 +165,28 @@
   --shadow-tooltip: 0 4px 12px rgba(0, 0, 0, 0.15); /* From floating-button.js */
   --shadow-toast: 0 4px 12px rgba(0, 0, 0, 0.1); /* From floating-button.js */
 
+  /* ===== HIGHLIGHTS (Tags and Anchors) ===== */
+
+  /* Tag highlights (yellow) */
+  --color-highlight-bg: #F6DB77;
+  --color-highlight-bg-hover: #FAE9A8;
+  --color-highlight-bg-dark: #F6DB77;
+  --color-highlight-bg-dark-hover: #FAE9A8;
+
+  /* Anchor flash (purple burst on jump) */
+  --color-anchor-flash-bg: #B99FEA;
+  --color-anchor-flash-glow: #D7C8F3;
+  --color-anchor-flash-bg-dark: #7C4AD8;
+
+  /* Anchor persistent highlight (purple underlay) */
+  --color-anchor-highlight-bg: #D7C8F3;
+  --color-anchor-highlight-bg-hover: #B99FEA;
+  --color-anchor-highlight-bg-dark: #7C4AD8;
+  --color-anchor-highlight-bg-dark-hover: #612AC5;
+
+  /* Context menu icon colour (buttons and SVGs) */
+  --color-anchor-bg: #D7C8F3;
+
   /* ===== OTHERS ===== */
   --transition-base: 0.2s ease;
   --transition-slow: 0.3s ease;
@@ -189,4 +211,30 @@
   --action-button-size: 32px; /* From floating-button.js */
   --shadow-button-size: 48px; /* From floating-button.js */
   --toast-height: 40px; /* From floating-button.js */
+}
+
+/* ===== DARK MODE OVERRIDES ===== */
+
+/* System-level dark mode */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-highlight-bg: #836807;
+    --color-highlight-bg-hover: #524104;
+    --color-anchor-flash-bg: #7C4AD8;
+    --color-anchor-flash-glow: #7C4AD8;
+    --color-anchor-highlight-bg: #7C4AD8;
+    --color-anchor-highlight-bg-hover: #612AC5;
+  --color-anchor-bg: #7C4AD8;
+  }
+}
+
+/* x.com / Grok manual dark mode toggle (sets color-scheme: dark inline on <html>) */
+html[style*="color-scheme: dark"] {
+  --color-highlight-bg: #836807;
+  --color-highlight-bg-hover: #524104;
+  --color-anchor-flash-bg: #7C4AD8;
+  --color-anchor-flash-glow: #7C4AD8;
+  --color-anchor-highlight-bg: #7C4AD8;
+  --color-anchor-highlight-bg-hover: #612AC5;
+  --color-anchor-bg: #7C4AD8;
 }

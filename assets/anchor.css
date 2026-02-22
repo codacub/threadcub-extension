@@ -5,7 +5,7 @@
 
 /* ===== ANCHOR FLASH HIGHLIGHT ===== */
 .threadcub-anchor-flash {
-  background-color: rgba(124, 58, 237, 0.4) !important;
+  background-color: var(--color-anchor-flash-glow);
   animation: anchor-flash 2s ease-out forwards;
   border-radius: 2px;
   transition: background-color 0.3s ease;
@@ -13,12 +13,12 @@
 
 @keyframes anchor-flash {
   0% {
-    background-color: rgba(124, 58, 237, 0.6);
-    box-shadow: 0 0 10px rgba(124, 58, 237, 0.4);
+    background-color: var(--color-anchor-flash-bg);
+    box-shadow: 0 0 10px var(--color-anchor-flash-glow);    
   }
   50% {
-    background-color: rgba(124, 58, 237, 0.4);
-    box-shadow: 0 0 5px rgba(124, 58, 237, 0.2);
+    background-color: var(--color-anchor-flash-bg);
+    box-shadow: 0 0 10px var(--color-anchor-flash-glow);    
   }
   100% {
     background-color: transparent;
@@ -70,26 +70,26 @@
 }
 
 .threadcub-filter-tab:hover {
-  border-color: #7C3AED;
-  color: #7C3AED;
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 .threadcub-filter-tab.active {
-  background: #7C3AED;
-  border-color: #7C3AED;
+  background: var(--color-primary);
+  border-color: var(--color-primary);
   color: white;
 }
 
 /* ===== ANCHOR HIGHLIGHT IN PAGE ===== */
 .threadcub-anchor-highlight {
-  background: rgba(124, 58, 237, 0.15) !important;
-  border-bottom: 2px solid #7C3AED;
+  background: var(--color-anchor-highlight-bg) !important;
+  border-bottom: 2px solid var(--color-primary);
   cursor: pointer !important;
   transition: background-color 0.2s ease !important;
 }
 
 .threadcub-anchor-highlight:hover {
-  background-color: rgba(124, 58, 237, 0.25) !important;
+  background-color: var(--color-anchor-highlight-bg-hover) !important;
 }
 
 /* ===== JUMP FAILED NOTIFICATION ===== */
@@ -147,7 +147,7 @@
 .threadcub-priority-select:focus {
   outline: none;
   border-color: var(--color-primary, #7C3AED);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+  box-shadow: 0 0 0 3px var(--color-anchor-focus-ring, rgba(124, 58, 237, 0.1));
 }
 
 /* ===== ANCHOR LIST ITEMS ===== */
@@ -184,6 +184,7 @@
   line-height: 1.4;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -238,12 +239,12 @@
 }
 
 .threadcub-tab:hover {
-  color: #7C3AED;
+  color: var(--color-primary);
 }
 
 .threadcub-tab.active {
-  border-bottom-color: #7C3AED;
-  color: #7C3AED;
+  border-bottom-color: var(--color-primary);
+  color: var(--color-primary);
   font-weight: 600;
 }
 

@@ -96,8 +96,11 @@ const ConversationExtractor = {
     });
 
     console.log(`🐻 ThreadCub: ✅ Claude extraction complete: ${messages.length} messages`);
+    if (messages.length === 0 && window.AnalyticsService) {
+      window.AnalyticsService.trackError('extraction_failure', 'claude.ai');
+    }
 
-    return {
+    const result = {
       title: title,
       url: window.location.href,
       timestamp: new Date().toISOString(),
@@ -105,6 +108,10 @@ const ConversationExtractor = {
       total_messages: messages.length,
       messages: messages
     };
+    if (messages.length > 0 && window.AnalyticsService) {
+      window.AnalyticsService.trackConversationExtracted(result);
+    }
+    return result;
   },
 
   extractClaudeTitle() {
@@ -227,6 +234,12 @@ const ConversationExtractor = {
     };
 
     console.log(`🤖 ThreadCub: ✅ ChatGPT extraction complete: ${messages.length} messages`);
+    if (messages.length === 0 && window.AnalyticsService) {
+      window.AnalyticsService.trackError('extraction_failure', 'chatgpt');
+    }
+    if (messages.length > 0 && window.AnalyticsService) {
+      window.AnalyticsService.trackConversationExtracted(conversationData);
+    }
     return conversationData;
   },
 
@@ -275,6 +288,12 @@ const ConversationExtractor = {
     };
 
     console.log(`🟣 ThreadCub: ✅ Gemini extraction complete: ${messages.length} messages`);
+    if (messages.length === 0 && window.AnalyticsService) {
+      window.AnalyticsService.trackError('extraction_failure', 'gemini');
+    }
+    if (messages.length > 0 && window.AnalyticsService) {
+      window.AnalyticsService.trackConversationExtracted(conversationData);
+    }
     return conversationData;
   },
 
@@ -341,6 +360,12 @@ const ConversationExtractor = {
   };
 
   console.log(`🔵 ThreadCub: ✅ Copilot extraction complete: ${deduped.length} messages`);
+  if (deduped.length === 0 && window.AnalyticsService) {
+    window.AnalyticsService.trackError('extraction_failure', 'copilot');
+  }
+  if (deduped.length > 0 && window.AnalyticsService) {
+    window.AnalyticsService.trackConversationExtracted(conversationData);
+  }
   return conversationData;
 },
 
@@ -365,7 +390,7 @@ const ConversationExtractor = {
     // Extract title, passing messages so x.com can use first user message
     const title = this.extractGrokTitle(extractedMessages);
 
-    return {
+    const grokResult = {
       title: title,
       url: window.location.href,
       platform: platform,
@@ -375,6 +400,13 @@ const ConversationExtractor = {
     };
 
     console.log(`🤖 ThreadCub: ✅ Grok extraction complete: ${extractedMessages.length} messages`);
+    if (extractedMessages.length === 0 && window.AnalyticsService) {
+      window.AnalyticsService.trackError('extraction_failure', 'grok');
+    }
+    if (extractedMessages.length > 0 && window.AnalyticsService) {
+      window.AnalyticsService.trackConversationExtracted(grokResult);
+    }
+    return grokResult;
 
   } catch (error) {
     console.error('🤖 ThreadCub: Grok extraction failed:', error);
@@ -670,6 +702,12 @@ const ConversationExtractor = {
     };
 
     console.log(`🔵 ThreadCub: ⚠️ DeepSeek extraction complete (placeholder): ${messages.length} messages`);
+    if (messages.length === 0 && window.AnalyticsService) {
+      window.AnalyticsService.trackError('extraction_failure', 'deepseek');
+    }
+    if (messages.length > 0 && window.AnalyticsService) {
+      window.AnalyticsService.trackConversationExtracted(conversationData);
+    }
     console.log('⚠️ TODO: Update extractDeepSeekConversation() with actual DeepSeek DOM selectors');
 
     return conversationData;
@@ -712,6 +750,12 @@ const title = (rawTitle
       };
 
       console.log(`🔮 ThreadCub: ✅ Perplexity extraction complete: ${extractedMessages.length} messages`);
+      if (extractedMessages.length === 0 && window.AnalyticsService) {
+        window.AnalyticsService.trackError('extraction_failure', 'perplexity');
+      }
+      if (extractedMessages.length > 0 && window.AnalyticsService) {
+        window.AnalyticsService.trackConversationExtracted(conversationData);
+      }
 
       return conversationData;
 

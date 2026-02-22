@@ -721,47 +721,48 @@ console.log('🐻 ThreadCub background script loaded and ready');
 // === SECTION 7: Auth Token Handler (FIXED - Proper Cookie Parsing) ===
 
 async function handleGetAuthToken(sendResponse) {
-  console.log('🔧 Background: Getting auth token from ThreadCub tab via localStorage...');
-  
+  console.log('🔧 Background: Getting auth token...');
+
   try {
-    // Find ThreadCub tab
+    // Primary: use AuthService (reads from chrome.storage.local — always available in service worker)
+    if (self.AuthService) {
+      const token = await self.AuthService.getToken();
+      if (token) {
+        console.log('🔧 Background: ✅ Auth token found via AuthService');
+        sendResponse({ success: true, authToken: token });
+        return;
+      }
+    }
+
+    console.log('🔧 Background: No token in AuthService, falling back to ThreadCub tab...');
+
+    // Fallback: scrape from ThreadCub tab localStorage
     const tabs = await chrome.tabs.query({ url: "*://threadcub.com/*" });
-    
+
     if (tabs.length === 0) {
       console.log('🔧 Background: No ThreadCub tab found');
-      sendResponse({ success: false, error: 'No ThreadCub tab open - make sure you have ThreadCub open' });
+      sendResponse({ success: false, error: 'Not logged in. Open ThreadCub and log in.' });
       return;
     }
-    
+
     console.log('🔧 Background: Found ThreadCub tab, extracting auth token from localStorage...');
-    
-    // Execute script in ThreadCub tab to get auth token from localStorage
+
     const results = await chrome.scripting.executeScript({
       target: { tabId: tabs[0].id },
       func: extractSupabaseAuthToken
     });
-    
-    if (results && results[0] && results[0].result) {
-      const { success, authToken, error } = results[0].result;
-      
-      if (success && authToken) {
-        console.log('🔧 Background: ✅ Auth token extracted successfully!');
-        sendResponse({ success: true, authToken: authToken });
-      } else {
-        console.log('🔧 Background: ❌ Failed to extract auth token:', error);
-        sendResponse({ success: false, error: error || 'No auth token found' });
-      }
+
+    if (results?.[0]?.result?.success && results[0].result.authToken) {
+      console.log('🔧 Background: ✅ Auth token extracted from tab');
+      sendResponse({ success: true, authToken: results[0].result.authToken });
     } else {
-      console.log('🔧 Background: ❌ Script execution failed');
-      sendResponse({ success: false, error: 'Failed to execute auth extraction script' });
+      console.log('🔧 Background: ❌ Failed to extract auth token:', results?.[0]?.result?.error);
+      sendResponse({ success: false, error: results?.[0]?.result?.error || 'No auth token found' });
     }
-    
+
   } catch (error) {
     console.error('🔧 Background: Error in handleGetAuthToken:', error);
-    sendResponse({ 
-      success: false, 
-      error: `Error extracting auth token: ${error.message}` 
-    });
+    sendResponse({ success: false, error: `Error extracting auth token: ${error.message}` });
   }
 }
 

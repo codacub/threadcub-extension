@@ -57,7 +57,24 @@ const CryptoService = {
 
     try {
       // ------------------------------------------------------------------
-      // Attempt to load existing key from chrome.storage.local
+      // Priority 1: Use server-synced key stored by AuthService on login.
+      // This must match what the server uses to decrypt, so always prefer it.
+      // ------------------------------------------------------------------
+      const serverKey = await this._getFromStorage('threadcub_user_encryption_key');
+      if (serverKey) {
+        console.log('🔒 CryptoService: Loading server-synced encryption key');
+        // Server key is a 64-char hex string (32 bytes = 256-bit)
+        const keyBytes = new Uint8Array(serverKey.match(/.{1,2}/g).map(b => parseInt(b, 16)));
+        const key = await crypto.subtle.importKey(
+          'raw', keyBytes, { name: this.ALGORITHM }, true, ['encrypt', 'decrypt']
+        );
+        this._cachedKey = key;
+        console.log('🔒 CryptoService: Server-synced key loaded successfully');
+        return key;
+      }
+
+      // ------------------------------------------------------------------
+      // Priority 2: Fall back to locally generated key (guests / no login)
       // ------------------------------------------------------------------
       const storedBase64 = await this._getFromStorage(this.STORAGE_KEY);
 

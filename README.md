@@ -1,4 +1,4 @@
-# ThreadCub Chrome Extension (v1.0.8)
+# ThreadCub Chrome Extension (v1.1.0)
 
 ThreadCub helps you stay in control of long AI conversations.
 
@@ -14,13 +14,13 @@ It adds a small floating button to supported AI chat sites so you can:
 
 ## What's included
 
-### ✅ Core features
+### Core features
 - **Multi-format conversation export**
-  - **JSON** - Structured data with title, URL, platform, timestamp, and messages
-  - **Markdown** - Clean, readable format for documentation
-  - **PDF** - Professional export with ThreadCub branding
+  - **JSON** — Structured data with title, URL, platform, timestamp, and messages
+  - **Markdown** — Clean, readable format for documentation
+  - **PDF** — Professional export with ThreadCub branding
   - Export menu with three-dot dropdown for easy format selection
-  
+
 - **Pawmarks (highlight + tagging)**
   - Select text → tag it (Don't Forget / Backlog / Priority)
   - Create **anchors** for quick navigation to important sections
@@ -30,7 +30,7 @@ It adds a small floating button to supported AI chat sites so you can:
   - Jump-to-highlight functionality
   - Individual delete controls for tags and anchors
   - Tooltips on all action buttons for better discoverability
-  
+
 - **Continue Chat (cross-tab continuation)**
   - Stores continuation data in Chrome storage
   - Opens the next platform and auto-fills the prompt
@@ -40,13 +40,20 @@ It adds a small floating button to supported AI chat sites so you can:
   - Archives the full conversation to threadcub.com and generates a shareable link
   - Works for both **logged-in users** (linked to account) and **guests** (anonymous session)
   - Guest session ID persisted in `chrome.storage.local` — no login required
+  - Failed saves queued offline and retried automatically on reconnect
 
-### 🔐 Authentication / accounts (optional)
+### Security
+- Payloads encrypted using **AES-GCM via the native Web Crypto API** — no third-party crypto dependency
+- Encryption key generated on first install and stored in `chrome.storage.local`
+- Authenticated users always get a per-user key; guests skip encryption entirely
+- User is warned if storage is cleared (data loss risk)
+
+### Authentication / accounts (optional)
 ThreadCub does **not** require login. It uses an **anonymous session ID** by default, and can optionally authenticate via a ThreadCub account tab for account linking. Login is handled via OAuth in a new tab — the popup updates to show your email and a logout button when authenticated.
 
-### 📊 Usage Analytics (v1.0.5+)
+### Usage Analytics (v1.0.5+)
 ThreadCub includes privacy-first analytics to help improve the extension:
-- **What we track:** Feature usage (tags created, exports, continuations), platform detection, extension installs/updates
+- **What we track:** Feature usage (tags created, exports, continuations), platform detection, extension installs/updates, extraction success/failure per platform
 - **What we DON'T track:** Conversation content, personal information, or any identifiable data
 - **How it works:** Anonymous tracking via Google Analytics 4 Measurement Protocol
 - **Privacy:** All tracking uses anonymous client IDs with no personal data collection
@@ -79,7 +86,7 @@ Continuation behaviour:
 - `src/`
   - `core/` — app initializer, conversation extractor, floating button UI
   - `features/` — continuation, tagging (tags + anchors), downloads, platform autostart
-  - `services/` — API + storage wrappers, **analytics service**
+  - `services/` — API + storage wrappers, analytics service, crypto service
   - `ui/` — side panel with tabs + UI utilities
   - `adapters/` — platform-specific adapters for chat extraction
   - `utils/` — platform detection + helpers
@@ -126,92 +133,94 @@ Professional export featuring:
 
 ---
 
-## What's New in v1.0.8
+## What's New in v1.1.0
 
-### Guest Saving & Share Links 🐾
-- **Guest saving now fully works** — no login required to save a conversation to ThreadCub and get a real share URL
-- Guest session ID generated and persisted in `chrome.storage.local` so the same guest identity is reused across saves
-- Fixed: extension was generating timestamp-based fallback URLs (`/fallback/[timestamp]`) instead of real UUIDs — now produces `https://threadcub.com/api/share/[uuid]` for both guests and authenticated users
-- Fixed: stale auth tokens no longer block guest saves — on 401, the extension clears the token and retries as a guest automatically
-- Fixed: guest users no longer trigger a wasted encrypted-payload round trip; encryption is skipped entirely when no auth token is present
+### Security & Encryption
+- **AES-GCM migration** — Migrated from CryptoJS to native Web Crypto API. Payloads are now encrypted using AES-GCM; CryptoJS removed as a dependency entirely
+- Encryption key generated on first install, stored in `chrome.storage.local`
+- Guest saves skip encryption — no wasted round trip when unauthenticated
+- Hardcoded fallback key removed; authenticated users always get a proper per-user key
 
-### Reliability Improvements
-- **Service worker retry** — `sendMessage` calls now automatically retry once after 500ms if the background service worker has gone idle, reducing the need to manually reload the extension
-- **Duplicate save prevention** — a 60-second soft dedup check prevents the same conversation being saved multiple times if the button is clicked twice in quick succession
+### Manifest & Permissions tightened
+- Removed `http://localhost:3000/*` from `host_permissions`
+- Grok host permission tightened from `https://x.com/*` to `https://x.com/i/grok*`
+- `web_accessible_resources` scoped from `<all_urls>` to the AI platform list
 
-### Backend
-- Fixed Postgres error 42P10 (`ON CONFLICT` upsert was referencing columns with no unique constraint) — replaced with plain `INSERT`
+### Reliability
+- **Offline queue** — failed saves stored in `chrome.storage.local` and retried on reconnect; capped at 10 items
+- Badge indicator on floating button when pending failed saves exist
+- Chrome notification fires on save failure
+- Error logging throughout
+
+### Analytics
+- Extraction success tracked across all 7 platforms
+- Extraction failure tracked per platform via `trackError`
+- `sync_success` event added
+- Fixed Grok analytics bug (calls were after a `return` and never fired)
+
+### Platform extraction fixes
+- **Grok** — replaced dead `aria-label="Grok"` selector with CSS class detection; removed ~250 lines of obsolete code
+- **Perplexity** — consecutive assistant chunks merged into single messages
+- **Claude.ai** — tool-use/thinking summary blocks stripped from extracted messages
+- **Grok on x.com/i/grok** — fixed extension not loading on conversation URLs
+
+### UX
+- Floating save button shows a **spinner while saving**
+
+### Bug fixes
+- Fixed share URLs generating as `/undefined`
+- Fixed guest-to-authenticated session upgrade — existing guest row now correctly claimed with `user_id` on login
 
 ---
 
 ## Previous Updates
 
-### v1.0.7 - Authentication, Enhanced Saving & Download Improvements
+### v1.0.8 — Guest Saving, Share Links & Reliability
 
-**New Features:**
-- **User Authentication** — Log in to ThreadCub directly from the extension popup. OAuth flow opens in a new tab; popup updates to show authenticated state with email and logout button
-- **Send to ThreadCub button** — 5th action button on the floating stack. Saves the conversation to ThreadCub without opening a new tab
-- **Download format selection** — Download button now shows a flyout menu on hover with [JSON] and [MD] options. Markdown export formats the conversation with a title header, metadata block, and alternating User/Assistant sections
-
-**Bug Fixes:**
-- **Claude.ai title extraction** — Conversations were being saved with the title "Claude" instead of the actual conversation name. Fixed with a 3-tier fallback: regex stripping of " - Claude" suffix, sidebar link matching, then "Untitled Conversation"
-- **Download flyout UX** — Fixed tooltip overlapping flyout menu, button stack collapsing when moving mouse to flyout, and button size shifting on flyout hover
-
----
-
-### v1.0.6 - Cross Platform Updates
-
-**New Platform Support:**
-- **Grok (grok.com / x.com/i/grok)** — Full conversation extraction, download, continue chat, tagging and anchors, side panel
-- **DeepSeek (chat.deepseek.com)** — Full extraction, download, tagging, continuation
-- **Gemini** — Enhanced conversation detection and length monitoring
-
-**New Features:**
-- **Microsoft Copilot support** — Tagging, anchoring, side panel, download and continue chat. Highlights don't persist across Copilot chat navigation (documented in onboarding modal)
-- **Onboarding modal for Copilot** — First-time users see a friendly explanation of current limitations
-
-**Bug Fixes:**
-- Fixed conversation isolation on DeepSeek (tags/anchors no longer persist across different conversations)
-- Fixed conversation length detector across all platforms
-- Fixed Claude.ai anchor highlighting CSS selector
-- Fixed "Continue Chat" button regressions
-- Fixed Grok download modal
-- Removed 5000 character selection cap for tagging
-- Fixed Copilot "Continue Chat" routing (was defaulting to ChatGPT)
-- Removed 310 lines of non-working experimental Copilot persistence code
+- **Guest saving now fully works** — no login required to save a conversation to ThreadCub and get a real share URL
+- Guest session ID generated and persisted in `chrome.storage.local`
+- Fixed: timestamp-based fallback URLs (`/fallback/[timestamp]`) replaced with real `https://threadcub.com/api/share/[uuid]` links
+- Fixed: stale auth tokens no longer block guest saves — on 401, the extension clears the token and retries as guest
+- Fixed: guest users no longer trigger a wasted encrypted-payload round trip
+- **Service worker retry** — `sendMessage` calls retry once after 500ms if the background worker has gone idle
+- **Duplicate save prevention** — 60-second soft dedup check
 
 ---
 
-### v1.0.5 - Google Analytics Integration
+### v1.0.7 — Authentication, Enhanced Saving & Download Improvements
+
+- **User Authentication** — Log in to ThreadCub directly from the extension popup
+- **Send to ThreadCub button** — 5th action button on the floating stack
+- **Download format selection** — flyout menu with JSON and Markdown options
+- Fixed Claude.ai title extraction ("Claude" → actual conversation name)
+- Fixed tooltip overlapping flyout menu and button stack collapsing on hover
+
+---
+
+### v1.0.6 — Cross Platform Updates
+
+- **Grok** (grok.com / x.com/i/grok) — full support added
+- **DeepSeek** — full extraction, download, tagging, continuation
+- **Gemini** — enhanced conversation detection
+- **Microsoft Copilot** — tagging, anchoring, side panel, download, continue chat (highlights don't persist across chats)
+- Fixed conversation isolation on DeepSeek
+- Fixed Copilot "Continue Chat" routing
+
+---
+
+### v1.0.5 — Google Analytics Integration
 
 - Added Google Analytics 4 tracking for usage insights
-- Privacy-first approach: no conversation content or personal data tracked
-- Track feature usage (tags, anchors, exports, continuations)
-- Track extension installs and updates
-- Track platform detection (Claude, ChatGPT, Gemini, etc.)
+- Privacy-first: no conversation content or personal data tracked
 - Anonymous client IDs only
 
 ---
 
-### v1.0.4 - Side Panel & Export Enhancements
+### v1.0.4 — Side Panel & Export Enhancements
 
-**Side Panel Improvements:**
-- Fixed tab switching — anchors open to Anchors tab, tags to Tags tab
-- Standardised icon styling across all buttons
-- Added tooltips to all icon buttons
-- Copy-to-clipboard on tag cards
-- Improved visual consistency
-
-**Export Features:**
+- Fixed tab switching in side panel
 - Multi-format export (JSON, Markdown, PDF)
-- Three-dot menu for format selection
-- ThreadCub logo on PDF exports
-- Direct download without opening new tabs
-
-**Data Persistence:**
 - Tags and anchors persist across sessions
-- Survives browser cache clearing
-- Manual deletion only
 
 ---
 
@@ -225,7 +234,7 @@ Professional export featuring:
 
 ## Links
 
-- **Chrome Web Store**: [threadcub.com](https://threadcub.com) (pending v1.0.8 review)
+- **Chrome Web Store**: [ThreadCub](https://chromewebstore.google.com/detail/threadcub/hfipaiffgjplgnlocipafhcfjmofdeie)
 - **Website**: [https://threadcub.com](https://threadcub.com)
 - **Discord Community**: Join for support and updates
 

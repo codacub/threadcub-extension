@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ThreadCub",
-  "version": "1.0.9",
+  "version": "1.1.0",
   "description": "Save, tag, and resume your AI chats across platforms. ThreadCub makes long conversations organised, searchable, and stress-free.",
 
   
@@ -38,7 +38,6 @@
   ],
   
   "host_permissions": [
-    "http://localhost:3000/*",
     "https://claude.ai/*",
     "https://chat.openai.com/*",
     "https://chatgpt.com/*",
@@ -46,7 +45,7 @@
     "https://copilot.microsoft.com/*",
     "https://grok.x.ai/*",
     "https://grok.com/*",
-    "https://x.com/*",
+    "https://x.com/i/grok", "https://x.com/i/grok/*", "https://x.com/i/grok?*",
     "https://chat.deepseek.com/*",
     "https://www.perplexity.ai/*",
     "https://perplexity.ai/*",
@@ -69,7 +68,7 @@
       "https://copilot.microsoft.com/*",
       "https://grok.x.ai/*",
       "https://grok.com/*",
-      "https://x.com/*",
+      "https://x.com/i/grok", "https://x.com/i/grok/*", "https://x.com/i/grok?*",
       "https://chat.deepseek.com/*",
       "https://www.perplexity.ai/*",
       "https://perplexity.ai/*"
@@ -105,6 +104,11 @@
       "src/core/app-initializer.js",
       "content.js"
     ],
+    "run_at": "document_idle"
+  },
+  {
+    "matches": ["https://threadcub.com/*", "https://*.threadcub.com/*"],
+    "js": ["src/features/threadcub-session-bridge.js"],
     "run_at": "document_idle"
   }
 ],

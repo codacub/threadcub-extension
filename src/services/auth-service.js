@@ -250,6 +250,10 @@ const AuthService = {
       if (response.ok) {
         const data = await response.json();
         console.log('🔐 AuthService: Token is valid, user:', data);
+        if (data.encryptionKey) {
+          await this.storeEncryptionKey(data.encryptionKey);
+          console.log('🔐 AuthService: Encryption key stored from validate response');
+        }
         return data;
       } else if (response.status === 401) {
         console.log('🔐 AuthService: Token expired or invalid (401)');
@@ -320,7 +324,7 @@ const AuthService = {
   }
 };
 
-// Export based on context (content script vs background service worker)
+// Export based on the context (content script vs background service worker)
 if (typeof window !== 'undefined') {
   window.AuthService = AuthService;
 }

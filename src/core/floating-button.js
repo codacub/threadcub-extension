@@ -512,6 +512,25 @@ class ThreadCubFloatingButton {
     bearFace.innerHTML = newContent;
   }
 
+  setSaveBtnLoading(isLoading) {
+  const saveBtn = this.button?.querySelector('.threadcub-save-btn');
+  if (!saveBtn) return;
+  if (isLoading) {
+    saveBtn.classList.add('saving');
+    saveBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+      <circle cx="12" cy="12" r="9" stroke-opacity="0.25"/>
+      <path d="M12 3a9 9 0 0 1 9 9"/>
+    </svg>`;
+  } else {
+    saveBtn.classList.remove('saving');
+    saveBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <path d="m7 10 5-5 5 5"/>
+      <path d="M12 5v12"/>
+    </svg>`;
+  }
+}
+
   // ===== ACTION HANDLERS =====
   handleTagButtonClick() {
     try {
@@ -1016,7 +1035,7 @@ class ThreadCubFloatingButton {
   }
 
   this.isExporting = true;
-  this.lastExportTime = now;
+  this.setSaveBtnLoading(true);
 
   try {
     // Extract conversation data from the current AI platform
@@ -1031,6 +1050,7 @@ class ThreadCubFloatingButton {
       console.error('🐻 ThreadCub: No conversation data returned from extraction');
       this.showErrorToast('No conversation found to save');
       this.isExporting = false;
+    this.setSaveBtnLoading(false);
       return;
     }
 
@@ -1038,6 +1058,7 @@ class ThreadCubFloatingButton {
       console.error('🐻 ThreadCub: No messages found in conversation data');
       this.showErrorToast('No messages found in conversation');
       this.isExporting = false;
+    this.setSaveBtnLoading(false);
       return;
     }
 
@@ -1061,30 +1082,49 @@ class ThreadCubFloatingButton {
 
     console.log('🔍 API Data includes sessionId:', !!apiData.sessionId);
 
-    // API call via ApiService
+    // API call via ApiService — reuse cached save if Save was clicked recently (within 30s)
     try {
-      const data = await window.ApiService.saveConversation(apiData);
+      let shareUrl, summary;
 
-      // Generate continuation prompt and handle platform-specific flow
-      const summary = data.summary || window.ConversationExtractor.generateQuickSummary(conversationData.messages);
+      const recentSave = this.lastSavedAt && (Date.now() - this.lastSavedAt) < 30000 && this.lastSavedShareUrl;
 
-      // Log the full API response so we can see exactly what keys are returned
-      console.log('🔍 DEBUG: Full save API response:', JSON.stringify(data));
+      if (recentSave) {
+        console.log('🐻 ThreadCub: Reusing cached save result — skipping duplicate API call');
+        shareUrl = this.lastSavedShareUrl;
+        summary = window.ConversationExtractor.generateQuickSummary(conversationData.messages);
+        // Clear cache after using it
+        this.lastSavedConversationId = null;
+        this.lastSavedShareUrl = null;
+        this.lastSavedConversationData = null;
+        this.lastSavedAt = null;
+      } else {
+        const data = await window.ApiService.saveConversation(apiData);
 
-      // Extract conversation ID — backend may return it under different keys
-      const conversationId = data.conversationId || data.id || data.conversation?.id || data.data?.id || null;
-      console.log('🔍 DEBUG: conversationId resolved as:', conversationId);
+        // Generate continuation prompt and handle platform-specific flow
+        summary = data.summary || window.ConversationExtractor.generateQuickSummary(conversationData.messages);
 
-      // Build shareUrl — only if we have a real UUID
-      const shareUrl = data.shareableUrl ||
-                       (conversationId ? `https://threadcub.com/api/share/${conversationId}` : null);
-      console.log('🔍 DEBUG: shareUrl:', shareUrl);
+        // Log the full API response so we can see exactly what keys are returned
+        console.log('🔍 DEBUG: Full save API response:', JSON.stringify(data));
+
+        // Extract conversation ID — backend may return it under different keys
+        // Use nullish coalescing to avoid picking up JS `undefined` values, which
+        // would coerce to the string "undefined" inside the template literal below.
+        const rawId = data.conversationId ?? data.id ?? data.conversation?.id ?? data.data?.id ?? null;
+        const conversationId = (rawId && typeof rawId === 'string' && rawId !== 'undefined') ? rawId : null;
+        console.log('🔍 DEBUG: conversationId resolved as:', conversationId);
+
+        // Build shareUrl — only if we have a real UUID
+        shareUrl = data.shareableUrl ||
+                         (conversationId ? `https://threadcub.com/api/share/${conversationId}` : null);
+        console.log('🔍 DEBUG: shareUrl:', shareUrl);
+      }
 
       // If no valid shareUrl came back, fall back to direct continuation
       if (!shareUrl) {
         console.warn('🐻 ThreadCub: No conversation ID in API response, falling back to direct continuation');
         this.handleDirectContinuation(conversationData);
         this.isExporting = false;
+    this.setSaveBtnLoading(false);
         return;
       }
 
@@ -1124,6 +1164,7 @@ class ThreadCubFloatingButton {
       }, 2000);
 
       this.isExporting = false;
+    this.setSaveBtnLoading(false);
 
     } catch (apiError) {
       console.error('🐻 ThreadCub: Direct API call failed:', apiError);
@@ -1132,6 +1173,7 @@ class ThreadCubFloatingButton {
       // FALLBACK: Skip API save and go straight to continuation
       this.handleDirectContinuation(conversationData);
       this.isExporting = false;
+    this.setSaveBtnLoading(false);
       return;
     }
 
@@ -1139,6 +1181,7 @@ class ThreadCubFloatingButton {
     console.error('🐻 ThreadCub: Export error:', error);
     this.showErrorToast('Export failed: ' + error.message);
     this.isExporting = false;
+    this.setSaveBtnLoading(false);
   }
   }
 
@@ -1169,7 +1212,7 @@ class ThreadCubFloatingButton {
     }
 
     this.isExporting = true;
-    this.lastExportTime = now;
+    this.setSaveBtnLoading(true);
 
     try {
       // Extract conversation data from the current AI platform
@@ -1179,6 +1222,7 @@ class ThreadCubFloatingButton {
         console.error('🐻 ThreadCub: No conversation data returned from extraction');
         this.showErrorToast('No conversation found to save');
         this.isExporting = false;
+    this.setSaveBtnLoading(false);
         return;
       }
 
@@ -1186,6 +1230,7 @@ class ThreadCubFloatingButton {
         console.error('🐻 ThreadCub: No messages found in conversation data');
         this.showErrorToast('No messages found in conversation');
         this.isExporting = false;
+    this.setSaveBtnLoading(false);
         return;
       }
 
@@ -1206,9 +1251,37 @@ class ThreadCubFloatingButton {
       try {
         const data = await window.ApiService.saveConversation(apiData);
         console.log('🐻 ThreadCub: Conversation saved to ThreadCub successfully');
+        if (window.AnalyticsService) window.AnalyticsService.trackFeatureUsed('sync_success', { platform: conversationData.platform || 'unknown' });
 
         this.setBearExpression('happy');
-        this.showSuccessToast('Conversation sent to ThreadCub!');
+
+        const undoConversationId = data.conversationId || data.id || data.data?.id;
+        const undoSessionId = sessionId;
+
+        // Cache the save result so Continue can reuse it without re-saving
+        this.lastSavedConversationId = undoConversationId;
+        this.lastSavedShareUrl = data.shareableUrl || (undoConversationId ? `https://threadcub.com/api/share/${undoConversationId}` : null);
+        this.lastSavedConversationData = conversationData;
+        this.lastSavedAt = Date.now();
+        console.log('🐻 ThreadCub: Cached save result — shareUrl:', this.lastSavedShareUrl);
+
+        window.UIComponents.showUndoToast(
+          'Saved for when ThreadCub launches. Changed your mind?',
+          async () => {
+            try {
+              await window.ApiService.deleteConversation(undoConversationId, undoSessionId);
+              // Clear cache on undo
+              this.lastSavedConversationId = null;
+              this.lastSavedShareUrl = null;
+              this.lastSavedConversationData = null;
+              this.lastSavedAt = null;
+              window.UIComponents.showSuccessToast('Save undone.');
+            } catch (e) {
+              window.UIComponents.showErrorToast('Could not undo — try again.');
+            }
+          }
+        );
+
         this.checkPendingQueue(); // refresh badge in case a retry just cleared items
 
         setTimeout(() => {
@@ -1218,17 +1291,20 @@ class ThreadCubFloatingButton {
         }, 2000);
 
         this.isExporting = false;
+    this.setSaveBtnLoading(false);
 
       } catch (apiError) {
         console.error('🐻 ThreadCub: API save failed:', apiError);
         this.showErrorToast('Failed to save conversation');
         this.isExporting = false;
+    this.setSaveBtnLoading(false);
       }
 
     } catch (error) {
       console.error('🐻 ThreadCub: Save error:', error);
       this.showErrorToast('Save failed: ' + error.message);
       this.isExporting = false;
+    this.setSaveBtnLoading(false);
     }
   }
 

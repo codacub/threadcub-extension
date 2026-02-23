@@ -121,7 +121,8 @@ const UIComponents = {
   closeBtn.addEventListener('click', dismiss);
 
   setTimeout(() => toast.classList.add('show'), 50);
-  // No auto-dismiss — stays until user clicks Undo, ✕, or navigates away
+  // Auto-dismiss after 8 seconds (user can still click ✕ to close sooner)
+  setTimeout(dismiss, 8000);
 },
 
   showErrorToast(message = '❌ Error occurred') {

@@ -156,6 +156,12 @@ html, body {
     white-space: nowrap;
 }
 
+.user-conv-count {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+    font-weight: var(--font-weight-normal);
+}
+
 .user-status {
     font-size: var(--font-size-xs);
     color: var(--color-success);

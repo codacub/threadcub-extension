@@ -88,6 +88,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       handleAuthLogout(sendResponse);
       return true;
 
+    case 'getConversationCount':
+      handleGetConversationCount(sendResponse);
+      return true;
+
     case 'trackEvent':
       handleTrackEvent(request, sendResponse);
       return false;
@@ -940,6 +944,32 @@ async function handleAuthLogout(sendResponse) {
   } catch (error) {
     console.error('🔐 Background: Error during logout:', error);
     sendResponse({ success: false, error: error.message });
+  }
+}
+
+async function handleGetConversationCount(sendResponse) {
+  try {
+    const token = await self.AuthService.getToken();
+    if (!token) {
+      sendResponse({ success: false, count: 0 });
+      return;
+    }
+    const response = await fetch(`${BG_API_BASE}/conversations/count`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    if (response.ok) {
+      const data = await response.json();
+      sendResponse({ success: true, count: data.count ?? 0 });
+    } else {
+      sendResponse({ success: false, count: 0 });
+    }
+  } catch (error) {
+    console.error('🐻 Background: Error fetching conversation count:', error);
+    sendResponse({ success: false, count: 0 });
   }
 }
 

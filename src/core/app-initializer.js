@@ -157,6 +157,30 @@ console.log('🧵 ThreadCub: Starting initialization...');
 initializeThreadCub();
 
 
+
+// === Auth State Change Watcher ===
+// When the user logs in or out via the popup, chrome.storage changes.
+// The content script re-initializes so the button reflects the new auth state.
+if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName !== 'local') return;
+    const tokenChanged = 'threadcub_auth_token' in changes;
+    const encKeyChanged = 'threadcub_encryption_key' in changes;
+    if (tokenChanged || encKeyChanged) {
+      const newToken = changes.threadcub_auth_token?.newValue;
+      console.log('🧵 ThreadCub: Auth token changed — re-initializing button. hasToken:', !!newToken);
+      setTimeout(() => {
+        const existingBtn = document.querySelector('#threadcub-edge-btn');
+        if (existingBtn) existingBtn.remove();
+        window.threadcubButton = null;
+        window._threadcubInitialized = false;
+        window.AppInitializer.initialize();
+      }, 500);
+    }
+  });
+  console.log('🧵 ThreadCub: Auth state change watcher active');
+}
+// === END Auth State Change Watcher ===
 // === X.com Dark Mode Toggle Watcher ===
 // x.com modifies the html element's style when toggling dark/light mode,
 // which destroys and rebuilds the React tree, removing the ThreadCub button.

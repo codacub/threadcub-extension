@@ -52,14 +52,25 @@ const ApiService = {
       ...extraHeaders
     };
 
-    // Get auth token from AuthService if available
+    // Get auth token from AuthService if available (background/service worker context)
+    // Falls back to messaging the background when running in a content script context
     try {
       const AuthSvc = _getAuthService();
       if (AuthSvc) {
         const token = await AuthSvc.getToken();
         if (token) {
           headers['Authorization'] = `Bearer ${token}`;
-          console.log('🔐 ApiService: Added Bearer auth header');
+          console.log('🔐 ApiService: Added Bearer auth header (AuthService)');
+        }
+      } else if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+        // Content script context — AuthService not available in window scope,
+        // so ask the background script for the stored token instead
+        const response = await chrome.runtime.sendMessage({ action: 'getAuthToken' });
+        if (response?.token) {
+          headers['Authorization'] = `Bearer ${response.token}`;
+          console.log('🔐 ApiService: Added Bearer auth header (via background message)');
+        } else {
+          console.log('🔐 ApiService: No token returned from background');
         }
       }
     } catch (error) {
@@ -179,7 +190,7 @@ const ApiService = {
                   encryption_format: 'aes-gcm',
                   title: title,
                   source: source,
-                  session_id: apiData?.sessionId || null
+                  session_id: apiData?.session_id || apiData?.sessionId || null
                 })
               });
 
@@ -235,7 +246,7 @@ const ApiService = {
         },
         title: title,
         source: source,
-        session_id: apiData?.sessionId || null
+        session_id: apiData?.session_id || apiData?.sessionId || null
       };
 
       console.log('🔍 Sending unencrypted payload:', JSON.stringify(unencryptedPayload, null, 2));

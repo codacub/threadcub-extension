@@ -1,4 +1,4 @@
-# ThreadCub Chrome Extension (v1.1.0)
+# ThreadCub Chrome Extension (v1.1.1)
 
 ThreadCub helps you stay in control of long AI conversations.
 
@@ -174,6 +174,36 @@ Professional export featuring:
 ---
 
 ## Previous Updates
+
+### v1.1.1 — Onboarding, Popup Redesign & Bug Fixes
+
+### Onboarding
+- **First-run welcome modal** — shown automatically on first install with options to explore or dismiss
+- **Feature tour** — 3 guided modals with animated GIFs showcasing key features in action (floating button, highlights, tagging)
+- **Persistent opt-out** — dismissing the tour saves the preference; can be re-enabled manually from the popup at any time
+
+### Popup redesign
+- **Show/hide floating button** — toggle the ThreadCub button on/off directly from the popup without uninstalling
+- **Conversation count** — signed-in users now see how many conversations are saved to their account
+- **Consistent guest/signed-in views** — both states now follow the same layout and visual structure
+- **Dynamic version label** — version number pulled live from the manifest and displayed in the popup
+- **Improved auth state handling** — cleaner three-state UI (loading / signed in / signed out) with no layout flicker
+
+### Platform extraction
+- **Grok on x.com/i/grok** — overhauled extraction with multiple fallback strategies: `data-testid` selectors, CSS class patterns, scroll container traversal, and DOM walking for alternating user/assistant turns
+- Grok extraction now explicitly handles differences between grok.com and x.com DOM structures
+
+### Bug fixes
+- **Guest-to-user upgrade now writes `user_email`** — previously only `user_id` was set when claiming a guest row on sign-in
+- **`quick_summary` now generated on upgraded rows** — guest rows claimed after sign-in now correctly trigger summary generation; self-heals if summary is missing on subsequent saves
+- **Undo toast auto-dismisses** — save confirmation toast now disappears after 8 seconds rather than persisting indefinitely (✕ button still available for immediate dismissal)
+
+### Housekeeping
+- Removed `background copy.js` and `floating-button copy.js` backup files
+- Removed unused `fontawesome/` icon folder
+- Onboarding GIF assets added to `web_accessible_resources` in manifest
+
+---
 
 ### v1.0.8 — Guest Saving, Share Links & Reliability
 

@@ -574,49 +574,161 @@ const ConversationExtractor = {
 
   // Grok extraction using message-bubble class to identify and distinguish messages.
   // Role detection: user bubbles have bg-surface-l1 class; assistant bubbles do not.
+  // On x.com/i/grok the DOM differs from grok.com — this method tries multiple strategies.
   grokAriaLabelExtraction() {
-    console.log('🤖 ThreadCub: Using Grok message-bubble class extraction...');
+    const isXCom = window.location.hostname.includes('x.com');
+    console.log(`🤖 ThreadCub: Using Grok message-bubble class extraction (platform: ${isXCom ? 'x.com' : 'grok.com'})...`);
 
-    const messages = [];
-    let messageIndex = 0;
-
-    // Get all message bubbles, then keep only top-level ones
-    // (filter out nested bubbles that are children of another bubble)
+    // ── Strategy A: message-bubble classes (works on grok.com) ──
     const allBubbles = Array.from(document.querySelectorAll('[class*="message-bubble"]'));
     const topLevelBubbles = allBubbles.filter(el =>
       !el.parentElement?.closest('[class*="message-bubble"]')
     );
-
     console.log(`🤖 ThreadCub: Found ${allBubbles.length} total, ${topLevelBubbles.length} top-level message bubbles`);
 
+    if (topLevelBubbles.length > 0) {
+      return this._extractFromBubbles(topLevelBubbles, 'grok_bubble_class');
+    }
+
+    // ── Strategy B: x.com/i/grok — conversation turn containers ──
+    // X.com wraps each turn in a div with data-index or uses r-* Tailwind classes.
+    // User messages sit inside a container with a distinct background; assistant messages are full-width.
+    if (isXCom) {
+      console.log('🤖 ThreadCub: Trying x.com Grok turn-based extraction...');
+
+      // Try data-testid="tweetText" style containers used in X.com React app
+      const xSelectors = [
+        '[data-testid="messageEntry"]',
+        '[data-testid="grok-message"]',
+        '[class*="GrokMessage"]',
+        '[class*="grok-message"]',
+        // X.com uses CSS-in-JS with r- prefixed classes; look for conversation containers
+        'div[class*="r-"][class*="r-1niwhzg"]', // common X.com message wrapper pattern
+      ];
+
+      for (const selector of xSelectors) {
+        try {
+          const els = Array.from(document.querySelectorAll(selector));
+          if (els.length > 0) {
+            console.log(`🤖 ThreadCub: x.com strategy found ${els.length} elements with selector: ${selector}`);
+            return this._extractFromBubbles(els, `grok_xcom_${selector}`);
+          }
+        } catch (e) { /* try next */ }
+      }
+
+      // Strategy B2: Walk the DOM looking for alternating user/assistant pattern.
+      // On x.com, user messages are in a visually distinct bubble (right-aligned or background).
+      // We look for the main conversation scroll container and pull direct children.
+      console.log('🤖 ThreadCub: Trying x.com Grok scroll-container extraction...');
+      const scrollContainerSelectors = [
+        '[data-testid="grokConversation"]',
+        '[aria-label="Conversation"]',
+        '[class*="conversation"]',
+        'main section',
+        'main > div > div > div',
+      ];
+
+      for (const sel of scrollContainerSelectors) {
+        try {
+          const container = document.querySelector(sel);
+          if (!container) continue;
+          const children = Array.from(container.children).filter(el => {
+            const text = el.innerText?.trim() || '';
+            return text.length > 10 && !el.id?.includes('threadcub') &&
+              !(typeof el.className === 'string' && el.className.includes('threadcub'));
+          });
+          if (children.length >= 2) {
+            console.log(`🤖 ThreadCub: x.com container found ${children.length} children with: ${sel}`);
+            return this._extractFromBubbles(children, `grok_xcom_container`);
+          }
+        } catch (e) { /* try next */ }
+      }
+
+      // Strategy B3: Last resort — grab all text blocks in main that look like messages
+      console.log('🤖 ThreadCub: Trying x.com Grok text-block extraction...');
+      return this._grokXComTextExtraction();
+    }
+
+    console.log('🤖 ThreadCub: No Grok message containers found');
+    return [];
+  },
+
+  // Shared bubble → messages converter used by all Grok strategies
+  _extractFromBubbles(bubbles, method) {
+    const messages = [];
+    let messageIndex = 0;
     const processedTexts = new Set();
 
-    topLevelBubbles.forEach((bubble) => {
-      // Skip ThreadCub UI elements
+    bubbles.forEach((bubble) => {
       if (bubble.id?.includes('threadcub')) return;
       if (typeof bubble.className === 'string' && bubble.className.includes('threadcub')) return;
 
       const text = bubble.innerText?.trim() || '';
       if (text.length < 10 || processedTexts.has(text)) return;
-      if (['Copy', 'Share', 'Grok', 'More'].includes(text)) return;
+      if (['Copy', 'Share', 'Grok', 'More', 'New Chat'].includes(text)) return;
 
       processedTexts.add(text);
 
-      // User bubbles have bg-surface-l1 (styled card with border/padding)
-      // Assistant bubbles have w-full max-w-none (full-width, no background card)
       const cls = typeof bubble.className === 'string' ? bubble.className : '';
-      const isUser = cls.includes('bg-surface-l1');
+      // grok.com: user = bg-surface-l1; x.com: user messages tend to be right-aligned
+      // or have a distinct background class. We check multiple signals.
+      const isUser = cls.includes('bg-surface-l1') ||
+        cls.includes('r-1kb76zh') || // x.com right-align class
+        bubble.getAttribute('data-role') === 'user';
 
       messages.push({
         id: messageIndex++,
         role: isUser ? 'user' : 'assistant',
         content: this.simpleCleanContent(text),
         timestamp: new Date().toISOString(),
-        extractionMethod: 'grok_bubble_class'
+        extractionMethod: method
       });
     });
 
-    console.log(`🤖 ThreadCub: Grok extraction found: ${messages.length} messages`);
+    console.log(`🤖 ThreadCub: Grok extraction found: ${messages.length} messages (method: ${method})`);
+    return messages;
+  },
+
+  // x.com last-resort: find the main content area and extract all text blocks
+  _grokXComTextExtraction() {
+    console.log('🤖 ThreadCub: x.com last-resort text extraction...');
+    const messages = [];
+    let messageIndex = 0;
+    const processedTexts = new Set();
+
+    // Get all substantial text nodes in main, skipping nav/header/footer
+    const main = document.querySelector('main') || document.body;
+    const allDivs = Array.from(main.querySelectorAll('div, article, section'));
+
+    // Only pick leaf-like nodes (no substantial div children) with enough text
+    const leafNodes = allDivs.filter(el => {
+      if (el.closest('nav') || el.closest('header') || el.closest('footer')) return false;
+      if (el.id?.includes('threadcub')) return false;
+      if (typeof el.className === 'string' && el.className.includes('threadcub')) return false;
+      const text = el.innerText?.trim() || '';
+      if (text.length < 20) return false;
+      // Leaf-ish: fewer than 3 child divs with their own text
+      const childDivsWithText = Array.from(el.children).filter(c =>
+        (c.tagName === 'DIV' || c.tagName === 'ARTICLE') && (c.innerText?.trim()?.length || 0) > 20
+      );
+      return childDivsWithText.length < 2;
+    });
+
+    // Deduplicate and assign alternating roles as a best-effort
+    leafNodes.forEach((el, idx) => {
+      const text = el.innerText?.trim() || '';
+      if (processedTexts.has(text)) return;
+      processedTexts.add(text);
+      messages.push({
+        id: messageIndex++,
+        role: idx % 2 === 0 ? 'user' : 'assistant',
+        content: this.simpleCleanContent(text),
+        timestamp: new Date().toISOString(),
+        extractionMethod: 'grok_xcom_lastresort'
+      });
+    });
+
+    console.log(`🤖 ThreadCub: x.com last-resort found: ${messages.length} messages`);
     return messages;
   },
 

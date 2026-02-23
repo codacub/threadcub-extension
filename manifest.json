@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ThreadCub",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Save, tag, and resume your AI chats across platforms. ThreadCub makes long conversations organised, searchable, and stress-free.",
 
   
@@ -23,7 +23,12 @@
         "icons/icon-happy.png",
         "icons/icon-sad.png",
         "icons/icon-happier.png",
-        "icons/threadcub-logo.png"
+        "icons/threadcub-logo.png",
+        "icons/threadcub-logo.png",
+        "assets/images/floating-button.gif",
+        "assets/images/install.gif",
+        "assets/images/highlight.gif",
+        "assets/images/welcome-coda.png"
       ],
       "matches": ["<all_urls>"]
     }
@@ -45,7 +50,7 @@
     "https://copilot.microsoft.com/*",
     "https://grok.x.ai/*",
     "https://grok.com/*",
-    "https://x.com/i/grok", "https://x.com/i/grok/*", "https://x.com/i/grok?*",
+    "https://x.com/i/grok", "https://x.com/i/grok/*", "https://x.com/*",
     "https://chat.deepseek.com/*",
     "https://www.perplexity.ai/*",
     "https://perplexity.ai/*",
@@ -68,7 +73,7 @@
       "https://copilot.microsoft.com/*",
       "https://grok.x.ai/*",
       "https://grok.com/*",
-      "https://x.com/i/grok", "https://x.com/i/grok/*", "https://x.com/i/grok?*",
+      "https://x.com/i/grok", "https://x.com/i/grok/*", "https://x.com/*",
       "https://chat.deepseek.com/*",
       "https://www.perplexity.ai/*",
       "https://perplexity.ai/*"
@@ -94,6 +99,7 @@
       "src/ui/ui-components.js",
       "src/ui/side-panel.js",
       "src/core/floating-button.js",
+      "src/core/onboarding.js",
       "src/features/anchor-system.js",
       "src/features/tagging-system.js",
       "src/features/continuation-system.js",

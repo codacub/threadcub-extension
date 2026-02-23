@@ -71,6 +71,8 @@ class ThreadCubFloatingButton {
     this.loadPosition();
     this.checkPendingQueue();
     this.listenForPendingUpdates();
+    this.applyHiddenState();
+    this.listenForVisibilityChanges();
 
     console.log('🐻 ThreadCub: Floating button ready!');
   }
@@ -902,6 +904,26 @@ class ThreadCubFloatingButton {
     });
   }
 
+  applyHiddenState() {
+    chrome.storage.local.get('threadcub_button_hidden', ({ threadcub_button_hidden }) => {
+      if (this.button) {
+        this.button.style.display = threadcub_button_hidden ? 'none' : '';
+      }
+    });
+  }
+
+  listenForVisibilityChanges() {
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area === 'local' && 'threadcub_button_hidden' in changes) {
+        const isHidden = !!changes.threadcub_button_hidden.newValue;
+        if (this.button) {
+          this.button.style.display = isHidden ? 'none' : '';
+          console.log('🐻 ThreadCub: Floating button visibility:', isHidden ? 'hidden' : 'visible');
+        }
+      }
+    });
+  }
+
   /**
    * Show/hide a badge on the bear button indicating pending failed saves.
    * If count > 0, shows a red dot with a tooltip; clicking it triggers retry.
@@ -987,21 +1009,24 @@ class ThreadCubFloatingButton {
 
   // ===== UTILITY METHODS =====
   destroy() {
-    if (this.button && this.button.parentNode) {
-      this.button.parentNode.removeChild(this.button);
+    // Hide in-place rather than removing from the DOM.
+    // This keeps the element alive so listenForVisibilityChanges() can
+    // restore it when the popup toggles it back on.
+    if (this.button) {
+      this.button.style.display = 'none';
     }
-    if (this.borderOverlay && this.borderOverlay.parentNode) {
-      this.borderOverlay.parentNode.removeChild(this.borderOverlay);
-    }
-    // Also remove any active tooltips, flyout, and managed tooltip
+    // Clean up any floating UI that shouldn't linger while hidden
     document.querySelectorAll('.threadcub-tooltip').forEach(t => t.remove());
-    if (this.downloadFlyout && this.downloadFlyout.parentNode) {
-      this.downloadFlyout.parentNode.removeChild(this.downloadFlyout);
+    if (this.downloadFlyout) {
+      this.downloadFlyout.classList.remove('show');
     }
     if (this.downloadTooltip && this.downloadTooltip.parentNode) {
       this.downloadTooltip.parentNode.removeChild(this.downloadTooltip);
+      this.downloadTooltip = null;
     }
-    console.log('🐻 ThreadCub: Button destroyed');
+    // Persist hidden state so the popup toggle stays in sync
+    chrome.storage.local.set({ threadcub_button_hidden: true });
+    console.log('🐻 ThreadCub: Button hidden (kept in DOM for restore)');
   }
 
   // Session ID management removed - now using window.StorageService.getOrCreateSessionId()
@@ -1077,10 +1102,10 @@ class ThreadCubFloatingButton {
       source: conversationData.platform?.toLowerCase() || 'unknown',
       title: conversationData.title || 'Untitled Conversation',
       userAuthToken: userAuthToken,
-      sessionId: sessionId
+      session_id: sessionId
     };
 
-    console.log('🔍 API Data includes sessionId:', !!apiData.sessionId);
+    console.log('🔍 API Data includes session_id:', !!apiData.session_id);
 
     // API call via ApiService — reuse cached save if Save was clicked recently (within 30s)
     try {
@@ -1244,7 +1269,7 @@ class ThreadCubFloatingButton {
         source: conversationData.platform?.toLowerCase() || 'unknown',
         title: conversationData.title || 'Untitled Conversation',
         userAuthToken: userAuthToken,
-        sessionId: sessionId
+        session_id: sessionId
       };
 
       // API call via ApiService - save only, no tab open
@@ -1315,7 +1340,7 @@ class ThreadCubFloatingButton {
       // Extract conversation data from the current AI platform
       console.log('🐻 ThreadCub: Extracting conversation data for download...');
 
-      conversationData = await window.ConversationExtractor.extractConversation();
+      const conversationData = await window.ConversationExtractor.extractConversation();
 
       if (!conversationData || !conversationData.messages || conversationData.messages.length === 0) {
         console.error('🐻 ThreadCub: No conversation data found');

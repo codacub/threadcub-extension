@@ -120,7 +120,7 @@ function checkForContinuationData() {
 function executeStreamlinedContinuation(fullPrompt, shareUrl, continuationData) {
   console.log('🚀 ThreadCub: Executing streamlined continuation');
 
-  // 🐻 Track continuation started
+  // 📊 GA: continuation_started — fired when continuation data is found and execution begins
   chrome.runtime.sendMessage({
     action: 'trackEvent',
     eventType: 'continuation_started',
@@ -154,6 +154,17 @@ function executeStreamlinedContinuation(fullPrompt, shareUrl, continuationData) 
                  platform === window.PlatformDetector.PLATFORMS.GROK ||
                  platform === 'grok';
 
+  // 📊 GA: continuation_executed — fired when continuation is about to fill the input field
+  // Distinguishes between file-based (user uploads JSON) and URL-based (auto-fills and sends)
+  chrome.runtime.sendMessage({
+    action: 'trackEvent',
+    eventType: 'continuation_executed',
+    data: {
+      platform: continuationData.platform || platform || 'unknown',
+      flow_type: isFileBased ? 'file_based' : isGrok ? 'grok_spa' : 'url_based'
+    }
+  });
+
   if (isFileBased) {
     // File-based platforms (ChatGPT, Gemini, DeepSeek, Perplexity) need retry logic
     console.log('🔧 Using retry logic for file-based platform:', platform);
@@ -179,6 +190,16 @@ function executeStreamlinedContinuation(fullPrompt, shareUrl, continuationData) 
     const autoStartDelay = isGrok ? 10000 : 1500;
     setTimeout(() => {
       console.log('🔧 Auto-starting conversation for URL-based platform...');
+      // 📊 GA: continuation_auto_started — fired when the send button is clicked automatically
+      // Only fires for URL-based platforms (Claude, Grok) — file-based platforms skip this
+      chrome.runtime.sendMessage({
+        action: 'trackEvent',
+        eventType: 'continuation_auto_started',
+        data: {
+          platform: continuationData.platform || platform || 'unknown',
+          is_grok: isGrok
+        }
+      });
       attemptAutoStart(platform);
     }, autoStartDelay);
   } else {
@@ -448,6 +469,18 @@ function fillInputFieldWithRetry(prompt, maxAttempts = 20, retryDelay = 1000) {
       setTimeout(tryFill, retryDelay);
     } else {
       console.error(`\n❌ FAILED to fill input after ${maxAttempts} attempts (${maxAttempts * retryDelay / 1000} seconds total)`);
+
+      // 📊 GA: continuation_fill_failed — fired when input field could not be filled after all retries
+      // Useful for identifying platforms where the selector logic is broken
+      chrome.runtime.sendMessage({
+        action: 'trackEvent',
+        eventType: 'continuation_fill_failed',
+        data: {
+          platform: platform || 'unknown',
+          attempts_made: maxAttempts
+        }
+      });
+
       console.log('💡 The JSON file has been downloaded. You can manually:');
       console.log('   1. Copy the prompt from the JSON file');
       console.log('   2. Paste it into the input field');

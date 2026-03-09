@@ -144,11 +144,175 @@ function handleTrackEvent(request, sendResponse) {
         break;
       
       case 'floating_button_clicked':
+        // 📊 GA: floating button clicked — action = save | continue | download | tag
         self.Analytics.trackFloatingButtonClicked(data.platform);
         break;
       
       case 'continuation_started':
+        // 📊 GA: continuation started (legacy event)
         self.Analytics.trackContinuationStarted(data.platform);
+        break;
+
+      case 'save_success':
+        // 📊 GA: save succeeded — conversation saved to ThreadCub
+        console.log('📊 Analytics: Save success', data);
+        if (self.Analytics.trackEvent) self.Analytics.trackEvent('save_success', data);
+        break;
+
+      case 'save_failed':
+        // 📊 GA: save failed — reason = no_conversation_data | no_messages | api_error | unexpected_error
+        console.log('📊 Analytics: Save failed', data);
+        if (self.Analytics.trackEvent) self.Analytics.trackEvent('save_failed', data);
+        break;
+
+      case 'continue_success':
+        // 📊 GA: continue succeeded — platform = chatgpt | claude | gemini | grok | deepseek | perplexity
+        console.log('📊 Analytics: Continue success', data);
+        if (self.Analytics.trackEvent) self.Analytics.trackEvent('continue_success', data);
+        break;
+
+      case 'continue_failed':
+        // 📊 GA: continue failed — reason = no_conversation_data | no_messages | api_error_fallback | unexpected_error
+        console.log('📊 Analytics: Continue failed', data);
+        if (self.Analytics.trackEvent) self.Analytics.trackEvent('continue_failed', data);
+        break;
+
+      case 'popup_opened':
+        // 📊 GA: popup opened — auth_state = authenticated | unauthenticated
+        console.log('📊 Analytics: Popup opened', data);
+        if (self.Analytics.trackEvent) self.Analytics.trackEvent('popup_opened', data);
+        break;
+
+      case 'popup_login_clicked':
+        // 📊 GA: login button clicked from popup (unauthenticated view)
+        console.log('📊 Analytics: Popup login clicked');
+        if (self.Analytics.trackEvent) self.Analytics.trackEvent('popup_login_clicked', data);
+        break;
+
+      case 'popup_logout_clicked':
+        // 📊 GA: logout button clicked from popup (authenticated view)
+        console.log('📊 Analytics: Popup logout clicked');
+        if (self.Analytics.trackEvent) self.Analytics.trackEvent('popup_logout_clicked', data);
+        break;
+
+      case 'popup_dashboard_opened':
+        // 📊 GA: dashboard opened from popup
+        console.log('📊 Analytics: Popup dashboard opened');
+        if (self.Analytics.trackEvent) self.Analytics.trackEvent('popup_dashboard_opened', data);
+        break;
+
+      case 'popup_discord_clicked':
+        // 📊 GA: discord link clicked from popup — auth_state = authenticated | unauthenticated
+        console.log('📊 Analytics: Popup discord clicked', data);
+        if (self.Analytics.trackEvent) self.Analytics.trackEvent('popup_discord_clicked', data);
+        break;
+
+      case 'popup_onboarding_triggered':
+        // 📊 GA: quick tips / onboarding triggered from popup — auth_state = authenticated | unauthenticated
+        console.log('📊 Analytics: Popup onboarding triggered', data);
+        if (self.Analytics.trackEvent) self.Analytics.trackEvent('popup_onboarding_triggered', data);
+        break;
+
+      case 'popup_floating_toggle':
+        // 📊 GA: floating button toggled from popup — new_state = hidden | visible
+        console.log('📊 Analytics: Popup floating toggle', data);
+        if (self.Analytics.trackEvent) self.Analytics.trackEvent('popup_floating_toggle', data);
+        break;
+
+      case 'onboarding_started':
+        // 📊 GA: onboarding tour started
+        console.log('📊 Analytics: Onboarding started');
+        if (self.Analytics.trackEvent) self.Analytics.trackEvent('onboarding_started', data);
+        break;
+
+      case 'onboarding_step_viewed':
+        // 📊 GA: onboarding step viewed — step = 0-3, step_name = intro | bear_menu | pin_toolbar | pawmarks
+        console.log('📊 Analytics: Onboarding step viewed', data);
+        if (self.Analytics.trackEvent) self.Analytics.trackEvent('onboarding_step_viewed', data);
+        break;
+
+      case 'onboarding_completed':
+        // 📊 GA: onboarding completed — user finished all 4 steps
+        console.log('📊 Analytics: Onboarding completed');
+        if (self.Analytics.trackEvent) self.Analytics.trackEvent('onboarding_completed', data);
+        break;
+
+      case 'onboarding_dismissed':
+        // 📊 GA: onboarding dismissed — dismissed_at_step shows where they dropped off
+        console.log('📊 Analytics: Onboarding dismissed', data);
+        if (self.Analytics.trackEvent) self.Analytics.trackEvent('onboarding_dismissed', data);
+        break;
+
+      case 'tagging_panel_opened':
+        // 📊 GA: tagging (pawmarks) side panel opened
+        console.log('📊 Analytics: Tagging panel opened', data);
+        if (self.Analytics.trackEvent) self.Analytics.trackEvent('tagging_panel_opened', data);
+        break;
+
+      case 'tagging_panel_closed':
+        // 📊 GA: tagging (pawmarks) side panel closed
+        console.log('📊 Analytics: Tagging panel closed', data);
+        if (self.Analytics.trackEvent) self.Analytics.trackEvent('tagging_panel_closed', data);
+        break;
+
+      case 'tagging_tag_created':
+        // 📊 GA: tag created — category and total tag count
+        console.log('📊 Analytics: Tag created', data);
+        if (self.Analytics.trackEvent) self.Analytics.trackEvent('tagging_tag_created', data);
+        break;
+
+      case 'tagging_tag_removed':
+        // 📊 GA: tag removed — remaining tag count
+        console.log('📊 Analytics: Tag removed', data);
+        if (self.Analytics.trackEvent) self.Analytics.trackEvent('tagging_tag_removed', data);
+        break;
+
+      case 'anchor_created':
+        // 📊 GA: anchor created — platform tracked
+        console.log('📊 Analytics: Anchor created', data);
+        if (self.Analytics.trackEvent) self.Analytics.trackEvent('anchor_created', data);
+        break;
+
+      case 'anchor_jump_attempted':
+        // 📊 GA: anchor jump attempted — success = true | false, method = selector | message-search | full-text-search | index | none
+        console.log('📊 Analytics: Anchor jump attempted', data);
+        if (self.Analytics.trackEvent) self.Analytics.trackEvent('anchor_jump_attempted', data);
+        break;
+
+      case 'side_panel_tab_switched':
+        // 📊 GA: side panel tab switched — tab = tags | anchors
+        console.log('📊 Analytics: Side panel tab switched', data);
+        if (self.Analytics.trackEvent) self.Analytics.trackEvent('side_panel_tab_switched', data);
+        break;
+
+      case 'side_panel_priority_filter_changed':
+        // 📊 GA: side panel priority filter changed — filter = all | high | medium | low
+        console.log('📊 Analytics: Side panel priority filter changed', data);
+        if (self.Analytics.trackEvent) self.Analytics.trackEvent('side_panel_priority_filter_changed', data);
+        break;
+
+      case 'side_panel_tag_copied':
+        // 📊 GA: tag text copied from side panel
+        console.log('📊 Analytics: Side panel tag copied', data);
+        if (self.Analytics.trackEvent) self.Analytics.trackEvent('side_panel_tag_copied', data);
+        break;
+
+      case 'side_panel_tag_jumped':
+        // 📊 GA: tag jump-to clicked from side panel
+        console.log('📊 Analytics: Side panel tag jumped', data);
+        if (self.Analytics.trackEvent) self.Analytics.trackEvent('side_panel_tag_jumped', data);
+        break;
+
+      case 'side_panel_anchor_jumped':
+        // 📊 GA: anchor jump-to clicked from side panel
+        console.log('📊 Analytics: Side panel anchor jumped', data);
+        if (self.Analytics.trackEvent) self.Analytics.trackEvent('side_panel_anchor_jumped', data);
+        break;
+
+      case 'side_panel_anchor_deleted':
+        // 📊 GA: anchor deleted from side panel
+        console.log('📊 Analytics: Side panel anchor deleted', data);
+        if (self.Analytics.trackEvent) self.Analytics.trackEvent('side_panel_anchor_deleted', data);
         break;
       
       case 'length_prompt_shown':

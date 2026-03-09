@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ThreadCub",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Save, tag, and resume your AI chats across platforms. ThreadCub makes long conversations organised, searchable, and stress-free.",
 
   
@@ -96,6 +96,7 @@
       "src/services/api-service.js",
       "src/adapters/platform-adapters.js",
       "src/core/conversation-extractor.js",
+      "src/utils/rebrand-tokens.js",
       "src/ui/ui-components.js",
       "src/ui/side-panel.js",
       "src/core/floating-button.js",

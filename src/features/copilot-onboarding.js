@@ -127,6 +127,14 @@ class CopilotOnboarding {
     
     this._onboardingShown = true;
 
+    // 📊 GA: copilot_onboarding_shown — fired the first time a Copilot user sees the limitations modal
+    // Only fires once per install (storage flag prevents repeat shows)
+    chrome.runtime.sendMessage({
+      action: 'trackEvent',
+      eventType: 'copilot_onboarding_shown',
+      data: { platform: 'copilot' }
+    });
+
     // Create and inject the modal
     this._injectModal();
   }
@@ -188,11 +196,23 @@ class CopilotOnboarding {
     const gotItBtn = modal.querySelector('[data-action="got-it"]');
     
     const handleClose = () => {
+      // 📊 GA: copilot_onboarding_dismissed — fired when user closes the modal via the X button
+      chrome.runtime.sendMessage({
+        action: 'trackEvent',
+        eventType: 'copilot_onboarding_dismissed',
+        data: { platform: 'copilot', method: 'close_button' }
+      });
       this._markOnboardingAsSeen();
       this._removeModal();
     };
 
     const handleGotIt = () => {
+      // 📊 GA: copilot_onboarding_dismissed — fired when user acknowledges the modal via "Got it!"
+      chrome.runtime.sendMessage({
+        action: 'trackEvent',
+        eventType: 'copilot_onboarding_dismissed',
+        data: { platform: 'copilot', method: 'got_it' }
+      });
       this._markOnboardingAsSeen();
       this._removeModal();
     };
@@ -240,6 +260,12 @@ class CopilotOnboarding {
       // Close on any other click (chat input, page content, etc.)
       if (event.type === 'click') {
         console.log('[CopilotOnboarding] User clicked outside modal - auto-closing');
+        // 📊 GA: copilot_onboarding_dismissed — fired when user clicks outside the modal
+        chrome.runtime.sendMessage({
+          action: 'trackEvent',
+          eventType: 'copilot_onboarding_dismissed',
+          data: { platform: 'copilot', method: 'click_outside' }
+        });
         this._markOnboardingAsSeen();
         this._removeModal();
       }
@@ -247,6 +273,12 @@ class CopilotOnboarding {
       // Close on any keypress (user typing in chat)
       if (event.type === 'keydown') {
         console.log('[CopilotOnboarding] User started typing - auto-closing');
+        // 📊 GA: copilot_onboarding_dismissed — fired when user starts typing (modal auto-closes)
+        chrome.runtime.sendMessage({
+          action: 'trackEvent',
+          eventType: 'copilot_onboarding_dismissed',
+          data: { platform: 'copilot', method: 'keydown_auto_close' }
+        });
         this._markOnboardingAsSeen();
         this._removeModal();
       }

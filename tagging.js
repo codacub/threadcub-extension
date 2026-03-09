@@ -637,6 +637,8 @@ setupEventListeners() {
     window.getSelection().removeAllRanges();
     
     console.log('🏷️ ThreadCub: Tag created:', tag);
+    // 📊 GA: tag created — tracks category and total tag count
+    this._trackEvent('tagging_tag_created', { category: categoryId, category_label: category.label, total_tags: this.tags.length });
   }
 
   getSelectionPosition() {
@@ -731,17 +733,35 @@ setupEventListeners() {
     this.saveSessionTags();
     
     console.log('🏷️ ThreadCub: Tag removed:', tagId);
+    // 📊 GA: tag removed — tracks remaining tag count
+    this._trackEvent('tagging_tag_removed', { remaining_tags: this.tags.length });
+  }
+
+  // ---------------------------------------------------------------------------
+  // 📊 GA: Analytics helper — routes events through background.js
+  // Search '📊 GA:' in this file to find all tracked interactions
+  // ---------------------------------------------------------------------------
+  _trackEvent(eventType, data) {
+    try {
+      chrome.runtime.sendMessage({ action: 'trackEvent', eventType, data });
+    } catch (e) {
+      console.warn('🏷️ ThreadCub: could not send analytics event:', e.message);
+    }
   }
 
   showSidePanel() {
     if (this.sidePanel) {
       this.sidePanel.classList.add('open');
+      // 📊 GA: tagging side panel opened
+      this._trackEvent('tagging_panel_opened', { tag_count: this.tags.length });
     }
   }
 
   hideSidePanel() {
     if (this.sidePanel) {
       this.sidePanel.classList.remove('open');
+      // 📊 GA: tagging side panel closed
+      this._trackEvent('tagging_panel_closed', { tag_count: this.tags.length });
     }
   }
 

@@ -80,8 +80,12 @@ async function checkAuthState() {
         console.log('🔐 Popup: Auth validation response:', response);
 
         if (response?.success && response?.authenticated) {
+            // 📊 GA: popup opened — user is authenticated
+            chrome.runtime.sendMessage({ action: 'trackEvent', eventType: 'popup_opened', data: { auth_state: 'authenticated' } });
             showAuthenticatedView(response.user);
         } else {
+            // 📊 GA: popup opened — user is unauthenticated
+            chrome.runtime.sendMessage({ action: 'trackEvent', eventType: 'popup_opened', data: { auth_state: 'unauthenticated' } });
             showUnauthenticatedView();
         }
     } catch (error) {
@@ -183,6 +187,9 @@ async function handleFloatingToggle() {
     updateFloatingButtonUI(newState);
     console.log('🐻 Popup: Floating button hidden:', newState);
 
+    // 📊 GA: floating button toggled from popup — new_state = hidden | visible
+    chrome.runtime.sendMessage({ action: 'trackEvent', eventType: 'popup_floating_toggle', data: { new_state: newState ? 'hidden' : 'visible' } });
+
     // Directly message the active tab as a reliable fallback —
     // the content script's storage listener can miss the change
     // if the script loaded before the key was ever written.
@@ -209,6 +216,8 @@ function setupEventListeners() {
     const loginBtn = document.getElementById('loginBtn');
     if (loginBtn) {
         loginBtn.addEventListener('click', () => {
+            // 📊 GA: login button clicked from popup
+            chrome.runtime.sendMessage({ action: 'trackEvent', eventType: 'popup_login_clicked', data: {} });
             chrome.tabs.create({ url: 'https://threadcub.com/auth/extension-login' }, (tab) => {
                 chrome.storage.local.set({ threadcub_login_tab_id: tab.id });
             });
@@ -220,6 +229,8 @@ function setupEventListeners() {
     if (logoutBtn) {
         logoutBtn.addEventListener('click', async () => {
             console.log('🔐 Popup: Logout clicked');
+            // 📊 GA: logout button clicked from popup
+            chrome.runtime.sendMessage({ action: 'trackEvent', eventType: 'popup_logout_clicked', data: {} });
             logoutBtn.disabled = true;
             try {
                 const response = await chrome.runtime.sendMessage({ action: 'authLogout' });
@@ -236,6 +247,8 @@ function setupEventListeners() {
     const openDashboardBtn = document.getElementById('openDashboardBtn');
     if (openDashboardBtn) {
         openDashboardBtn.addEventListener('click', () => {
+            // 📊 GA: dashboard opened from popup
+            chrome.runtime.sendMessage({ action: 'trackEvent', eventType: 'popup_dashboard_opened', data: {} });
             chrome.tabs.create({ url: 'https://threadcub.com/dashboard' });
         });
     }
@@ -244,6 +257,8 @@ function setupEventListeners() {
     const openDiscordBtn = document.getElementById('openDiscordBtn');
     if (openDiscordBtn) {
         openDiscordBtn.addEventListener('click', () => {
+            // 📊 GA: discord clicked from popup (authenticated view)
+            chrome.runtime.sendMessage({ action: 'trackEvent', eventType: 'popup_discord_clicked', data: { auth_state: 'authenticated' } });
             chrome.tabs.create({ url: 'https://discord.gg/PDjByPDqRR' });
         });
     }
@@ -252,6 +267,8 @@ function setupEventListeners() {
     const openDiscordBtnUnauthed = document.getElementById('openDiscordBtnUnauthed');
     if (openDiscordBtnUnauthed) {
         openDiscordBtnUnauthed.addEventListener('click', () => {
+            // 📊 GA: discord clicked from popup (unauthenticated view)
+            chrome.runtime.sendMessage({ action: 'trackEvent', eventType: 'popup_discord_clicked', data: { auth_state: 'unauthenticated' } });
             chrome.tabs.create({ url: 'https://discord.gg/PDjByPDqRR' });
         });
     }
@@ -285,7 +302,12 @@ function setupEventListeners() {
 // ONBOARDING TRIGGER
 // =============================================================================
 
-async function triggerOnboarding() {
+async function triggerOnboarding(e) {
+    // 📊 GA: onboarding / quick tips triggered from popup
+    // Determine auth state from which button was clicked (authed vs unauthed view)
+    const authState = e?.currentTarget?.id?.includes('Authed') ? 'authenticated' : 'unauthenticated';
+    chrome.runtime.sendMessage({ action: 'trackEvent', eventType: 'popup_onboarding_triggered', data: { auth_state: authState } });
+
     // Reset the done flag so the tour will run again, but keep welcome_seen
     // so it doesn't wait for the welcome tab to be closed
     await chrome.storage.local.remove('threadcub_onboarding_done');

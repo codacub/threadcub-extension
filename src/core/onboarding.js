@@ -17,6 +17,18 @@
   const STORAGE_DONE_KEY    = 'threadcub_onboarding_done';
 
   // ---------------------------------------------------------------------------
+  // 📊 GA: Analytics helper — routes events through background.js
+  // Search '📊 GA:' in this file to find all tracked interactions
+  // ---------------------------------------------------------------------------
+  function sendTrackEvent(eventType, data) {
+    try {
+      chrome.runtime.sendMessage({ action: 'trackEvent', eventType, data });
+    } catch (e) {
+      console.warn('🐻 Onboarding: could not send analytics event:', e.message);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Design tokens — mirrors tokens.css for use in content script context
   // Update values here when your design system changes
   // ---------------------------------------------------------------------------
@@ -106,6 +118,8 @@
     if (isRunning) return;
     isRunning = true;
     currentStep = 0;
+    // 📊 GA: onboarding tour started
+    sendTrackEvent('onboarding_started', {});
     createOverlay();
     STEPS[0].render();
   }
@@ -116,16 +130,25 @@
     disconnectPanelObserver();
     if (index >= STEPS.length) { endTour(); return; }
     currentStep = index;
+    // 📊 GA: onboarding step viewed — step is 0-indexed (0=intro, 1=bear menu, 2=pin toolbar, 3=pawmarks)
+    sendTrackEvent('onboarding_step_viewed', { step: index, step_name: ['intro', 'bear_menu', 'pin_toolbar', 'pawmarks'][index] || 'unknown' });
     STEPS[index].render();
   }
 
-  function endTour() {
+  function endTour(dismissed = false) {
     removePopover();
     removeOverlay();
     removePulse();
     disconnectPanelObserver();
     isRunning = false;
     chrome.storage.local.set({ [STORAGE_DONE_KEY]: true });
+    if (dismissed) {
+      // 📊 GA: onboarding dismissed — user clicked X or dismiss before completing
+      sendTrackEvent('onboarding_dismissed', { dismissed_at_step: currentStep });
+    } else {
+      // 📊 GA: onboarding completed — user reached the end of all 4 steps
+      sendTrackEvent('onboarding_completed', { steps_total: STEPS.length });
+    }
     console.log('🐻 ThreadCub Onboarding: complete');
   }
 
@@ -360,7 +383,7 @@
     document.body.appendChild(el);
 
     el.querySelector('#tc-ob-primary').addEventListener('mousedown', (e) => { e.stopPropagation(); primary.action(); });
-    el.querySelector('#tc-ob-x').addEventListener('mousedown', (e) => { e.stopPropagation(); endTour(); });
+    el.querySelector('#tc-ob-x').addEventListener('mousedown', (e) => { e.stopPropagation(); endTour(true); });
     if (dismiss) {
       el.querySelector('#tc-ob-dismiss').addEventListener('mousedown', (e) => { e.stopPropagation(); dismiss.action(); });
     }

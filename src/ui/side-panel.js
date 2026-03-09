@@ -11,6 +11,18 @@ class ThreadCubSidePanel {
     this.currentPriorityFilter = 'all'; // 'all', 'high', 'medium', 'low'
   }
 
+  // ---------------------------------------------------------------------------
+  // 📊 GA: Analytics helper — routes events through background.js
+  // Search '📊 GA:' in this file to find all tracked interactions
+  // ---------------------------------------------------------------------------
+  _trackEvent(eventType, data) {
+    try {
+      chrome.runtime.sendMessage({ action: 'trackEvent', eventType, data });
+    } catch (e) {
+      console.warn('Side panel: could not send analytics event:', e.message);
+    }
+  }
+
   // ===== MAIN UPDATE METHOD =====
   updateTagsList() {
     const tagsList = this.sidePanel.querySelector('#threadcub-tags-container');
@@ -97,6 +109,8 @@ class ThreadCubSidePanel {
     if (select) {
       select.addEventListener('change', (e) => {
         this.currentPriorityFilter = e.target.value;
+        // 📊 GA: side panel priority filter changed — filter = all | high | medium | low
+        this._trackEvent('side_panel_priority_filter_changed', { filter: e.target.value });
         this.updateTagsList();
       });
     }
@@ -129,6 +143,8 @@ class ThreadCubSidePanel {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         const anchorId = parseInt(btn.getAttribute('data-anchor-id'));
+        // 📊 GA: anchor jump-to clicked from side panel
+        this._trackEvent('side_panel_anchor_jumped', { anchor_id: anchorId });
         if (this.taggingSystem.jumpToAnchor) {
           this.taggingSystem.jumpToAnchor(anchorId);
         }
@@ -141,6 +157,8 @@ class ThreadCubSidePanel {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         const anchorId = parseInt(btn.getAttribute('data-anchor-id'));
+        // 📊 GA: anchor deleted from side panel
+        this._trackEvent('side_panel_anchor_deleted', { anchor_id: anchorId });
         this.taggingSystem.deleteTagWithUndo(anchorId);
       });
     });
@@ -149,6 +167,8 @@ class ThreadCubSidePanel {
   // Switch tab
   switchTab(tab) {
     this.currentTab = tab;
+    // 📊 GA: side panel tab switched — tab = tags | anchors
+    this._trackEvent('side_panel_tab_switched', { tab });
     this.updateTabStyles();
     this.updateTagsList();
   }
@@ -205,6 +225,8 @@ class ThreadCubSidePanel {
     }
 
     console.log('Jumping to tag:', tag);
+    // 📊 GA: tag jump-to clicked from side panel
+    this._trackEvent('side_panel_tag_jumped', { tag_id: tagId, category: tag.category || 'unknown' });
 
     // Strategy 1: Use rangeInfo if available (TextQuote-style)
     if (tag.rangeInfo) {
@@ -231,6 +253,8 @@ class ThreadCubSidePanel {
     }
 
     navigator.clipboard.writeText(tag.text).then(() => {
+      // 📊 GA: tag text copied from side panel
+      this._trackEvent('side_panel_tag_copied', { tag_id: tagId, category: tag.category || 'unknown' });
       // Show feedback
       this.showCopiedFeedback(card);
     }).catch(err => {

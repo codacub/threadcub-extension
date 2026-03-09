@@ -66,8 +66,8 @@ const ApiService = {
         // Content script context — AuthService not available in window scope,
         // so ask the background script for the stored token instead
         const response = await chrome.runtime.sendMessage({ action: 'getAuthToken' });
-        if (response?.token) {
-          headers['Authorization'] = `Bearer ${response.token}`;
+        if (response?.token || response?.authToken) {
+          headers['Authorization'] = `Bearer ${response.token || response.authToken}`;
           console.log('🔐 ApiService: Added Bearer auth header (via background message)');
         } else {
           console.log('🔐 ApiService: No token returned from background');

@@ -1,4 +1,36 @@
 /* =============================================================================
+   Warm token overrides — aligns popup to app design system
+   ============================================================================= */
+.popup-container,
+.popup-container * {
+    --color-primary: #7C6FF5;
+    --color-primary-hover: #6860E0;
+
+    --color-warm-white: #FDFCFB;
+    --color-warm-100: #F5F3F0;
+    --color-warm-200: #EDE9E3;
+    --color-warm-300: #DDD8CF;
+    --color-warm-400: #C8C0B4;
+    --color-warm-600: #7A6E62;
+    --color-warm-700: #5C5248;
+    --color-warm-900: #2C2420;
+
+    --color-gray-50:  #F5F3F0;
+    --color-gray-100: #EDE9E3;
+    --color-gray-200: #DDD8CF;
+    --color-gray-300: #C8C0B4;
+    --color-white:    #FDFCFB;
+    --color-title:    #2C2420;
+
+    --color-text-primary:   #2C2420;
+    --color-text-secondary: #7A6E62;
+    --color-text-muted:     #A89E94;
+
+    --color-border-light: #EDE9E3;
+    --color-success: #3D9970;
+}
+
+/* =============================================================================
    ThreadCub Popup - Auth-Aware Interface Styles
    ============================================================================= */
 
@@ -261,7 +293,7 @@ html, body {
 }
 
 .action-btn:hover .action-icon {
-    background: #EDE9FE;
+    background: var(--color-primary-100, #EEEDFB);
     color: var(--color-primary);
 }
 
@@ -337,7 +369,7 @@ html, body {
 }
 
 .login-button {
-    background: #925FE2;
+    background: var(--color-primary);
     color: var(--color-white);
     border: none;
     border-radius: var(--border-radius-lg);
@@ -356,7 +388,7 @@ html, body {
 }
 
 .login-button:hover {
-    background: #7A4FBF;
+    background: var(--color-primary-hover);
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(146, 95, 226, 0.4);
 }

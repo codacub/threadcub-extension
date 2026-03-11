@@ -582,7 +582,7 @@ class ThreadCubSidePanel {
           gap: 8px;
           box-sizing: border-box;
         ">
-          <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; align-self: center;">
+          <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; align-self: center; align-items: flex-start;">
             ${ tag.tags && tag.tags[0] ? (() => { const colours = { amber: {bg: '#FEF3C7', text: '#92400E'}, rose: {bg: '#FFE4E6', text: '#9F1239'}, teal: {bg: '#CCFBF1', text: '#134E4A'} }; const c = colours[tag.tags[0].colour] || colours.amber; return '<div style="display:inline-block; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 600; background:' + c.bg + '; color:' + c.text + '; margin-bottom: 3px;">' + tag.tags[0].label + '</div>'; })() : '' }
             <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 13px; color: #374151;">${tag.text}</div>
             ${ tag.note && tag.note.trim().length > 0 ? '<div style="font-size: 11px; color: #9CA3AF; font-style: italic; margin-top: 2px;">' + tag.note + '</div>' : '' }
@@ -1137,6 +1137,13 @@ class ThreadCubSidePanel {
     });
 
     if (saveTagBtn && tagInput) {
+      tagInput.addEventListener('input', () => {
+        if (tagInput.value.trim().length > 0) {
+          saveTagBtn.classList.add('active');
+        } else {
+          saveTagBtn.classList.remove('active');
+        }
+      });
       saveTagBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         const label = tagInput.value.trim();

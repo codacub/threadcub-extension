@@ -264,10 +264,6 @@ div.threadcub-tag-card .action-button svg {
   align-items: center;
   gap: 4px;
 }
-.tag-colour-btn.selected::after {
-  content: "✓";
-  font-size: 11px;
-}
 .tag-colour-btn.selected {
   border-color: currentColor;
 }
@@ -277,9 +273,17 @@ div.threadcub-tag-card .action-button svg {
   border-radius: var(--border-radius-base);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
-  cursor: pointer;
+  cursor: not-allowed;
+  pointer-events: none;
+  background: var(--color-warm-200);
+  color: var(--color-warm-500);
+  transition: all var(--transition-base);
+}
+.save-tag-btn.active {
   background: var(--color-primary);
   color: white;
+  cursor: pointer;
+  pointer-events: auto;
 }
 .remove-note-btn {
   border: none;
@@ -294,7 +298,10 @@ div.threadcub-tag-card .action-button svg {
 
 /* ===== TAG EDITING STATE STYLES (Moved from JS inline) ===== */
 .tag-editing {
-  /* display is handled by JS based on data-state attribute */
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .priority-options {

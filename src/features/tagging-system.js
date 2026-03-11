@@ -1397,13 +1397,13 @@ addTaggingStyles() {
   /* SIMPLIFIED: Only essential highlight styles - no conflicts */
   /* CHANGING YELLOW MYSELF */
   .threadcub-highlight {
-    background: var(--color-highlight-bg) !important;
+    background: #FFF3B0 !important;
     cursor: pointer !important;
     transition: background-color 0.2s ease !important;
   }
 
   .threadcub-highlight:hover {
-    background-color: var(--color-highlight-bg-hover) !important;
+    background-color: #FFE566 !important;
   }
 
   /* Copied feedback toast (used by side panel copy button) */
@@ -1430,6 +1430,13 @@ addTaggingStyles() {
 
   /* Anchor highlight */
   .threadcub-anchor-highlight {
+    background: #FDF0DC !important;
+    border-bottom: 2px solid #E8A030 !important;
+    cursor: pointer !important;
+    transition: background-color 0.2s ease !important;
+  }
+  .threadcub-anchor-highlight:hover {
+    background: #F9D9B0 !important;
   }
 
   .threadcub-tag-item:hover {
@@ -2451,98 +2458,64 @@ createSidePanel() {
   this.sidePanel.innerHTML = `
     <!-- Header Section -->
     <div style="
-      padding: 32px 24px 24px;
-      text-align: center;
-      border-bottom: 1px solid rgba(226, 232, 240, 0.6);
-      background: rgba(248, 250, 252, 0.8);
+      padding: 20px 24px 16px;
+      background: var(--color-warm-100);
       position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     ">
-      <!-- Close Button with Lucide X -->
-      <button id="threadcub-panel-close" title="Close panel" style="
-        position: absolute;
-        top: 16px;
-        right: 16px;
-        background: rgba(255, 255, 255, 0.8);
-        border: 1px solid rgba(226, 232, 240, 0.6);
-        color: #64748b;
-        cursor: pointer;
-        padding: 8px;
-        border-radius: 50%;
-        width: 32px;
-        height: 32px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 14px;
-        font-weight: 600;
-        transition: all 0.2s ease;
-        backdrop-filter: blur(10px);
-      ">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M18 6 6 18"/>
-          <path d="m6 6 12 12"/>
-        </svg>
-      </button>
-      
-      <!-- Brand Logo - No Background Padding -->
-      <div style="
-        width: 80px;
-        height: 80px;
-        margin: 0 auto 16px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 32px;
-        overflow: hidden;
-        background: transparent;
-        border: none;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        transition: all 0.2s ease;
-      " onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 6px 16px rgba(0, 0, 0, 0.15)'"
-         onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 12px rgba(0, 0, 0, 0.1)'">${logoHtml}</div>
-      
       <!-- Title -->
       <h2 style="
-        font-family: 'Karla', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        font-size: 24px;
-        font-weight: 600;
-        color: #575757;
+        font-family: var(--font-family-primary);
+        font-size: var(--font-size-3xl);
+        font-weight: var(--font-weight-bold);
+        color: var(--color-warm-900);
         margin: 0;
-      ">Swiping like a pro!</h2>
+        line-height: 1;
+      ">Pawmarks</h2>
+
+
     </div>
 
     <!-- Tab Navigation -->
     <div class="threadcub-tabs" style="
       display: flex;
-      padding: 0 24px;
-      border-bottom: 1px solid rgba(226, 232, 240, 0.6);
-      gap: 0;
+      padding: 8px 24px 16px;
+      background: var(--color-warm-100);
+      gap: 8px;
     ">
       <button class="threadcub-tab active" data-tab="tags" style="
-        flex: 1;
-        padding: 12px 16px;
-        background: transparent;
+        padding: 6px 16px;
+        background: var(--color-white);
         border: none;
-        border-bottom: 2px solid var(--color-primary);
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--color-primary);
+        border-bottom: none;
+        border-radius: 4px;
+        font-family: var(--font-family-primary);
+        font-size: var(--font-size-sm);
+        font-weight: var(--font-weight-semibold);
+        color: var(--color-warm-900);
         cursor: pointer;
         transition: all 0.2s ease;
-      ">Tags</button>
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        white-space: nowrap;
+        outline: none;
+      " onmouseover="if(this.classList.contains('active')){} else {this.style.background='var(--color-warm-200)'}"
+         onmouseout="if(this.classList.contains('active')){} else {this.style.background='transparent'}">Highlights</button>
       <button class="threadcub-tab" data-tab="anchors" style="
-        flex: 1;
-        padding: 12px 16px;
+        padding: 6px 16px;
         background: transparent;
         border: none;
-        border-bottom: 2px solid transparent;
-        font-size: 14px;
-        font-weight: 500;
-        color: #64748b;
+        border-radius: 4px;
+        font-family: var(--font-family-primary);
+        font-size: var(--font-size-sm);
+        font-weight: var(--font-weight-medium);
+        color: var(--color-warm-700);
         cursor: pointer;
         transition: all 0.2s ease;
-      ">Anchors</button>
+        white-space: nowrap;
+      " onmouseover="if(this.classList.contains('active')){} else {this.style.background='var(--color-warm-200)'}"
+         onmouseout="if(this.classList.contains('active')){} else {this.style.background='transparent'}">Anchors</button>
     </div>
 
     <!-- Tags Container -->
@@ -2589,53 +2562,63 @@ createSidePanel() {
     
     <!-- Footer Actions -->
     <div style="
-      padding: 20px 24px;
-      border-top: 1px solid rgba(226, 232, 240, 0.6);
-      background: rgba(248, 250, 252, 0.8);
+      padding: 16px 24px;
+      border-top: 1px solid var(--color-warm-200);
+      background: var(--color-white);
       display: flex;
-      gap: 12px;
+      gap: var(--spacing-3);
     ">
       <button id="threadcub-close-panel" title="Close panel" style="
         flex: 1;
-        padding: 12px 16px;
-        background: rgba(255, 255, 255, 0.9);
-        border: 1px solid rgba(226, 232, 240, 0.8);
-        border-radius: 8px;
-        font-size: 14px;
-        font-weight: 600;
-        color: #374151;
+        height: 44px;
+        padding: 0 24px;
+        background: #FFFFFF;
+        border: 1px solid var(--color-primary);
+        border-radius: var(--border-radius-lg);
+        font-family: var(--font-family-primary);
+        font-size: var(--font-size-lg);
+        font-weight: var(--font-weight-medium);
+        color: var(--color-primary);
         cursor: pointer;
         transition: all 0.2s ease;
-        backdrop-filter: blur(10px);
-        text-align: center;
-      ">
-        CLOSE
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        white-space: nowrap;
+        box-sizing: border-box;
+      " onmouseover="this.style.backgroundColor='var(--color-warm-200)'; this.style.borderColor='var(--color-primary-dark)'; this.style.color='var(--color-primary-dark)'"
+         onmouseout="this.style.backgroundColor='#FFFFFF'; this.style.borderColor='var(--color-primary)'; this.style.color='var(--color-primary)'">
+        Close
       </button>
 
       <div id="threadcub-export-menu" style="
         position: relative;
         flex: 1;
+        display: flex;
       ">
         <button id="threadcub-export-btn" title="Export tags" style="
-          width: 100%;
-          padding: 12px 16px;
-          background: #99DAFA;
-          border: 1px solid #99DAFA;
-          border-radius: 8px;
-          font-size: 14px;
-          font-weight: 600;
-          color: #4C596E;
+          flex: 1;
+          height: 44px;
+          padding-inline: var(--spacing-6);
+          background: var(--color-primary);
+          border: none;
+          border-radius: var(--border-radius-lg);
+          font-family: var(--font-family-primary);
+          font-size: var(--font-size-lg);
+          font-weight: var(--font-weight-medium);
+          color: var(--color-white);
           cursor: pointer;
           transition: all 0.2s ease;
-          backdrop-filter: blur(10px);
-          text-align: center;
-          display: flex;
+          display: inline-flex;
           align-items: center;
           justify-content: center;
-          gap: 8px;
-        ">
-          <span>EXPORT</span>
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          gap: var(--spacing-2);
+          white-space: nowrap;
+          box-sizing: border-box;
+        " onmouseover="this.style.backgroundColor='var(--color-primary-dark)'"
+           onmouseout="this.style.backgroundColor='var(--color-primary)'">
+          <span>Export</span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="1"></circle>
             <circle cx="12" cy="5" r="1"></circle>
             <circle cx="12" cy="19" r="1"></circle>
@@ -2763,27 +2746,6 @@ getLogoHtml() {
 }
 
 setupPanelEventListeners() {
-  // Close button - FIXED: Don't clear highlights
-  const panelClose = this.sidePanel.querySelector('#threadcub-panel-close');
-  panelClose.addEventListener('click', (e) => {
-    e.stopPropagation();
-    this.hideSidePanel();
-    // REMOVED: Any highlight cleanup calls
-  });
-  
-  // Close button hover effects
-  panelClose.addEventListener('mouseenter', () => {
-    panelClose.style.background = 'rgba(239, 68, 68, 0.1)';
-    panelClose.style.borderColor = 'rgba(239, 68, 68, 0.3)';
-    panelClose.style.color = '#ef4444';
-  });
-  
-  panelClose.addEventListener('mouseleave', () => {
-    panelClose.style.background = 'rgba(255, 255, 255, 0.8)';
-    panelClose.style.borderColor = 'rgba(226, 232, 240, 0.6)';
-    panelClose.style.color = '#64748b';
-  });
-  
   // Overlay click to close - FIXED: Don't clear highlights
   this.panelOverlay.addEventListener('click', (e) => {
     if (e.target === this.panelOverlay) {
@@ -2810,14 +2772,14 @@ setupPanelEventListeners() {
 
   // Export button hover effects
   exportBtn.addEventListener('mouseenter', () => {
-    exportBtn.style.background = '#7DD3F8';
-    exportBtn.style.borderColor = '#7DD3F8';
+    exportBtn.style.background = '#5760F4';
+    exportBtn.style.borderColor = '#5760F4';
     exportBtn.style.transform = 'translateY(-1px)';
   });
 
   exportBtn.addEventListener('mouseleave', () => {
-    exportBtn.style.background = '#99DAFA';
-    exportBtn.style.borderColor = '#99DAFA';
+    exportBtn.style.background = '#6C74FB';
+    exportBtn.style.borderColor = '#6C74FB';
     exportBtn.style.transform = 'translateY(0)';
   });
 
@@ -2855,16 +2817,16 @@ setupPanelEventListeners() {
   
   // Close button hover effects
   closeBtn.addEventListener('mouseenter', () => {
-    closeBtn.style.background = 'rgba(239, 68, 68, 0.1)';
-    closeBtn.style.borderColor = 'rgba(239, 68, 68, 0.3)';
-    closeBtn.style.color = '#ef4444';
-    closeBtn.style.transform = 'translateY(-1px)';
+    closeBtn.style.background = '#F5F4F3';
+    closeBtn.style.borderColor = '#5760F4';
+    closeBtn.style.color = '#5760F4';
+    closeBtn.style.transform = 'translateY(0)';
   });
   
   closeBtn.addEventListener('mouseleave', () => {
-    closeBtn.style.background = 'rgba(255, 255, 255, 0.9)';
-    closeBtn.style.borderColor = 'rgba(226, 232, 240, 0.8)';
-    closeBtn.style.color = '#374151';
+    closeBtn.style.background = '#FFFFFF';
+    closeBtn.style.borderColor = '#6C74FB';
+    closeBtn.style.color = '#6C74FB';
     closeBtn.style.transform = 'translateY(0)';
   });
 }
@@ -4411,14 +4373,19 @@ setupTabStyling() {
       // Update styles for all tabs
       tabs.forEach(t => {
         if (t.getAttribute('data-tab') === this.sidePanelUI.currentTab) {
-          t.style.borderBottomColor = 'var(--color-primary)';
-          t.style.color = 'var(--color-primary)';
-          t.style.fontWeight = '600';
+          t.style.background = 'var(--color-white)';
+          t.style.borderBottom = 'none';
+          t.style.color = 'var(--color-warm-900)';
+          t.style.fontWeight = 'var(--font-weight-semibold)';
+          t.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+          t.style.borderBottomColor = 'transparent';
           t.classList.add('active');
         } else {
+          t.style.background = 'transparent';
+          t.style.color = 'var(--color-warm-700)';
+          t.style.fontWeight = 'var(--font-weight-medium)';
+          t.style.boxShadow = 'none';
           t.style.borderBottomColor = 'transparent';
-          t.style.color = '#64748b';
-          t.style.fontWeight = '500';
           t.classList.remove('active');
         }
       });
@@ -4481,16 +4448,169 @@ updateTagsListFallback() {
   } else {
     tagsList.innerHTML = this.tags.map(tag => `
       <div class="threadcub-tag-card" data-tag-id="${tag.id}" style="
-        background: white;
+        background: #FFFFFF;
         border: 1px solid #E5E7EB;
         border-radius: 8px;
-        padding: 16px;
-        margin-bottom: 12px;
+        margin-bottom: 8px;
+        overflow: hidden;
         transition: all 0.2s ease;
       ">
-        <div style="font-size: 14px; color: #374151;">${tag.text}</div>
+        <!-- Main row -->
+        <div style="
+          display: flex;
+          align-items: center;
+          padding: 4px 16px;
+          gap: 8px;
+          min-height: 40px;
+        ">
+          <!-- Text -->
+          <div style="
+            flex: 1;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 13px;
+            color: #374151;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          ">${tag.text}</div>
+          <!-- Jump-to icon -->
+          <button class="tc-jump-btn" data-tag-id="${tag.id}" title="Jump to in chat" style="
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+            color: #9CA3AF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: color 0.15s ease;
+            border-radius: 4px;
+          " onmouseover="this.style.color='#6C74FB'" onmouseout="this.style.color='#9CA3AF'">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="9 10 4 15 9 20"></polyline>
+              <path d="M20 4v7a4 4 0 0 1-4 4H4"></path>
+            </svg>
+          </button>
+          <!-- Chevron toggle -->
+          <button class="tc-chevron-btn" data-tag-id="${tag.id}" title="Expand actions" style="
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+            color: #9CA3AF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: color 0.15s ease, transform 0.2s ease;
+            border-radius: 4px;
+          " onmouseover="this.style.color='#374151'" onmouseout="this.style.color='#9CA3AF'">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s ease;">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+        </div>
+        <!-- Actions row (hidden by default) -->
+        <div class="tc-actions-row" data-tag-id="${tag.id}" style="
+          display: none;
+          justify-content: flex-end;
+          align-items: center;
+          padding: 4px 12px 8px;
+          gap: 4px;
+          border-top: 1px solid #F3F4F6;
+        ">
+          <!-- Copy -->
+          <button class="tc-action-btn tc-copy-btn" data-tag-id="${tag.id}" title="Copy" style="
+            background: none; border: none; cursor: pointer; padding: 6px;
+            color: #9CA3AF; border-radius: 4px; display: flex; align-items: center;
+            transition: color 0.15s ease, background 0.15s ease;
+          " onmouseover="this.style.color='#374151'; this.style.background='#F3F4F6'" onmouseout="this.style.color='#9CA3AF'; this.style.background='none'">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+          </button>
+          <!-- Edit -->
+          <button class="tc-action-btn tc-edit-btn" data-tag-id="${tag.id}" title="Edit" style="
+            background: none; border: none; cursor: pointer; padding: 6px;
+            color: #9CA3AF; border-radius: 4px; display: flex; align-items: center;
+            transition: color 0.15s ease, background 0.15s ease;
+          " onmouseover="this.style.color='#374151'; this.style.background='#F3F4F6'" onmouseout="this.style.color='#9CA3AF'; this.style.background='none'">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
+          </button>
+          <!-- Tag -->
+          <button class="tc-action-btn tc-tag-btn" data-tag-id="${tag.id}" title="Tag" style="
+            background: none; border: none; cursor: pointer; padding: 6px;
+            color: #9CA3AF; border-radius: 4px; display: flex; align-items: center;
+            transition: color 0.15s ease, background 0.15s ease;
+          " onmouseover="this.style.color='#374151'; this.style.background='#F3F4F6'" onmouseout="this.style.color='#9CA3AF'; this.style.background='none'">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+              <line x1="7" y1="7" x2="7.01" y2="7"></line>
+            </svg>
+          </button>
+          <!-- Delete -->
+          <button class="tc-action-btn tc-delete-btn" data-tag-id="${tag.id}" title="Delete" style="
+            background: none; border: none; cursor: pointer; padding: 6px;
+            color: #9CA3AF; border-radius: 4px; display: flex; align-items: center;
+            transition: color 0.15s ease, background 0.15s ease;
+          " onmouseover="this.style.color='#EF4444'; this.style.background='#FEF2F2'" onmouseout="this.style.color='#9CA3AF'; this.style.background='none'">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+              <path d="M10 11v6"></path>
+              <path d="M14 11v6"></path>
+              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+            </svg>
+          </button>
+        </div>
       </div>
     `).join('');
+
+    // Wire up chevron toggles
+    tagsList.querySelectorAll('.tc-chevron-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const tagId = btn.getAttribute('data-tag-id');
+        const actionsRow = tagsList.querySelector(`.tc-actions-row[data-tag-id="${tagId}"]`);
+        const chevronSvg = btn.querySelector('svg');
+        const isOpen = actionsRow.style.display === 'flex';
+        actionsRow.style.display = isOpen ? 'none' : 'flex';
+        chevronSvg.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+      });
+    });
+
+    // Wire up jump-to
+    tagsList.querySelectorAll('.tc-jump-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const tagId = parseInt(btn.getAttribute('data-tag-id'));
+        this.continueTagInChat(tagId);
+      });
+    });
+
+    // Wire up delete
+    tagsList.querySelectorAll('.tc-delete-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const tagId = parseInt(btn.getAttribute('data-tag-id'));
+        this.deleteTagWithUndo(tagId);
+      });
+    });
+
+    // Wire up copy
+    tagsList.querySelectorAll('.tc-copy-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const tagId = parseInt(btn.getAttribute('data-tag-id'));
+        const tag = this.tags.find(t => t.id === tagId);
+        if (tag) navigator.clipboard.writeText(tag.text);
+      });
+    });
   }
 }
 
@@ -4504,6 +4624,13 @@ saveNoteForCard(tagId, noteText) {
   }
 }
 
+addCustomTag(tagId, label, colour) {
+  const tag = this.tags.find(t => t.id === tagId);
+  if (tag) {
+    tag.tags = [{ label: label, colour: colour || 'amber' }];
+    console.log('🏷️ ThreadCub: Custom tag added:', label, colour);
+  }
+}
 addPriorityTag(tagId, priority) {
   const tag = this.tags.find(t => t.id === tagId);
   if (tag) {

@@ -41,11 +41,15 @@ async function initializeLogo() {
     if (!logo) return;
 
     if (typeof chrome !== 'undefined' && chrome.runtime?.getURL) {
-        const fullPath = chrome.runtime.getURL('icons/icon128.png');
+        const fullPath = chrome.runtime.getURL('assets/images/logo-stacked.svg');
         const img = new Image();
         img.onload = () => {
-            logo.style.backgroundImage = `url('${fullPath}')`;
-            logo.style.backgroundColor = 'transparent';
+            const imgEl = document.createElement('img');
+            imgEl.src = fullPath;
+            imgEl.alt = 'ThreadCub';
+            imgEl.style.cssText = 'width:140px;height:auto;display:block;';
+            logo.innerHTML = '';
+            logo.appendChild(imgEl);
         };
         img.onerror = () => {
             logo.textContent = '🐻';
@@ -137,7 +141,7 @@ async function loadConversationCount() {
     try {
         const response = await chrome.runtime.sendMessage({ action: 'getConversationCount' });
         if (response?.count !== undefined) {
-            convCount.textContent = `${response.count} conversation${response.count === 1 ? '' : 's'} saved`;
+            convCount.textContent = `${response.count} chat${response.count === 1 ? '' : 's'} synced`;
         }
     } catch (err) {
         console.warn('🐻 Popup: Could not load conversation count:', err);
@@ -296,6 +300,31 @@ function setupEventListeners() {
     if (toggleFloatingBtnUnauthed) {
         toggleFloatingBtnUnauthed.addEventListener('click', handleFloatingToggle);
     }
+
+    // Header shadow on scroll
+    const header = document.querySelector('.header');
+    document.querySelectorAll('.view').forEach(view => {
+        view.addEventListener('scroll', () => {
+            if (header) header.classList.toggle('scrolled', view.scrollTop > 0);
+        });
+    });
+
+    // Make full rows clickable by delegating to the inner button/checkbox
+    document.querySelectorAll('.action-row').forEach(row => {
+        row.style.cursor = 'pointer';
+        row.addEventListener('click', (e) => {
+            // Don't double-fire if the click was directly on the button/checkbox/toggle
+            if (e.target.closest('.action-end-btn') || e.target.closest('.toggle')) return;
+            // Find the actionable element inside this row and trigger it
+            const btn = row.querySelector('.action-end-btn');
+            const toggle = row.querySelector('.toggle input');
+            if (toggle) {
+                toggle.click();
+            } else if (btn) {
+                btn.click();
+            }
+        });
+    });
 }
 
 // =============================================================================

@@ -953,7 +953,7 @@ class ThreadCubFloatingButton {
       right: 2px;
       width: 14px;
       height: 14px;
-      background: #ef4444;
+      background: {window.ThreadCubRebrand?.colors?.error || '#EF4444'};
       border-radius: 50%;
       border: 2px solid white;
       cursor: pointer;
@@ -976,7 +976,7 @@ class ThreadCubFloatingButton {
 
     badge.addEventListener('click', async (e) => {
       e.stopPropagation();
-      badge.style.background = '#f59e0b'; // amber while retrying
+      badge.style.background = (window.ThreadCubRebrand?.colors?.warning || '#F59E0B'); // amber while retrying
       badge.title = 'Retrying...';
       try {
         await sendMessageWithRetry({ action: 'retryPendingQueue' });

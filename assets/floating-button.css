@@ -244,7 +244,6 @@
   box-shadow: var(--shadow-action-btn-default) !important;
   transform: scale(0.7); /* Smaller when hidden - no !important allows hover override */
   pointer-events: auto !important; /* Allow clicks when visible */
-  border: var(--border-width-action-btn) solid var(--color-action-btn-border) !important;
   background: var(--color-action-btn-bg) !important;
   color: var(--color-action-btn-text) !important;
 }
@@ -279,7 +278,7 @@
   to { transform: rotate(360deg); }
 }
 .threadcub-save-btn.saving {
-  background: #22C55E !important;
+  background: var(--color-accent-green) !important;
   color: white !important;
   pointer-events: none !important;
   cursor: not-allowed !important;

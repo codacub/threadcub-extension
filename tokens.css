@@ -3,7 +3,9 @@
    Single source of truth for the extension.
    ============================================================================= */
 
-:root {
+/* Scoped to popup-container and all children */
+.popup-container,
+.popup-container * {
 
   /* ===== PRIMARY ===== */
   --color-primary-100: #EEEFFE;
@@ -187,7 +189,7 @@
   --popup-width:         380px;
   --popup-height:        600px;
   --logo-size:           80px;
-  --icon-size-base:      32px;
+  --icon-size-base:      24px;
   --min-touch-target:    48px;
   --toggle-width:        52px;
   --toggle-height:       28px;
@@ -245,48 +247,48 @@
 
   /* ===== FLOATING BUTTON SPECIFIC ===== */
   --color-floating-btn-bg: rgba(255, 255, 255, 0.95);
-  --color-floating-btn-border: var(--color-warm-300);
-  --color-floating-btn-text: var(--color-warm-500);
+  --color-floating-btn-border: rgba(226, 232, 240, 0.8);
+  --color-floating-btn-text: #94a3b8;
   --color-floating-btn-hover-bg: rgba(255, 255, 255, 1);
   --color-floating-btn-hover-border: var(--color-primary);
-  --color-floating-btn-grip-icon: var(--color-warm-500);
+  --color-floating-btn-grip-icon: #94a3b8;
 
   --color-action-btn-bg: rgba(255, 255, 255, 0.95);
-  --color-action-btn-border: var(--color-warm-200);
-  --color-action-btn-text: var(--color-warm-600);
-  --color-action-btn-new-bg-hover: var(--color-primary-500);
+  --color-action-btn-border: rgba(255, 255, 255, 0.3);
+  --color-action-btn-text: #64748b;
+  --color-action-btn-new-bg-hover: var(--color-primary);
   --color-action-btn-new-text-hover: var(--color-white);
-  --color-action-btn-download-bg-hover: var(--color-accent-blue);
-  --color-action-btn-download-text-hover: var(--color-warm-white);
-  --color-action-btn-tag-bg-hover: var(--color-accent-amber);
-  --color-action-btn-tag-text-hover: var(--color-warm-white);
-  --color-action-btn-save-bg-hover: var(--color-accent-teal);
-  --color-action-btn-save-text-hover: var(--color-warm-white);
-  --color-action-btn-close-bg-hover: var(--color-coral-500);
+  --color-action-btn-download-bg-hover: #99DAFA;
+  --color-action-btn-download-text-hover: #4C596E;
+  --color-action-btn-tag-bg-hover: #FFD700;
+  --color-action-btn-tag-text-hover: #4C596E;
+  --color-action-btn-save-bg-hover: var(--color-accent-green);
+  --color-action-btn-save-text-hover: var(--color-white);
+  --color-action-btn-close-bg-hover: var(--color-error);
   --color-action-btn-close-text-hover: var(--color-white);
 
   --color-shadow-btn-bg: rgba(108, 116, 251, 0.3);
   --color-shadow-btn-border: rgba(108, 116, 251, 0.6);
   --color-border-overlay: var(--color-primary);
 
-  --color-tooltip-bg: var(--color-warm-800);
+  --color-tooltip-bg: #475569;
   --color-tooltip-text: var(--color-white);
   --color-tooltip-border: rgba(255, 255, 255, 0.1);
 
-  --color-toast-success-bg: var(--color-accent-teal-bg);
-  --color-toast-success-text: var(--color-accent-teal);
-  --color-toast-error-bg: var(--color-coral-100);
-  --color-toast-error-text: var(--color-coral-600);
+  --color-toast-success-bg: #DDFCFC;
+  --color-toast-success-text: #4B84A3;
+  --color-toast-error-bg: #FAE1E1;
+  --color-toast-error-text: #E32920;
 
   --shadow-floating-btn-default: 0 2px 8px rgba(0, 0, 0, 0.15);
   --shadow-floating-btn-hover: 0 4px 16px rgba(0, 0, 0, 0.2);
   --shadow-floating-btn-dragging: 0 8px 24px rgba(0, 0, 0, 0.25);
   --shadow-action-btn-default: 0 2px 8px rgba(0, 0, 0, 0.08);
   --shadow-action-btn-new-hover: 0 4px 12px rgba(108, 116, 251, 0.4);
-  --shadow-action-btn-download-hover: 0 4px 12px rgba(91, 143, 245, 0.4);
-  --shadow-action-btn-tag-hover: 0 4px 12px rgba(232, 160, 48, 0.4);
-  --shadow-action-btn-save-hover: 0 4px 12px rgba(74, 173, 168, 0.4);
-  --shadow-action-btn-close-hover: 0 4px 12px rgba(232, 106, 74, 0.4);
+  --shadow-action-btn-download-hover: 0 4px 12px rgba(153, 218, 250, 0.4);
+  --shadow-action-btn-tag-hover: 0 4px 12px rgba(254, 239, 144, 0.4);
+  --shadow-action-btn-save-hover: 0 4px 12px rgba(82, 168, 120, 0.4);
+  --shadow-action-btn-close-hover: 0 4px 12px rgba(239, 68, 68, 0.4);
   --shadow-tooltip: 0 4px 12px rgba(0, 0, 0, 0.15);
   --shadow-toast: 0 4px 12px rgba(0, 0, 0, 0.1);
 
@@ -311,24 +313,5 @@
   --border-width-btn: 2px;
   --border-width-action-btn: 1px;
   --border-width-overlay: 4px;
-
-
-  /* ===== PRIORITY & TAG TOKENS ===== */
-  --color-priority-high-bg:     var(--color-accent-rose-bg);
-  --color-priority-high-text:   var(--color-accent-rose);
-  --color-priority-medium-bg:   var(--color-accent-amber-bg);
-  --color-priority-medium-text: var(--color-accent-amber);
-  --color-priority-low-bg:      var(--color-accent-teal-bg);
-  --color-priority-low-text:    var(--color-accent-teal);
-  --color-add-tag-background:   var(--color-warm-100);
-  --color-add-tag-text:         var(--color-warm-700);
-
-
-  /* ===== ANCHOR / HIGHLIGHT TOKENS ===== */
-  --color-anchor-highlight-bg:       #FDF0DC;
-  --color-anchor-highlight-bg-hover: #F9D9B0;
-  --color-anchor-flash-bg:           #FDF0DC;
-  --color-anchor-flash-glow:         #E8A030;
-  --color-anchor-focus-ring:         rgba(108, 116, 251, 0.15);
 
 }

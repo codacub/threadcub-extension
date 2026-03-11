@@ -5,14 +5,14 @@
 /* ===== TAG CARD STYLES ===== */
 .threadcub-tag-card {
   background: var(--color-white);
-  border: var(--border-width-thin) solid var(--color-gray-200);
-  border-radius: var(--border-radius-lg);
-  padding: var(--spacing-4);
-  margin-bottom: var(--spacing-3);
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  padding: 0;
+  margin-bottom: 8px;
   position: relative;
-  transition: all var(--transition-base);
+  transition: all 0.2s ease;
   cursor: pointer;
-  box-shadow: var(--shadow-card); /* Default shadow from token */
+  overflow: hidden;
 }
 
 /* Note: JS handles adding/removing box-shadow on hover for specific states.
@@ -28,20 +28,18 @@
 .tag-text {
   font-size: var(--font-size-sm);
   line-height: var(--line-height-normal); /* Changed from 1.4 to use token */
-  color: var(--color-gray-700);
+  color: var(--color-warm-700);
   margin-bottom: var(--spacing-4);
   font-family: var(--font-family-primary);
 }
 
 .default-state {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: var(--spacing-2);
+  flex-direction: column;
 }
 
 .card-icon {
-  color: var(--color-gray-500);
+  color: var(--color-warm-500);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -66,7 +64,7 @@ button.action-button,
   justify-content: center !important;
   width: var(--icon-size-base) !important;
   height: var(--icon-size-base) !important;
-  color: var(--color-gray-500) !important; /* Default icon color */
+  color: var(--color-warm-500) !important; /* Default icon color */
   cursor: pointer !important;
   transition: background var(--transition-base), color var(--transition-base) !important;
   border-radius: var(--border-radius-base) !important;
@@ -89,25 +87,8 @@ button.action-button,
   display: block !important;
 }
 
-/* X.com/Grok side panel button text centering - ultra high specificity */
-/* X.com uses aggressive CSS that requires targeting all child elements */
-.threadcub-tag-card .action-buttons .action-button,
-.threadcub-tag-card .action-button[data-action],
-div.threadcub-tag-card .action-button {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  text-align: center !important;
-  vertical-align: middle !important;
-}
 
-/* Force ALL content inside buttons to center */
-.threadcub-tag-card .action-buttons .action-button *,
-.threadcub-tag-card .action-button[data-action] *,
-div.threadcub-tag-card .action-button * {
-  text-align: center !important;
-  margin: 0 auto !important;
-}
+
 
 .threadcub-tag-card .action-buttons .action-button svg,
 .threadcub-tag-card .action-button[data-action] svg,
@@ -129,7 +110,6 @@ div.threadcub-tag-card .action-button svg {
   border-radius: 12px; /* Fixed value, not a direct token */
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-extrabold);
-  text-transform: uppercase;
 }
 
 .priority-tag.priority-high {
@@ -149,28 +129,28 @@ div.threadcub-tag-card .action-button svg {
 
 /* ===== NOTE DISPLAY STYLES ===== */
 .note-display {
-  background: var(--color-gray-100);
-  border: var(--border-width-thin) solid var(--color-gray-200); /* Changed from 1px to use token */
+  background: var(--color-warm-100);
+  border: var(--border-width-thin) solid var(--color-warm-200); /* Changed from 1px to use token */
   border-radius: 6px; /* Fixed value, not a direct token */
   padding: var(--spacing-3);
   margin-bottom: var(--spacing-3);
   font-size: var(--font-size-sm);
   line-height: var(--line-height-normal); /* Changed from 1.4 to use token */
-  color: var(--color-gray-700);
+  color: var(--color-warm-700);
 }
 
 /* ===== EMPTY STATE STYLES (Moved from JS inline) ===== */
 #threadcub-empty-state {
   text-align: center;
   padding: var(--spacing-8) var(--spacing-5);
-  color: var(--color-gray-500);
+  color: var(--color-warm-500);
 }
 
 .empty-state-icon {
   width: var(--logo-size); /* Re-used logo-size for consistency if appropriate, or make new token if different semantic meaning */
   height: var(--logo-size);
   margin: 0 auto var(--spacing-5);
-  background: linear-gradient(135deg, var(--color-gray-100) 0%, var(--color-gray-200) 100%);
+  background: linear-gradient(135deg, var(--color-warm-100) 0%, var(--color-warm-200) 100%);
   border-radius: var(--border-radius-full);
   display: flex;
   align-items: center;
@@ -182,7 +162,7 @@ div.threadcub-tag-card .action-button svg {
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
   margin: 0 0 var(--spacing-2);
-  color: var(--color-gray-700);
+  color: var(--color-warm-700);
 }
 
 .empty-state-description {
@@ -195,28 +175,31 @@ div.threadcub-tag-card .action-button svg {
 
 /* ===== NOTE EDITING STATE STYLES (Moved from JS inline) ===== */
 .note-editing {
-  /* display is handled by JS based on data-state attribute */
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
-
 .note-textarea {
   width: 100%;
-  min-height: 80px; /* Fixed value */
+  min-height: 80px;
   padding: var(--spacing-3);
-  border: 2px solid var(--color-primary); /* Fixed 2px, not a direct token for border-width */
-  border-radius: 6px; /* Fixed value */
+  border: 2px solid var(--color-primary);
+  border-radius: 6px;
+  outline: none !important;
+  box-shadow: none !important;
   font-size: var(--font-size-sm);
   line-height: var(--line-height-normal);
-  color: var(--color-gray-700);
+  color: var(--color-warm-700);
   resize: vertical;
   font-family: var(--font-family-primary);
-  margin-bottom: var(--spacing-3);
-  box-sizing: border-box; /* Ensures padding is included in element's total width/height */
+  margin-bottom: 0;
+  box-sizing: border-box;
   outline: none;
 }
-
 .note-actions {
   display: flex;
-  gap: var(--spacing-2);
+  gap: 8px;
 }
 
 /* Save and Cancel Buttons */
@@ -226,17 +209,18 @@ div.threadcub-tag-card .action-button svg {
   padding: var(--spacing-2) var(--spacing-3);
   border-radius: var(--border-radius-base);
   font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-extrabold);
+  font-weight: var(--font-weight-semibold);
   cursor: pointer;
-  text-transform: uppercase;
+  text-transform: none;
   transition: all var(--transition-base);
 }
 
 .save-note-btn {
-  background: var(--color-gray-300); /* Inactive state color */
-  color: var(--color-white);
-  opacity: 0.5;
-  pointer-events: none; /* Prevents clicks when inactive */
+  background: var(--color-warm-200);
+  color: var(--color-warm-500);
+  opacity: 1;
+  pointer-events: none;
+  cursor: not-allowed;
 }
 
 .save-note-btn.active {
@@ -248,7 +232,64 @@ div.threadcub-tag-card .action-button svg {
 
 .cancel-note-btn {
   background: transparent;
-  color: var(--color-gray-500);
+  color: var(--color-warm-500);
+}
+.tag-name-input {
+  width: 100%;
+  padding: var(--spacing-3);
+  border: 2px solid var(--color-primary);
+  border-radius: 6px;
+  font-size: var(--font-size-sm);
+  color: var(--color-warm-700);
+  font-family: var(--font-family-primary);
+  box-sizing: border-box;
+  outline: none !important;
+  box-shadow: none !important;
+  margin-bottom: 8px;
+}
+.tag-colour-options {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.tag-colour-btn {
+  border: 2px solid transparent;
+  padding: 4px 12px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.tag-colour-btn.selected::after {
+  content: "✓";
+  font-size: 11px;
+}
+.tag-colour-btn.selected {
+  border-color: currentColor;
+}
+.save-tag-btn {
+  border: none;
+  padding: var(--spacing-2) var(--spacing-3);
+  border-radius: var(--border-radius-base);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  background: var(--color-primary);
+  color: white;
+}
+.remove-note-btn {
+  border: none;
+  padding: var(--spacing-2) var(--spacing-3);
+  border-radius: var(--border-radius-base);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  background: transparent;
+  color: var(--color-rose-500, #F43F5E);
 }
 
 /* ===== TAG EDITING STATE STYLES (Moved from JS inline) ===== */
@@ -270,7 +311,6 @@ div.threadcub-tag-card .action-button svg {
   border-radius: 12px; /* Fixed value */
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-extrabold);
-  text-transform: uppercase;
   cursor: pointer;
   transition: all var(--transition-base);
 }
@@ -311,13 +351,12 @@ div.threadcub-tag-card .action-button svg {
 .cancel-tag-btn {
   background: transparent;
   border: none;
-  color: var(--color-gray-500);
+  color: var(--color-warm-500);
   padding: var(--spacing-2) var(--spacing-3);
   border-radius: var(--border-radius-base);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-extrabold);
   cursor: pointer;
-  text-transform: uppercase;
   transition: all var(--transition-base);
 }
 
@@ -332,8 +371,8 @@ div.threadcub-tag-card .action-button svg {
   bottom: calc(100% + 8px);
   left: 50%;
   transform: translateX(-50%) translateY(4px);
-  background: #1e293b;
-  color: white;
+  background: var(--color-warm-800);
+  color: var(--color-warm-white);
   padding: 6px 10px;
   border-radius: 4px;
   font-size: 12px;
@@ -355,7 +394,7 @@ div.threadcub-tag-card .action-button svg {
 /* ===== ANCHOR ITEM STYLES ===== */
 .threadcub-anchor-item {
   background: var(--color-white);
-  border: var(--border-width-thin) solid var(--color-gray-200);
+  border: var(--border-width-thin) solid var(--color-warm-200);
   border-radius: var(--border-radius-lg);
   padding: var(--spacing-4);
   margin-bottom: var(--spacing-3);
@@ -378,7 +417,7 @@ div.threadcub-tag-card .action-button svg {
 .anchor-item-text {
   font-size: var(--font-size-sm);
   line-height: var(--line-height-normal);
-  color: var(--color-gray-700);
+  color: var(--color-warm-700);
   font-family: var(--font-family-primary);
 }
 
@@ -402,13 +441,13 @@ div.threadcub-tag-card .action-button svg {
   cursor: pointer !important;
   padding: 0 !important;
   margin: 0 !important;
-  color: #64748b !important;
+  color: var(--color-warm-500) !important;
   transition: all 0.15s ease !important;
 }
 
 .anchor-action-btn:hover {
-  background: #f1f5f9 !important;
-  color: #475569 !important;
+  background: var(--color-warm-100) !important;
+  color: var(--color-warm-600) !important;
 }
 
 .anchor-action-btn svg {
@@ -425,7 +464,54 @@ div.threadcub-tag-card .action-button svg {
 }
 
 /* Action button hover state */
-.action-button:hover {
-  background: #f1f5f9 !important;
-  color: #475569 !important;
+.action-button:hover,
+button.action-button:hover,
+.threadcub-tag-card .action-button:hover,
+.threadcub-tag-card button.action-button:hover {
+  background: var(--color-warm-100) !important;
+  color: var(--color-warm-600) !important;
+}
+/* Chevron button hover */
+.tc-chevron-btn:hover {
+  background: var(--color-warm-100) !important;
+  color: var(--color-warm-600) !important;
+}
+.tc-chevron-btn {
+  width: var(--icon-size-base) !important;
+  height: var(--icon-size-base) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: var(--border-radius-base) !important;
+  color: var(--color-warm-500) !important;
+  background: none !important;
+  border: none !important;
+  padding: 0 !important;
+  cursor: pointer !important;
+}
+/* ===== CUSTOM TOOLTIPS ===== */
+.tc-tooltip-btn {
+  position: relative;
+}
+.tc-tooltip-btn::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1F2937;
+  color: #FFFFFF;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  padding: 4px 8px;
+  border-radius: 4px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  z-index: 99999;
+}
+.tc-tooltip-btn:hover::after {
+  opacity: 1;
 }

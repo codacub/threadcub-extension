@@ -182,21 +182,21 @@ class ThreadCubSidePanel {
         tagsTab.classList.add('active');
         anchorsTab.classList.remove('active');
         // Update inline styles to override initial values
-        tagsTab.style.borderBottom = '2px solid #7C3AED';
-        tagsTab.style.color = '#7C3AED';
+        tagsTab.style.borderBottom = '2px solid var(--color-primary)';
+        tagsTab.style.color = 'var(--color-primary)';
         tagsTab.style.fontWeight = '600';
         anchorsTab.style.borderBottom = '2px solid transparent';
-        anchorsTab.style.color = '#64748b';
+        anchorsTab.style.color = 'var(--color-warm-600)';
         anchorsTab.style.fontWeight = '500';
       } else {
         tagsTab.classList.remove('active');
         anchorsTab.classList.add('active');
         // Update inline styles to override initial values
-        anchorsTab.style.borderBottom = '2px solid #7C3AED';
-        anchorsTab.style.color = '#7C3AED';
+        anchorsTab.style.borderBottom = '2px solid var(--color-primary)';
+        anchorsTab.style.color = 'var(--color-primary)';
         anchorsTab.style.fontWeight = '600';
         tagsTab.style.borderBottom = '2px solid transparent';
-        tagsTab.style.color = '#64748b';
+        tagsTab.style.color = 'var(--color-warm-600)';
         tagsTab.style.fontWeight = '500';
       }
     }
@@ -569,7 +569,7 @@ class ThreadCubSidePanel {
     return `
       <div class="threadcub-tag-card" data-tag-id="${tag.id}" style="
         background: #FFFFFF;
-        border: 1px solid #E5E7EB;
+        border: 1px solid var(--color-warm-400);
         border-radius: 8px;
         overflow: visible;
         transition: all 0.2s ease;
@@ -583,9 +583,9 @@ class ThreadCubSidePanel {
           box-sizing: border-box;
         ">
           <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; align-self: center; align-items: flex-start;">
-            ${ tag.tags && tag.tags[0] ? (() => { const colours = { amber: {bg: '#FEF3C7', text: '#92400E'}, rose: {bg: '#FFE4E6', text: '#9F1239'}, teal: {bg: '#CCFBF1', text: '#134E4A'} }; const c = colours[tag.tags[0].colour] || colours.amber; return '<div style="display:inline-block; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 600; background:' + c.bg + '; color:' + c.text + '; margin-bottom: 3px;">' + tag.tags[0].label + '</div>'; })() : '' }
-            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 13px; color: #374151;">${tag.text}</div>
-            ${ tag.note && tag.note.trim().length > 0 ? '<div style="font-size: 11px; color: #9CA3AF; font-style: italic; margin-top: 2px;">' + tag.note + '</div>' : '' }
+            ${ tag.tags && tag.tags[0] ? (() => { const colours = { amber: {bg: '#FEF3C7', text: '#92400E'}, rose: {bg: '#FFE4E6', text: '#9F1239'}, teal: {bg: '#CCFBF1', text: '#134E4A'} }; const c = colours[tag.tags[0].colour] || colours.amber; return '<div style="display:inline-block; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 600; background:' + c.bg + '; color:' + c.text + '; margin-bottom: 8px;">' + tag.tags[0].label + '</div>'; })() : '' }
+            <div style="font-family: var(--font-family-primary); font-size: var(--font-size-sm); color: var(--color-warm-900);">${tag.text}</div>
+            ${ tag.note && tag.note.trim().length > 0 ? '<div style="font-size: var(--font-size-xs); color: var(--color-warm-700); font-style: italic; margin-top: var(--spacing-2);">' + tag.note + '</div>' : '' }
           </div>
           <button class="action-button tc-tooltip-btn" data-action="jump-to-tag" data-tag-id="${tag.id}" data-tooltip="Jump to highlight" style="flex-shrink: 0; position: relative;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

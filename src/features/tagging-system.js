@@ -2481,6 +2481,7 @@ createSidePanel() {
     <!-- Tab Navigation -->
     <div class="threadcub-tabs" style="
       display: flex;
+      align-items: flex-start;
       padding: 8px 24px 16px;
       background: var(--color-warm-100);
       gap: 8px;
@@ -2497,8 +2498,9 @@ createSidePanel() {
         color: var(--color-warm-900);
         cursor: pointer;
         transition: all 0.2s ease;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         white-space: nowrap;
+        width: fit-content !important;
+        flex: 0 0 auto !important;
         outline: none;
       " onmouseover="if(this.classList.contains('active')){} else {this.style.background='var(--color-warm-200)'}"
          onmouseout="if(this.classList.contains('active')){} else {this.style.background='transparent'}">Highlights</button>
@@ -2514,6 +2516,8 @@ createSidePanel() {
         cursor: pointer;
         transition: all 0.2s ease;
         white-space: nowrap;
+        width: fit-content !important;
+        flex: 0 0 auto !important;
       " onmouseover="if(this.classList.contains('active')){} else {this.style.background='var(--color-warm-200)'}"
          onmouseout="if(this.classList.contains('active')){} else {this.style.background='transparent'}">Anchors</button>
     </div>

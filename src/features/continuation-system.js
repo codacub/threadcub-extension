@@ -193,7 +193,7 @@ function executeStreamlinedContinuation(fullPrompt, shareUrl, continuationData) 
   // File-based platforms (ChatGPT, Gemini, DeepSeek, Perplexity) - user reviews and uploads file
   if (!isFileBased) {
     // Grok (SPA) needs a longer delay to allow retry-based fill to complete
-    const autoStartDelay = isGrok ? 10000 : 800;
+    const autoStartDelay = isGrok ? 10000 : 1500;
     setTimeout(() => {
       console.log('🔧 Auto-starting conversation for URL-based platform...');
       // 📊 GA: continuation_auto_started — fired when the send button is clicked automatically

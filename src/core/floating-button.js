@@ -1650,12 +1650,12 @@ Once you've reviewed it, let me know you're ready to continue from where we left
 
     if (canUseChrome) {
       console.log('🤖 ThreadCub: Using Chrome storage for Claude...');
-      const claudeUrl = 'https://claude.ai/';
-      window.open(claudeUrl, '_blank');
-      this.showSuccessToast('Opening Claude with conversation context...');
       window.StorageService.storeWithChrome(continuationData)
         .then(() => {
           console.log('🐻 ThreadCub: Claude data stored successfully');
+          const claudeUrl = 'https://claude.ai/';
+          window.open(claudeUrl, '_blank');
+          this.showSuccessToast('Opening Claude with conversation context...');
         })
         .catch(error => {
           console.log('🤖 ThreadCub: Chrome storage failed, using fallback:', error);

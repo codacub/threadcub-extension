@@ -119,12 +119,8 @@ function executeStreamlinedContinuation(fullPrompt, shareUrl, continuationData) 
   console.log('🚀 ThreadCub: Executing streamlined continuation');
 
   // 📊 GA: continuation_started — fired when continuation data is found and execution begins
-  chrome.runtime.sendMessage({
-    action: 'trackEvent',
-    eventType: 'continuation_started',
-    data: {
-      platform: continuationData.platform || window.PlatformDetector?.detectPlatform() || 'unknown'
-    }
+  safeTrackEvent('continuation_started', {
+    platform: continuationData.platform || window.PlatformDetector?.detectPlatform() || 'unknown'
   });
   
   console.log('🚀 Platform:', continuationData.platform);
@@ -154,13 +150,9 @@ function executeStreamlinedContinuation(fullPrompt, shareUrl, continuationData) 
 
   // 📊 GA: continuation_executed — fired when continuation is about to fill the input field
   // Distinguishes between file-based (user uploads JSON) and URL-based (auto-fills and sends)
-  chrome.runtime.sendMessage({
-    action: 'trackEvent',
-    eventType: 'continuation_executed',
-    data: {
-      platform: continuationData.platform || platform || 'unknown',
-      flow_type: isFileBased ? 'file_based' : isGrok ? 'grok_spa' : 'url_based'
-    }
+  safeTrackEvent('continuation_executed', {
+    platform: continuationData.platform || platform || 'unknown',
+    flow_type: isFileBased ? 'file_based' : isGrok ? 'grok_spa' : 'url_based'
   });
 
   if (isFileBased) {
@@ -206,13 +198,10 @@ function executeStreamlinedContinuation(fullPrompt, shareUrl, continuationData) 
       console.log('🔧 Auto-starting conversation for URL-based platform...');
       // 📊 GA: continuation_auto_started — fired when the send button is clicked automatically
       // Only fires for URL-based platforms (Claude, Grok) — file-based platforms skip this
-      chrome.runtime.sendMessage({
-        action: 'trackEvent',
-        eventType: 'continuation_auto_started',
-        data: {
-          platform: continuationData.platform || platform || 'unknown',
-          is_grok: isGrok
-        }
+      safeTrackEvent('continuation_auto_started', {
+        platform: continuationData.platform || platform || 'unknown',
+        is_grok: isGrok
+      }
       });
       attemptAutoStart(platform);
     }, autoStartDelay);
@@ -462,13 +451,9 @@ function fillInputFieldWithRetry(prompt, maxAttempts = 20, retryDelay = 1000) {
 
       // 📊 GA: continuation_fill_failed — fired when input field could not be filled after all retries
       // Useful for identifying platforms where the selector logic is broken
-      chrome.runtime.sendMessage({
-        action: 'trackEvent',
-        eventType: 'continuation_fill_failed',
-        data: {
-          platform: platform || 'unknown',
-          attempts_made: maxAttempts
-        }
+      safeTrackEvent('continuation_fill_failed', {
+        platform: platform || 'unknown',
+        attempts_made: maxAttempts
       });
 
       console.log('💡 The JSON file has been downloaded. You can manually:');
@@ -684,3 +669,11 @@ window.ContinuationSystem = {
 };
 
 console.log('🐻 ThreadCub: Continuation system module loaded');
+// 📊 Safe GA tracking — swallows errors if service worker not yet awake
+function safeTrackEvent(eventType, data) {
+  try {
+    chrome.runtime.sendMessage({ action: 'trackEvent', eventType, data }, () => {
+      void chrome.runtime.lastError;
+    });
+  } catch (e) {}
+}

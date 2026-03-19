@@ -203,7 +203,6 @@ function executeStreamlinedContinuation(fullPrompt, shareUrl, continuationData) 
         is_grok: isGrok
       });
       attemptAutoStart(platform);
-      attemptAutoStart(platform);
     }, autoStartDelay);
   } else {
     console.log('📁 File-based flow - skipping auto-start. User will review prompt and upload file.');

@@ -287,35 +287,13 @@ function fillInputFieldWithPrompt(prompt) {
       console.log('✅ Filled TEXTAREA/INPUT');
       return true;
     } else if (inputField.contentEditable === 'true') {
-      // For contenteditable (like Perplexity), use multiple methods
-      console.log('🔮 Filling contenteditable div for Perplexity...');
-      
-      // Method 1: Set innerHTML (better for contenteditable)
-      inputField.innerHTML = prompt;
-      
-      // Method 2: Also try textContent as backup
-      inputField.textContent = prompt;
-      
-      // Method 3: Use execCommand if available (older browsers)
-      if (document.execCommand) {
-        try {
-          inputField.focus();
-          document.execCommand('selectAll', false, null);
-          document.execCommand('insertText', false, prompt);
-        } catch (e) {
-          console.log('🔮 execCommand failed, using direct methods');
-        }
-      }
-      
-      // Trigger ALL possible events
+      // For Claude's Lexical editor — must use execCommand only, never innerHTML/textContent
+      console.log('🔧 Filling contenteditable div for Claude/Lexical...');
+      inputField.focus();
+      document.execCommand('selectAll', false, null);
+      document.execCommand('insertText', false, prompt);
       inputField.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
-      inputField.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
-      inputField.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true }));
-      inputField.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, cancelable: true }));
-      inputField.dispatchEvent(new Event('blur', { bubbles: true }));
-      inputField.focus(); // Refocus
-      
-      console.log('✅ Filled contenteditable with enhanced method');
+      console.log('✅ Filled contenteditable with execCommand method');
       console.log('✅ ThreadCub: Input field populated successfully');
       return true;
     }

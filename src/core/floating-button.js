@@ -1159,7 +1159,8 @@ class ThreadCubFloatingButton {
       // If no valid shareUrl came back, fall back to direct continuation
       if (!shareUrl) {
         console.warn('🐻 ThreadCub: No conversation ID in API response, falling back to direct continuation');
-        this.handleDirectContinuation(conversationData);
+        this.handleDirectContinuation(conversationData, this._pendingClaudeTab);
+        this._pendingClaudeTab = null;
         this.isExporting = false;
     this.setSaveBtnLoading(false);
         return;
@@ -1227,7 +1228,8 @@ class ThreadCubFloatingButton {
       // 📊 GA: continue failed — API error, falling back to direct continuation
       sendMessageWithRetry({ action: 'trackEvent', eventType: 'continue_failed', data: { reason: 'api_error_fallback', platform: conversationData?.platform || 'unknown', error: apiError.message } });
       // FALLBACK: Skip API save and go straight to continuation
-      this.handleDirectContinuation(conversationData);
+      this.handleDirectContinuation(conversationData, this._pendingClaudeTab);
+      this._pendingClaudeTab = null;
       this.isExporting = false;
     this.setSaveBtnLoading(false);
       return;
@@ -2044,7 +2046,7 @@ Once you've reviewed it, let me know you're ready to continue from where we left
     }
   }
 
-  handleDirectContinuation(conversationData) {
+  handleDirectContinuation(conversationData, preOpenedTab = null) {
     console.log('🐻 ThreadCub: Handling direct continuation without API save...');
 
     // Create a fallback share URL
@@ -2067,7 +2069,7 @@ Once you've reviewed it, let me know you're ready to continue from where we left
       this.handleChatGPTFlow(minimalPrompt, fallbackShareUrl, conversationData);
     } else if (targetPlatform === 'claude') {
       console.log('🤖 ThreadCub: Routing to Claude flow (no file download)');
-      this.handleClaudeFlow(minimalPrompt, fallbackShareUrl, conversationData);
+      this.handleClaudeFlow(minimalPrompt, fallbackShareUrl, conversationData, preOpenedTab);
     } else if (targetPlatform === 'gemini') {
       console.log('🤖 ThreadCub: Routing to Gemini flow (with file download)');
       this.handleGeminiFlow(minimalPrompt, fallbackShareUrl, conversationData);

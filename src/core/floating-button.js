@@ -1107,7 +1107,9 @@ class ThreadCubFloatingButton {
       source: conversationData.platform?.toLowerCase() || 'unknown',
       title: conversationData.title || 'Untitled Conversation',
       userAuthToken: userAuthToken,
-      session_id: sessionId
+      session_id: sessionId,
+      capture_method: 'save',
+      parent_conversation_id: null
     };
 
     console.log('🔍 API Data includes session_id:', !!apiData.session_id);
@@ -1297,7 +1299,9 @@ class ThreadCubFloatingButton {
         source: conversationData.platform?.toLowerCase() || 'unknown',
         title: conversationData.title || 'Untitled Conversation',
         userAuthToken: userAuthToken,
-        session_id: sessionId
+        session_id: sessionId,
+        capture_method: 'save',
+        parent_conversation_id: null
       };
 
       // API call via ApiService - save only, no tab open

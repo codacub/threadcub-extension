@@ -1176,7 +1176,9 @@ class ThreadCubFloatingButton {
         console.log('🤖 ThreadCub: Routing to Claude flow (no file download)');
         // 📊 GA: continue succeeded — routed to Claude
         sendMessageWithRetry({ action: 'trackEvent', eventType: 'continue_success', data: { platform: 'claude', message_count: conversationData.messages.length } });
-        this.handleClaudeFlow(minimalPrompt, shareUrl, conversationData);
+        // Open tab immediately — don't wait for storage write
+        const claudeTab = window.open('https://claude.ai/', '_blank');
+        this.handleClaudeFlow(minimalPrompt, shareUrl, conversationData, claudeTab);
       } else if (targetPlatform === 'gemini') {
         console.log('🤖 ThreadCub: Routing to Gemini flow (with file download)');
         // 📊 GA: continue succeeded — routed to Gemini
@@ -1653,8 +1655,9 @@ Once you've reviewed it, let me know you're ready to continue from where we left
       window.StorageService.storeWithChrome(continuationData)
         .then(() => {
           console.log('🐻 ThreadCub: Claude data stored successfully');
-          const claudeUrl = 'https://claude.ai/';
-          window.open(claudeUrl, '_blank');
+          if (!preOpenedTab) {
+            window.open('https://claude.ai/', '_blank');
+          }
           this.showSuccessToast('Opening Claude with conversation context...');
         })
         .catch(error => {

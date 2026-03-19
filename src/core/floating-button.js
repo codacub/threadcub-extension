@@ -1637,7 +1637,7 @@ Please read through the attached conversation file and provide your assessment o
 Once you've reviewed it, let me know you're ready to continue from where we left off.`;
 }
 
-  handleClaudeFlow(continuationPrompt, shareUrl, conversationData) {
+  handleClaudeFlow(continuationPrompt, shareUrl, conversationData, preOpenedTab = null) {
     console.log('🤖 ThreadCub: Starting Claude flow (API-only, no downloads)...');
 
     const continuationData = {

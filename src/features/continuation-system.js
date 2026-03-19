@@ -37,10 +37,8 @@ function checkForContinuationData() {
             const isRecent = (Date.now() - data.timestamp) < 5 * 60 * 1000;
             
             if (isRecent) {
-              // Clear the data so it's only used once
-              chrome.storage.local.remove(['threadcubContinuationData'], () => {
-                console.log('🐻 ThreadCub: Cleared used continuation data');
-              });
+              // NOTE: data is cleared inside executeStreamlinedContinuation
+              // only after confirming we are on a safe page to fill
               
               // STREAMLINED: Execute continuation immediately (no modal)
               setTimeout(() => {
@@ -96,8 +94,8 @@ function checkForContinuationData() {
         const isRecent = (Date.now() - data.timestamp) < 5 * 60 * 1000;
         
         if (isRecent) {
-          // Clear the data
-          localStorage.removeItem('threadcubContinuationData');
+          // NOTE: data is cleared inside executeStreamlinedContinuation
+          // only after confirming we are on a safe page to fill
           
           // STREAMLINED: Execute continuation immediately
           setTimeout(() => {
@@ -174,7 +172,23 @@ function executeStreamlinedContinuation(fullPrompt, shareUrl, continuationData) 
     console.log('🔧 Using retry logic for Grok (SPA input field):', platform);
     fillInputFieldWithRetry(fullPrompt, 10, 800);
   } else {
-    // URL-based platforms (Claude) - single fill usually sufficient
+    // URL-based platforms (Claude) - ensure we are on a new/empty chat before filling
+    const currentPath = window.location.pathname;
+    const currentHost = window.location.hostname;
+    const isClaudeExistingChat = currentHost.includes('claude.ai') && currentPath.startsWith('/chat/');
+    if (isClaudeExistingChat) {
+      // Claude has auto-redirected to an existing conversation — re-store data and navigate to /new
+      console.log('🔧 Claude redirected to existing chat, re-storing data and navigating to /new...');
+      chrome.storage.local.set({ threadcubContinuationData: { ...continuationData, timestamp: Date.now() } }, () => {
+        console.log('🔧 Re-stored continuation data for next page load');
+        window.location.href = 'https://claude.ai/new';
+      });
+      return;
+    }
+    // Safe to fill — clear the data now so it is only used once
+    chrome.storage.local.remove(['threadcubContinuationData'], () => {
+      console.log('🐻 ThreadCub: Cleared used continuation data');
+    });
     console.log('🔧 Using single fill for URL-based platform');
     const populateSuccess = fillInputFieldWithPrompt(fullPrompt);
     console.log('🔧 Population result:', populateSuccess);

@@ -189,9 +189,9 @@ function executeStreamlinedContinuation(fullPrompt, shareUrl, continuationData) 
     chrome.storage.local.remove(['threadcubContinuationData'], () => {
       console.log('🐻 ThreadCub: Cleared used continuation data');
     });
-    console.log('🔧 Using single fill for URL-based platform');
-    const populateSuccess = fillInputFieldWithPrompt(fullPrompt);
-    console.log('🔧 Population result:', populateSuccess);
+    // Use retry logic for Claude — Lexical editor may not be ready yet
+    console.log('🔧 Using retry fill for Claude');
+    fillInputFieldWithRetry(fullPrompt, 20, 500);
   }
 
   // Show subtle success notification
@@ -201,7 +201,7 @@ function executeStreamlinedContinuation(fullPrompt, shareUrl, continuationData) 
   // File-based platforms (ChatGPT, Gemini, DeepSeek, Perplexity) - user reviews and uploads file
   if (!isFileBased) {
     // Grok (SPA) needs a longer delay to allow retry-based fill to complete
-    const autoStartDelay = isGrok ? 10000 : 1500;
+    const autoStartDelay = isGrok ? 10000 : 3000;
     setTimeout(() => {
       console.log('🔧 Auto-starting conversation for URL-based platform...');
       // 📊 GA: continuation_auto_started — fired when the send button is clicked automatically

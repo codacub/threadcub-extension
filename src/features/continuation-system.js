@@ -379,53 +379,29 @@ function fillInputFieldWithPrompt(prompt) {
           console.log('🔧 Verify value length:', inputField.value.length);
           
         } else if (inputField.contentEditable === 'true') {
-          console.log('🔧 Filling contenteditable field (Lexical/React editor)');
-          
-          // Clear existing content
-          inputField.textContent = '';
-          inputField.innerHTML = '';
-          
-          // Set new content with multiple methods for reliability
-          inputField.textContent = prompt;
-          inputField.innerHTML = prompt.replace(/\n/g, '<br>');
-          
-          // Also try innerText for some platforms
-          try {
-            inputField.innerText = prompt;
-          } catch (e) {
-            console.log('🔧 innerText method not available');
+          console.log('🔧 Filling contenteditable field (Lexical/React editor) via execCommand');
+
+          // Focus first
+          inputField.focus();
+
+          // Select all existing content and delete it
+          document.execCommand('selectAll', false, null);
+          document.execCommand('delete', false, null);
+
+          // Insert text through native editing pipeline — Lexical listens to this
+          const inserted = document.execCommand('insertText', false, prompt);
+          console.log('🔧 execCommand insertText result:', inserted);
+
+          // Fallback: if execCommand returned false, try InputEvent approach
+          if (!inserted) {
+            console.log('🔧 execCommand failed, falling back to InputEvent');
+            inputField.textContent = '';
+            inputField.dispatchEvent(new InputEvent('beforeinput', { bubbles: true, cancelable: true, inputType: 'insertText', data: prompt }));
+            inputField.textContent = prompt;
+            inputField.dispatchEvent(new InputEvent('input', { bubbles: true, cancelable: true, inputType: 'insertText', data: prompt }));
           }
-          
-          // Trigger comprehensive events (including InputEvent for Lexical/React)
-          const events = [
-            new Event('focus', { bubbles: true }),
-            new InputEvent('beforeinput', { bubbles: true, cancelable: true, inputType: 'insertText', data: prompt }),
-            new Event('input', { bubbles: true, cancelable: true }),
-            new InputEvent('input', { bubbles: true, cancelable: true, inputType: 'insertText', data: prompt }),
-            new Event('change', { bubbles: true, cancelable: true }),
-            new KeyboardEvent('keydown', { bubbles: true }),
-            new KeyboardEvent('keyup', { bubbles: true }),
-            new Event('blur', { bubbles: true })
-          ];
-          
-          events.forEach((event, index) => {
-            try {
-              console.log(`🔧 Dispatching event ${index + 1}/${events.length}: ${event.type}`);
-              inputField.dispatchEvent(event);
-            } catch (e) {
-              console.log(`🔧 Could not dispatch ${event.type}:`, e.message);
-            }
-          });
-          
-          // Refocus after blur
-          setTimeout(() => {
-            inputField.focus();
-            console.log('🔧 Refocused input field');
-          }, 50);
-          
-          console.log('✅ Contenteditable filled successfully');
-          console.log('🔧 Final textContent length:', inputField.textContent.length);
-          console.log('🔧 Final innerHTML length:', inputField.innerHTML.length);
+
+          console.log('✅ Contenteditable filled, textContent length:', inputField.textContent.length);
         }
         
       }, 100);
@@ -530,28 +506,36 @@ function attemptAutoStart(platform) {
 }
 
 function attemptClaudeAutoStart() {
-  try {
-    const sendSelectors = [
-      'button[data-testid="send-button"]',
-      'button[aria-label*="Send"]',
-      'button[type="submit"]',
-      'button:has(svg[data-testid="send-icon"])'
-    ];
-
-    for (const selector of sendSelectors) {
-      const sendButton = document.querySelector(selector);
-      if (sendButton && !sendButton.disabled) {
-        console.log('🔧 Found Claude send button, clicking...');
-        sendButton.click();
-        return;
+  const sendSelectors = [
+    'button[data-testid="send-button"]',
+    'button[aria-label*="Send"]',
+    'button[type="submit"]',
+    'button:has(svg[data-testid="send-icon"])'
+  ];
+  let attempts = 0;
+  const maxAttempts = 20;
+  const interval = setInterval(() => {
+    attempts++;
+    try {
+      for (const selector of sendSelectors) {
+        const sendButton = document.querySelector(selector);
+        if (sendButton && !sendButton.disabled) {
+          console.log(`🔧 Found enabled Claude send button on attempt ${attempts}, clicking...`);
+          clearInterval(interval);
+          sendButton.click();
+          return;
+        }
       }
+      console.log(`🔧 Send button not ready yet (attempt ${attempts}/${maxAttempts})`);
+      if (attempts >= maxAttempts) {
+        clearInterval(interval);
+        console.log('🔧 Give up waiting for send button — user can send manually');
+      }
+    } catch (error) {
+      clearInterval(interval);
+      console.log('🔧 Claude auto-start failed:', error);
     }
-
-    console.log('🔧 No Claude send button found or all disabled');
-
-  } catch (error) {
-    console.log('🔧 Claude auto-start failed:', error);
-  }
+  }, 250);
 }
 
 function attemptChatGPTAutoStart() {

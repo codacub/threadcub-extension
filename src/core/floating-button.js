@@ -1183,7 +1183,7 @@ class ThreadCubFloatingButton {
         // 📊 GA: continue succeeded — routed to Claude
         sendMessageWithRetry({ action: 'trackEvent', eventType: 'continue_success', data: { platform: 'claude', message_count: conversationData.messages.length } });
         // Open tab immediately — don't wait for storage write
-        this.handleClaudeFlow(minimalPrompt, shareUrl, conversationData, this._pendingClaudeTab);
+        console.log("pendingTab:", this._pendingClaudeTab); this.handleClaudeFlow(minimalPrompt, shareUrl, conversationData, this._pendingClaudeTab);
         this._pendingClaudeTab = null;
       } else if (targetPlatform === 'gemini') {
         console.log('🤖 ThreadCub: Routing to Gemini flow (with file download)');

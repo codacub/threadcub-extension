@@ -45,28 +45,38 @@ function attemptAutoStart() {
 let _claudeAutoStartFired = false;
 // ===== Claude.ai auto-start =====
 function attemptClaudeAutoStart() {
-  try {
-    if (_claudeAutoStartFired) { console.log('🔧 Auto-start already fired, skipping duplicate'); return; }
-    _claudeAutoStartFired = true;
-    // Look for Claude's send button
-    const sendSelectors = [
-      'button[data-testid="send-button"]',
-      'button[aria-label*="Send"]',
-      'button[type="submit"]'
-    ];
-    
-    for (const selector of sendSelectors) {
-      const sendButton = document.querySelector(selector);
-      if (sendButton && !sendButton.disabled) {
-        console.log('🐻 ThreadCub: Found Claude send button, clicking...');
-        sendButton.click();
-        return;
+  if (_claudeAutoStartFired) { console.log('🔧 Auto-start already fired, skipping duplicate'); return; }
+  _claudeAutoStartFired = true;
+  console.log('🔧 Waiting for Claude.ai to be ready before clicking send...');
+  let attempts = 0;
+  const maxAttempts = 40;
+  const interval = setInterval(() => {
+    attempts++;
+    try {
+      const sendSelectors = [
+        'button[data-testid="send-button"]',
+        'button[aria-label*="Send"]',
+        'button[type="submit"]'
+      ];
+      for (const selector of sendSelectors) {
+        const sendButton = document.querySelector(selector);
+        if (sendButton && !sendButton.disabled) {
+          clearInterval(interval);
+          console.log('🐻 ThreadCub: Found Claude send button, clicking...');
+          setTimeout(() => sendButton.click(), 300);
+          return;
+        }
       }
+      console.log('🔧 Send button not ready yet, attempt ' + attempts + '/' + maxAttempts);
+      if (attempts >= maxAttempts) {
+        clearInterval(interval);
+        console.log('🔧 Give up waiting — user can send manually');
+      }
+    } catch (error) {
+      clearInterval(interval);
+      console.log('🐻 ThreadCub: Claude auto-start failed:', error);
     }
-    
-  } catch (error) {
-    console.log('🐻 ThreadCub: Claude auto-start failed:', error);
-  }
+  }, 250);
 }
 
 // ===== ChatGPT auto-start =====

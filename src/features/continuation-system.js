@@ -5,8 +5,8 @@ function checkForContinuationData() {
   console.log('🐻 ThreadCub: Checking for continuation data using Chrome storage');
   
   let retryCount = 0;
-  const maxRetries = 10; // Try up to 10 times
-  const retryDelay = 500; // Every 500ms
+  const maxRetries = 15; // Try up to 15 times
+  const retryDelay = 300; // Every 300ms
   
   // Check if chrome storage is available
   if (typeof chrome !== 'undefined' && chrome.storage) {
@@ -43,7 +43,7 @@ function checkForContinuationData() {
               // STREAMLINED: Execute continuation immediately (no modal)
               setTimeout(() => {
                 executeStreamlinedContinuation(data.prompt, data.shareUrl, data);
-              }, 800); // Quick delay for page load
+              }, 200); // Minimal delay — page already loaded
             } else {
               console.log('🐻 ThreadCub: Continuation data too old, ignoring');
               chrome.storage.local.remove(['threadcubContinuationData']);

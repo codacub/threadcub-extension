@@ -601,6 +601,11 @@ class ThreadCubFloatingButton {
         }
       });
       
+      // Open Claude tab immediately (synchronous user gesture) to avoid popup blocker
+      const platform = window.PlatformDetector?.detectPlatform() || 'unknown';
+      if (platform === 'claude') {
+        this._pendingClaudeTab = window.open('https://claude.ai/', '_blank');
+      }
       this.saveAndOpenConversation('floating');
       return;
     }
@@ -1177,8 +1182,8 @@ class ThreadCubFloatingButton {
         // 📊 GA: continue succeeded — routed to Claude
         sendMessageWithRetry({ action: 'trackEvent', eventType: 'continue_success', data: { platform: 'claude', message_count: conversationData.messages.length } });
         // Open tab immediately — don't wait for storage write
-        const claudeTab = window.open('https://claude.ai/', '_blank');
-        this.handleClaudeFlow(minimalPrompt, shareUrl, conversationData, claudeTab);
+        this.handleClaudeFlow(minimalPrompt, shareUrl, conversationData, this._pendingClaudeTab);
+        this._pendingClaudeTab = null;
       } else if (targetPlatform === 'gemini') {
         console.log('🤖 ThreadCub: Routing to Gemini flow (with file download)');
         // 📊 GA: continue succeeded — routed to Gemini

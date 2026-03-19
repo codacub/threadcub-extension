@@ -42,9 +42,12 @@ function attemptAutoStart() {
   }, 1000);
 }
 
+let _claudeAutoStartFired = false;
 // ===== Claude.ai auto-start =====
 function attemptClaudeAutoStart() {
   try {
+    if (_claudeAutoStartFired) { console.log('🔧 Auto-start already fired, skipping duplicate'); return; }
+    _claudeAutoStartFired = true;
     // Look for Claude's send button
     const sendSelectors = [
       'button[data-testid="send-button"]',

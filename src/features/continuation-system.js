@@ -201,8 +201,8 @@ function executeStreamlinedContinuation(fullPrompt, shareUrl, continuationData) 
       safeTrackEvent('continuation_auto_started', {
         platform: continuationData.platform || platform || 'unknown',
         is_grok: isGrok
-      }
       });
+      attemptAutoStart(platform);
       attemptAutoStart(platform);
     }, autoStartDelay);
   } else {

@@ -63,7 +63,7 @@ function attemptClaudeAutoStart() {
         if (sendButton && !sendButton.disabled) {
           clearInterval(interval);
           console.log('🐻 ThreadCub: Found Claude send button, clicking...');
-          setTimeout(() => sendButton.click(), 300);
+          setTimeout(() => sendButton.click(), 1500);
           return;
         }
       }

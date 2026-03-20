@@ -1,5 +1,11 @@
 console.log('🔧 LOADING: floating-button.js');
 
+function extractUuidFromUrl(url) {
+  if (!url) return null;
+  const match = url.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+  return match ? match[0] : null;
+}
+
 // ThreadCub Floating Button Module
 // Extracted from Section 4A-4F of content.js
 
@@ -601,11 +607,6 @@ class ThreadCubFloatingButton {
         }
       });
       
-      // Open Claude tab immediately (synchronous user gesture) to avoid popup blocker
-      const platform = window.PlatformDetector?.detectPlatform() || 'unknown';
-      if (platform === 'claude') {
-        this._pendingClaudeTab = window.open('https://claude.ai/', '_blank');
-      }
       this.saveAndOpenConversation('floating');
       return;
     }
@@ -1107,23 +1108,32 @@ class ThreadCubFloatingButton {
     const sessionId = await window.StorageService.getOrCreateSessionId();
     console.log('🔍 Session ID for API call:', sessionId);
 
+    // Resolve parent_conversation_id — in-memory first, then chrome.storage fallback
+    let parentConversationId = this.lastSavedConversationId || null;
+    if (!parentConversationId && conversationData.url) {
+      const stored = await chrome.storage.local.get([`tc_parent_${conversationData.url}`]);
+      parentConversationId = stored[`tc_parent_${conversationData.url}`] || null;
+    }
+    console.log('🔍 Resolved parentConversationId:', parentConversationId);
+
     const apiData = {
       conversationData: conversationData,
       source: conversationData.platform?.toLowerCase() || 'unknown',
       title: conversationData.title || 'Untitled Conversation',
       userAuthToken: userAuthToken,
       session_id: sessionId,
-      capture_method: 'save',
-      parent_conversation_id: null
+      capture_method: 'continue',
+      parent_conversation_id: parentConversationId
     };
 
+    console.log('🔍 parent_conversation_id:', apiData.parent_conversation_id, 'conversationData.url:', conversationData.url);
     console.log('🔍 API Data includes session_id:', !!apiData.session_id);
 
     // API call via ApiService — reuse cached save if Save was clicked recently (within 30s)
     try {
       let shareUrl, summary;
 
-      const recentSave = this.lastSavedAt && (Date.now() - this.lastSavedAt) < 30000 && this.lastSavedShareUrl;
+      const recentSave = apiData.capture_method !== 'continue' && this.lastSavedAt && (Date.now() - this.lastSavedAt) < 30000 && this.lastSavedShareUrl;
 
       if (recentSave) {
         console.log('🐻 ThreadCub: Reusing cached save result — skipping duplicate API call');
@@ -1137,6 +1147,17 @@ class ThreadCubFloatingButton {
       } else {
         const data = await window.ApiService.saveConversation(apiData);
 
+        // Store session_id returned from server (ensures anonymous saves are claimable)
+        if (data.session_id) {
+          try {
+            localStorage.setItem('threadcubSessionId', data.session_id);
+            chrome.storage.local.set({ threadcubSessionId: data.session_id });
+            console.log('🔑 ThreadCub: session_id stored from server response:', data.session_id);
+          } catch(e) {
+            console.log('🔑 ThreadCub: could not store session_id', e);
+          }
+        }
+
         // Generate continuation prompt and handle platform-specific flow
         summary = data.summary || window.ConversationExtractor.generateQuickSummary(conversationData.messages);
 
@@ -1149,6 +1170,13 @@ class ThreadCubFloatingButton {
         const rawId = data.conversationId ?? data.id ?? data.conversation?.id ?? data.data?.id ?? null;
         const conversationId = (rawId && typeof rawId === 'string' && rawId !== 'undefined') ? rawId : null;
         console.log('🔍 DEBUG: conversationId resolved as:', conversationId);
+        this.lastSavedConversationId = conversationId;
+
+        // Persist ThreadCub UUID so next Continue on same Claude URL knows its parent
+        if (conversationId && conversationData.url) {
+          chrome.storage.local.set({ [`tc_parent_${conversationData.url}`]: conversationId });
+          console.log('🔍 DEBUG: Persisted parent ID for URL:', conversationData.url);
+        }
 
         // Build shareUrl — only if we have a real UUID
         shareUrl = data.shareableUrl ||
@@ -1159,8 +1187,7 @@ class ThreadCubFloatingButton {
       // If no valid shareUrl came back, fall back to direct continuation
       if (!shareUrl) {
         console.warn('🐻 ThreadCub: No conversation ID in API response, falling back to direct continuation');
-        this.handleDirectContinuation(conversationData, this._pendingClaudeTab);
-        this._pendingClaudeTab = null;
+        this.handleDirectContinuation(conversationData);
         this.isExporting = false;
     this.setSaveBtnLoading(false);
         return;
@@ -1182,9 +1209,7 @@ class ThreadCubFloatingButton {
         console.log('🤖 ThreadCub: Routing to Claude flow (no file download)');
         // 📊 GA: continue succeeded — routed to Claude
         sendMessageWithRetry({ action: 'trackEvent', eventType: 'continue_success', data: { platform: 'claude', message_count: conversationData.messages.length } });
-        // Open tab immediately — don't wait for storage write
-        console.log("pendingTab:", this._pendingClaudeTab); this.handleClaudeFlow(minimalPrompt, shareUrl, conversationData, this._pendingClaudeTab);
-        this._pendingClaudeTab = null;
+        this.handleClaudeFlow(minimalPrompt, shareUrl, conversationData);
       } else if (targetPlatform === 'gemini') {
         console.log('🤖 ThreadCub: Routing to Gemini flow (with file download)');
         // 📊 GA: continue succeeded — routed to Gemini
@@ -1228,8 +1253,7 @@ class ThreadCubFloatingButton {
       // 📊 GA: continue failed — API error, falling back to direct continuation
       sendMessageWithRetry({ action: 'trackEvent', eventType: 'continue_failed', data: { reason: 'api_error_fallback', platform: conversationData?.platform || 'unknown', error: apiError.message } });
       // FALLBACK: Skip API save and go straight to continuation
-      this.handleDirectContinuation(conversationData, this._pendingClaudeTab);
-      this._pendingClaudeTab = null;
+      this.handleDirectContinuation(conversationData);
       this.isExporting = false;
     this.setSaveBtnLoading(false);
       return;
@@ -1316,6 +1340,18 @@ class ThreadCubFloatingButton {
       // API call via ApiService - save only, no tab open
       try {
         const data = await window.ApiService.saveConversation(apiData);
+
+        // Store session_id returned from server (ensures anonymous saves are claimable)
+        if (data.session_id) {
+          try {
+            localStorage.setItem('threadcubSessionId', data.session_id);
+            chrome.storage.local.set({ threadcubSessionId: data.session_id });
+            console.log('🔑 ThreadCub: session_id stored from server response:', data.session_id);
+          } catch(e) {
+            console.log('🔑 ThreadCub: could not store session_id', e);
+          }
+        }
+
         console.log('🐻 ThreadCub: Conversation saved to ThreadCub successfully');
         // 📊 GA: save succeeded — conversation successfully saved to ThreadCub
         if (window.AnalyticsService) window.AnalyticsService.trackFeatureUsed('sync_success', { platform: conversationData.platform || 'unknown' });
@@ -1328,6 +1364,10 @@ class ThreadCubFloatingButton {
 
         // Cache the save result so Continue can reuse it without re-saving
         this.lastSavedConversationId = undoConversationId;
+        // Persist to chrome.storage so Continue works even after page reload
+        if (undoConversationId && conversationData.url) {
+          chrome.storage.local.set({ [`tc_parent_${conversationData.url}`]: undoConversationId });
+        }
         this.lastSavedShareUrl = data.shareableUrl || (undoConversationId ? `https://threadcub.com/api/share/${undoConversationId}` : null);
         this.lastSavedConversationData = conversationData;
         this.lastSavedAt = Date.now();
@@ -1637,7 +1677,7 @@ Please read through the attached conversation file and provide your assessment o
 Once you've reviewed it, let me know you're ready to continue from where we left off.`;
 }
 
-  handleClaudeFlow(continuationPrompt, shareUrl, conversationData, preOpenedTab = null) {
+  handleClaudeFlow(continuationPrompt, shareUrl, conversationData) {
     console.log('🤖 ThreadCub: Starting Claude flow (API-only, no downloads)...');
 
     const continuationData = {
@@ -1662,9 +1702,8 @@ Once you've reviewed it, let me know you're ready to continue from where we left
       window.StorageService.storeWithChrome(continuationData)
         .then(() => {
           console.log('🐻 ThreadCub: Claude data stored successfully');
-          if (!preOpenedTab) {
-            window.open('https://claude.ai/', '_blank');
-          }
+          const claudeUrl = 'https://claude.ai/';
+          window.open(claudeUrl, '_blank');
           this.showSuccessToast('Opening Claude with conversation context...');
         })
         .catch(error => {
@@ -2046,7 +2085,7 @@ Once you've reviewed it, let me know you're ready to continue from where we left
     }
   }
 
-  handleDirectContinuation(conversationData, preOpenedTab = null) {
+  handleDirectContinuation(conversationData) {
     console.log('🐻 ThreadCub: Handling direct continuation without API save...');
 
     // Create a fallback share URL
@@ -2069,7 +2108,7 @@ Once you've reviewed it, let me know you're ready to continue from where we left
       this.handleChatGPTFlow(minimalPrompt, fallbackShareUrl, conversationData);
     } else if (targetPlatform === 'claude') {
       console.log('🤖 ThreadCub: Routing to Claude flow (no file download)');
-      this.handleClaudeFlow(minimalPrompt, fallbackShareUrl, conversationData, preOpenedTab);
+      this.handleClaudeFlow(minimalPrompt, fallbackShareUrl, conversationData);
     } else if (targetPlatform === 'gemini') {
       console.log('🤖 ThreadCub: Routing to Gemini flow (with file download)');
       this.handleGeminiFlow(minimalPrompt, fallbackShareUrl, conversationData);

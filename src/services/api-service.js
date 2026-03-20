@@ -190,7 +190,9 @@ const ApiService = {
                   encryption_format: 'aes-gcm',
                   title: title,
                   source: source,
-                  session_id: apiData?.session_id || apiData?.sessionId || null
+                  session_id: apiData?.session_id || apiData?.sessionId || null,
+                  capture_method: apiData?.capture_method || 'save',
+                  parent_conversation_id: apiData?.parent_conversation_id || null
                 })
               });
 
@@ -246,7 +248,9 @@ const ApiService = {
         },
         title: title,
         source: source,
-        session_id: apiData?.session_id || apiData?.sessionId || null
+        session_id: apiData?.session_id || apiData?.sessionId || null,
+        capture_method: apiData?.capture_method || 'save',
+        parent_conversation_id: apiData?.parent_conversation_id || null
       };
 
       console.log('🔍 Sending unencrypted payload:', JSON.stringify(unencryptedPayload, null, 2));

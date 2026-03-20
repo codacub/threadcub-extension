@@ -559,7 +559,9 @@ async function handleSaveConversation(data) {
       },
       title: title,
       source: source,
-      session_id: data.sessionId || null
+      session_id: data.sessionId || null,
+      capture_method: data.capture_method || 'save',
+      parent_conversation_id: data.parent_conversation_id || null
     };
     console.log('🔍 Background.handleSaveConversation: session_id in unencrypted payload:', !!unencryptedPayload.session_id);
 

@@ -1354,8 +1354,8 @@ class ThreadCubFloatingButton {
 
         console.log('🐻 ThreadCub: Conversation saved to ThreadCub successfully');
         // 📊 GA: save succeeded — conversation successfully saved to ThreadCub
-        if (window.AnalyticsService) window.AnalyticsService.trackFeatureUsed('sync_success', { platform: conversationData.platform || 'unknown' });
-        sendMessageWithRetry({ action: 'trackEvent', eventType: 'save_success', data: { platform: conversationData.platform || 'unknown', message_count: conversationData.messages.length } });
+        try { if (window.AnalyticsService) window.AnalyticsService.trackFeatureUsed('sync_success', { platform: conversationData.platform || 'unknown' }); } catch(e) {}
+        try { sendMessageWithRetry({ action: 'trackEvent', eventType: 'save_success', data: { platform: conversationData.platform || 'unknown', message_count: conversationData.messages.length } }); } catch(e) {}
 
         this.setBearExpression('happy');
 
@@ -1402,21 +1402,29 @@ class ThreadCubFloatingButton {
     this.setSaveBtnLoading(false);
 
       } catch (apiError) {
-        console.error('🐻 ThreadCub: API save failed:', apiError);
-        // 📊 GA: save failed — API call returned an error
-        sendMessageWithRetry({ action: 'trackEvent', eventType: 'save_failed', data: { reason: 'api_error', platform: conversationData?.platform || 'unknown', error: apiError.message } });
-        this.showErrorToast('Failed to save conversation');
+        const isContextError = apiError?.message?.includes('Extension context invalidated') || apiError?.message?.includes('context invalidated');
+        if (isContextError) {
+          console.warn('🐻 ThreadCub: Extension context invalidated after save — save likely succeeded. Refresh page to re-activate extension.');
+        } else {
+          console.error('🐻 ThreadCub: API save failed:', apiError);
+          try { sendMessageWithRetry({ action: 'trackEvent', eventType: 'save_failed', data: { reason: 'api_error', platform: conversationData?.platform || 'unknown', error: apiError.message } }); } catch(e) {}
+          this.showErrorToast('Failed to save conversation');
+        }
         this.isExporting = false;
-    this.setSaveBtnLoading(false);
+        this.setSaveBtnLoading(false);
       }
 
     } catch (error) {
-      console.error('🐻 ThreadCub: Save error:', error);
-      // 📊 GA: save failed — unexpected error during save process
-      sendMessageWithRetry({ action: 'trackEvent', eventType: 'save_failed', data: { reason: 'unexpected_error', error: error.message } });
-      this.showErrorToast('Save failed: ' + error.message);
+      const isContextError = error?.message?.includes('Extension context invalidated') || error?.message?.includes('context invalidated');
+      if (isContextError) {
+        console.warn('🐻 ThreadCub: Extension context invalidated — save likely succeeded. Refresh page to re-activate extension.');
+      } else {
+        console.error('🐻 ThreadCub: Save error:', error);
+        try { sendMessageWithRetry({ action: 'trackEvent', eventType: 'save_failed', data: { reason: 'unexpected_error', error: error.message } }); } catch(e) {}
+        this.showErrorToast('Save failed: ' + error.message);
+      }
       this.isExporting = false;
-    this.setSaveBtnLoading(false);
+      this.setSaveBtnLoading(false);
     }
   }
 

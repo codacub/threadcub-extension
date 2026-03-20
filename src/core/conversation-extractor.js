@@ -104,6 +104,7 @@ const ConversationExtractor = {
       title: title,
       url: window.location.href,
       timestamp: new Date().toISOString(),
+      source_created_at: this.extractClaudeConversationDate(),
       platform: 'claude.ai',
       total_messages: messages.length,
       messages: messages
@@ -157,6 +158,122 @@ const ConversationExtractor = {
     // Method 3: Fallback
     console.log('🐻 ThreadCub: Using fallback title');
     return 'Untitled Conversation';
+  },
+
+  extractClaudeConversationDate() {
+    try {
+      const chatPath = window.location.pathname;
+      if (!chatPath.includes('/chat/')) return null;
+
+      const chatId = chatPath.split('/chat/')[1]?.split('/')[0]?.split('?')[0];
+      console.log('🐻 ThreadCub: Date extraction — chatPath:', chatPath, 'chatId:', chatId);
+
+      // Try progressively broader selectors — Claude may not use a plain <a> for the active item
+      let sidebarLink =
+        document.querySelector(`nav a[href="${chatPath}"]`) ||
+        document.querySelector(`a[href="${chatPath}"]`) ||
+        document.querySelector(`[href="${chatPath}"]`) ||
+        (chatId ? document.querySelector(`a[href*="${chatId}"]`) : null) ||
+        (chatId ? document.querySelector(`[href*="${chatId}"]`) : null) ||
+        (chatId ? document.querySelector(`[data-id*="${chatId}"]`) : null) ||
+        document.querySelector(`nav [aria-current="page"]`) ||
+        document.querySelector(`[aria-current="page"]`);
+
+      // Last resort: scan all nav elements for any attribute containing the chat ID
+      if (!sidebarLink && chatId) {
+        const nav = document.querySelector('nav') || document.body;
+        for (const el of nav.querySelectorAll('*')) {
+          const attrs = Array.from(el.attributes || []);
+          if (attrs.some(a => a.value.includes(chatId))) {
+            sidebarLink = el;
+            break;
+          }
+        }
+      }
+
+      if (!sidebarLink) {
+        console.log('🐻 ThreadCub: No sidebar link found for date extraction');
+        return null;
+      }
+      console.log('🐻 ThreadCub: Found sidebar element:', sidebarLink.tagName, sidebarLink.className?.substring(0, 60));
+
+      // Find the nav container
+      const nav = sidebarLink.closest('nav') || document.querySelector('nav') || document.body;
+
+      // Walk every element in the nav, find ones that look like date headings
+      // and come BEFORE our link in document order — take the last (closest) one
+      let lastHeadingText = null;
+      const allNavEls = nav.querySelectorAll('*');
+
+      for (const el of allNavEls) {
+        // Only look at elements with no child elements (leaf nodes)
+        if (el.children.length !== 0) continue;
+
+        const raw = (el.innerText || el.textContent || '').trim();
+        // Date headings are short — skip anything too long or too short
+        if (!raw || raw.length < 2 || raw.length > 40) continue;
+
+        if (!this._isClaudeDateHeading(raw)) continue;
+
+        // Check this heading comes BEFORE the sidebar link in document order
+        const pos = el.compareDocumentPosition(sidebarLink);
+        if (pos & Node.DOCUMENT_POSITION_FOLLOWING) {
+          lastHeadingText = raw;
+        }
+      }
+
+      if (!lastHeadingText) {
+        console.log('🐻 ThreadCub: No date heading found before sidebar link');
+        return null;
+      }
+
+      const parsed = this._parseClaudeDateHeading(lastHeadingText);
+      if (parsed) {
+        console.log('🐻 ThreadCub: Claude conversation date from heading "' + lastHeadingText + '":', parsed);
+      }
+      return parsed;
+    } catch (e) {
+      console.log('🐻 ThreadCub: Could not extract Claude conversation date:', e);
+      return null;
+    }
+  },
+
+  _isClaudeDateHeading(text) {
+    const t = text.trim().toLowerCase();
+    if (['today', 'yesterday', 'previous 7 days', 'last 7 days', 'previous 30 days', 'last 30 days', 'last week', 'this month'].includes(t)) return true;
+    if (/^(january|february|march|april|may|june|july|august|september|october|november|december)(\s+\d{4})?$/i.test(t)) return true;
+    if (/^\d{4}$/.test(t)) return true;
+    return false;
+  },
+
+  _parseClaudeDateHeading(heading) {
+    const now = new Date();
+    const t = heading.trim().toLowerCase();
+
+    if (t === 'today') {
+      const d = new Date(now); d.setHours(12, 0, 0, 0); return d.toISOString();
+    }
+    if (t === 'yesterday') {
+      const d = new Date(now); d.setDate(d.getDate() - 1); d.setHours(12, 0, 0, 0); return d.toISOString();
+    }
+    if (['previous 7 days', 'last 7 days', 'last week'].includes(t)) {
+      const d = new Date(now); d.setDate(d.getDate() - 4); d.setHours(12, 0, 0, 0); return d.toISOString();
+    }
+    if (['previous 30 days', 'last 30 days', 'this month'].includes(t)) {
+      const d = new Date(now); d.setDate(d.getDate() - 15); d.setHours(12, 0, 0, 0); return d.toISOString();
+    }
+    const MONTHS = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+    const monthYearMatch = t.match(/^(january|february|march|april|may|june|july|august|september|october|november|december)(?:\s+(\d{4}))?$/);
+    if (monthYearMatch) {
+      const month = MONTHS.indexOf(monthYearMatch[1]);
+      const year = monthYearMatch[2] ? parseInt(monthYearMatch[2]) : now.getFullYear();
+      return new Date(year, month, 15, 12, 0, 0).toISOString();
+    }
+    const yearMatch = t.match(/^(\d{4})$/);
+    if (yearMatch) {
+      return new Date(parseInt(yearMatch[1]), 5, 15, 12, 0, 0).toISOString();
+    }
+    return null;
   },
 
   simpleCleanContent(text) {

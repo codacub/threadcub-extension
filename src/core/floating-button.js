@@ -1,5 +1,11 @@
 console.log('🔧 LOADING: floating-button.js');
 
+function extractUuidFromUrl(url) {
+  if (!url) return null;
+  const match = url.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+  return match ? match[0] : null;
+}
+
 // ThreadCub Floating Button Module
 // Extracted from Section 4A-4F of content.js
 
@@ -421,7 +427,7 @@ class ThreadCubFloatingButton {
 
       const format = option.dataset.format;
 
-      // 🐻 Track download button clicked
+      // 📊 GA: download button clicked — tracks format (json/md) and platform
       sendMessageWithRetry({
         action: 'trackEvent',
         eventType: 'floating_button_clicked',
@@ -591,12 +597,13 @@ class ThreadCubFloatingButton {
     const closeBtn = e.target.closest('.threadcub-close-btn');
 
    if (newBtn) {
-      // 🐻 Track continue button clicked
+      // 📊 GA: continue button clicked — opens conversation in new AI tab
       sendMessageWithRetry({
         action: 'trackEvent',
         eventType: 'floating_button_clicked',
         data: {
-          platform: window.PlatformDetector?.detectPlatform() || 'unknown'
+          platform: window.PlatformDetector?.detectPlatform() || 'unknown',
+          action: 'continue'
         }
       });
       
@@ -605,7 +612,7 @@ class ThreadCubFloatingButton {
     }
 
     if (saveBtn) {
-      // 🐻 Track save button clicked
+      // 📊 GA: save button clicked — saves conversation to ThreadCub without opening new tab
       sendMessageWithRetry({
         action: 'trackEvent',
         eventType: 'floating_button_clicked',
@@ -627,7 +634,7 @@ class ThreadCubFloatingButton {
     if (tagBtn) {
       console.log('🏷️ ThreadCub: Tag button clicked');
       
-      // 🐻 Track tag button clicked
+      // 📊 GA: tag (pawmarks) button clicked
       sendMessageWithRetry({
         action: 'trackEvent',
         eventType: 'floating_button_clicked',
@@ -952,7 +959,7 @@ class ThreadCubFloatingButton {
       right: 2px;
       width: 14px;
       height: 14px;
-      background: #ef4444;
+      background: {window.ThreadCubRebrand?.colors?.error || '#EF4444'};
       border-radius: 50%;
       border: 2px solid white;
       cursor: pointer;
@@ -975,7 +982,7 @@ class ThreadCubFloatingButton {
 
     badge.addEventListener('click', async (e) => {
       e.stopPropagation();
-      badge.style.background = '#f59e0b'; // amber while retrying
+      badge.style.background = (window.ThreadCubRebrand?.colors?.warning || '#F59E0B'); // amber while retrying
       badge.title = 'Retrying...';
       try {
         await sendMessageWithRetry({ action: 'retryPendingQueue' });
@@ -1073,6 +1080,8 @@ class ThreadCubFloatingButton {
     // CRITICAL FIX: Validate conversation data before proceeding
     if (!conversationData) {
       console.error('🐻 ThreadCub: No conversation data returned from extraction');
+      // 📊 GA: continue failed — no conversation data found on page
+      sendMessageWithRetry({ action: 'trackEvent', eventType: 'continue_failed', data: { reason: 'no_conversation_data', platform: window.PlatformDetector?.detectPlatform() || 'unknown' } });
       this.showErrorToast('No conversation found to save');
       this.isExporting = false;
     this.setSaveBtnLoading(false);
@@ -1081,6 +1090,8 @@ class ThreadCubFloatingButton {
 
     if (!conversationData.messages || conversationData.messages.length === 0) {
       console.error('🐻 ThreadCub: No messages found in conversation data');
+      // 📊 GA: continue failed — conversation found but no messages extracted
+      sendMessageWithRetry({ action: 'trackEvent', eventType: 'continue_failed', data: { reason: 'no_messages', platform: window.PlatformDetector?.detectPlatform() || 'unknown' } });
       this.showErrorToast('No messages found in conversation');
       this.isExporting = false;
     this.setSaveBtnLoading(false);
@@ -1097,21 +1108,32 @@ class ThreadCubFloatingButton {
     const sessionId = await window.StorageService.getOrCreateSessionId();
     console.log('🔍 Session ID for API call:', sessionId);
 
+    // Resolve parent_conversation_id — in-memory first, then chrome.storage fallback
+    let parentConversationId = this.lastSavedConversationId || null;
+    if (!parentConversationId && conversationData.url) {
+      const stored = await chrome.storage.local.get([`tc_parent_${conversationData.url}`]);
+      parentConversationId = stored[`tc_parent_${conversationData.url}`] || null;
+    }
+    console.log('🔍 Resolved parentConversationId:', parentConversationId);
+
     const apiData = {
       conversationData: conversationData,
       source: conversationData.platform?.toLowerCase() || 'unknown',
       title: conversationData.title || 'Untitled Conversation',
       userAuthToken: userAuthToken,
-      session_id: sessionId
+      session_id: sessionId,
+      capture_method: 'continue',
+      parent_conversation_id: parentConversationId
     };
 
+    console.log('🔍 parent_conversation_id:', apiData.parent_conversation_id, 'conversationData.url:', conversationData.url);
     console.log('🔍 API Data includes session_id:', !!apiData.session_id);
 
     // API call via ApiService — reuse cached save if Save was clicked recently (within 30s)
     try {
       let shareUrl, summary;
 
-      const recentSave = this.lastSavedAt && (Date.now() - this.lastSavedAt) < 30000 && this.lastSavedShareUrl;
+      const recentSave = apiData.capture_method !== 'continue' && this.lastSavedAt && (Date.now() - this.lastSavedAt) < 30000 && this.lastSavedShareUrl;
 
       if (recentSave) {
         console.log('🐻 ThreadCub: Reusing cached save result — skipping duplicate API call');
@@ -1125,6 +1147,17 @@ class ThreadCubFloatingButton {
       } else {
         const data = await window.ApiService.saveConversation(apiData);
 
+        // Store session_id returned from server (ensures anonymous saves are claimable)
+        if (data.session_id) {
+          try {
+            localStorage.setItem('threadcubSessionId', data.session_id);
+            chrome.storage.local.set({ threadcubSessionId: data.session_id });
+            console.log('🔑 ThreadCub: session_id stored from server response:', data.session_id);
+          } catch(e) {
+            console.log('🔑 ThreadCub: could not store session_id', e);
+          }
+        }
+
         // Generate continuation prompt and handle platform-specific flow
         summary = data.summary || window.ConversationExtractor.generateQuickSummary(conversationData.messages);
 
@@ -1137,6 +1170,13 @@ class ThreadCubFloatingButton {
         const rawId = data.conversationId ?? data.id ?? data.conversation?.id ?? data.data?.id ?? null;
         const conversationId = (rawId && typeof rawId === 'string' && rawId !== 'undefined') ? rawId : null;
         console.log('🔍 DEBUG: conversationId resolved as:', conversationId);
+        this.lastSavedConversationId = conversationId;
+
+        // Persist ThreadCub UUID so next Continue on same Claude URL knows its parent
+        if (conversationId && conversationData.url) {
+          chrome.storage.local.set({ [`tc_parent_${conversationData.url}`]: conversationId });
+          console.log('🔍 DEBUG: Persisted parent ID for URL:', conversationData.url);
+        }
 
         // Build shareUrl — only if we have a real UUID
         shareUrl = data.shareableUrl ||
@@ -1154,30 +1194,46 @@ class ThreadCubFloatingButton {
       }
 
       // Generate minimal continuation prompt
-      const minimalPrompt = window.ConversationExtractor.generateContinuationPrompt(summary, shareUrl, conversationData.platform, conversationData);
+      // Enrich with API message count so pagination threshold is accurate
+      const enrichedConversationData = { ...conversationData, total_messages: data?.message_count || data?.total_messages || conversationData.messages?.length || 0 };
+      const minimalPrompt = window.ConversationExtractor.generateContinuationPrompt(summary, shareUrl, conversationData.platform, enrichedConversationData);
 
       console.log('🔍 DEBUG: About to route to platform:', targetPlatform);
 
       if (targetPlatform === 'chatgpt') {
         console.log('🤖 ThreadCub: Routing to ChatGPT flow (with file download)');
+        // 📊 GA: continue succeeded — routed to ChatGPT
+        sendMessageWithRetry({ action: 'trackEvent', eventType: 'continue_success', data: { platform: 'chatgpt', message_count: conversationData.messages.length } });
         this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
       } else if (targetPlatform === 'claude') {
         console.log('🤖 ThreadCub: Routing to Claude flow (no file download)');
+        // 📊 GA: continue succeeded — routed to Claude
+        sendMessageWithRetry({ action: 'trackEvent', eventType: 'continue_success', data: { platform: 'claude', message_count: conversationData.messages.length } });
         this.handleClaudeFlow(minimalPrompt, shareUrl, conversationData);
       } else if (targetPlatform === 'gemini') {
         console.log('🤖 ThreadCub: Routing to Gemini flow (with file download)');
+        // 📊 GA: continue succeeded — routed to Gemini
+        sendMessageWithRetry({ action: 'trackEvent', eventType: 'continue_success', data: { platform: 'gemini', message_count: conversationData.messages.length } });
         this.handleGeminiFlow(minimalPrompt, shareUrl, conversationData);
       } else if (targetPlatform === 'grok') {
         console.log('🤖 ThreadCub: Routing to Grok flow (with file download)');
+        // 📊 GA: continue succeeded — routed to Grok
+        sendMessageWithRetry({ action: 'trackEvent', eventType: 'continue_success', data: { platform: 'grok', message_count: conversationData.messages.length } });
         this.handleGrokFlow(minimalPrompt, shareUrl, conversationData);
       } else if (targetPlatform === 'deepseek') {
         console.log('🔵 ThreadCub: Routing to DeepSeek flow (with file download)');
+        // 📊 GA: continue succeeded — routed to DeepSeek
+        sendMessageWithRetry({ action: 'trackEvent', eventType: 'continue_success', data: { platform: 'deepseek', message_count: conversationData.messages.length } });
         this.handleDeepSeekFlow(minimalPrompt, shareUrl, conversationData);
       } else if (targetPlatform === 'perplexity') {
         console.log('🔮 ThreadCub: Routing to Perplexity flow (file-based)');
+        // 📊 GA: continue succeeded — routed to Perplexity
+        sendMessageWithRetry({ action: 'trackEvent', eventType: 'continue_success', data: { platform: 'perplexity', message_count: conversationData.messages.length } });
         this.handlePerplexityFlow(minimalPrompt, shareUrl, conversationData);
       } else {
         console.log('🤖 ThreadCub: Unknown platform, defaulting to ChatGPT flow');
+        // 📊 GA: continue succeeded — platform unknown, defaulted to ChatGPT
+        sendMessageWithRetry({ action: 'trackEvent', eventType: 'continue_success', data: { platform: 'unknown_defaulted_chatgpt', message_count: conversationData.messages.length } });
         this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
       }
 
@@ -1194,7 +1250,8 @@ class ThreadCubFloatingButton {
     } catch (apiError) {
       console.error('🐻 ThreadCub: Direct API call failed:', apiError);
       console.log('🐻 ThreadCub: Falling back to direct continuation without API save...');
-
+      // 📊 GA: continue failed — API error, falling back to direct continuation
+      sendMessageWithRetry({ action: 'trackEvent', eventType: 'continue_failed', data: { reason: 'api_error_fallback', platform: conversationData?.platform || 'unknown', error: apiError.message } });
       // FALLBACK: Skip API save and go straight to continuation
       this.handleDirectContinuation(conversationData);
       this.isExporting = false;
@@ -1204,6 +1261,8 @@ class ThreadCubFloatingButton {
 
   } catch (error) {
     console.error('🐻 ThreadCub: Export error:', error);
+    // 📊 GA: continue failed — unexpected error during export process
+    sendMessageWithRetry({ action: 'trackEvent', eventType: 'continue_failed', data: { reason: 'unexpected_error', error: error.message } });
     this.showErrorToast('Export failed: ' + error.message);
     this.isExporting = false;
     this.setSaveBtnLoading(false);
@@ -1245,6 +1304,8 @@ class ThreadCubFloatingButton {
 
       if (!conversationData) {
         console.error('🐻 ThreadCub: No conversation data returned from extraction');
+        // 📊 GA: save failed — no conversation data found on page
+        sendMessageWithRetry({ action: 'trackEvent', eventType: 'save_failed', data: { reason: 'no_conversation_data', platform: window.PlatformDetector?.detectPlatform() || 'unknown' } });
         this.showErrorToast('No conversation found to save');
         this.isExporting = false;
     this.setSaveBtnLoading(false);
@@ -1253,6 +1314,8 @@ class ThreadCubFloatingButton {
 
       if (!conversationData.messages || conversationData.messages.length === 0) {
         console.error('🐻 ThreadCub: No messages found in conversation data');
+        // 📊 GA: save failed — conversation found but no messages extracted
+        sendMessageWithRetry({ action: 'trackEvent', eventType: 'save_failed', data: { reason: 'no_messages', platform: window.PlatformDetector?.detectPlatform() || 'unknown' } });
         this.showErrorToast('No messages found in conversation');
         this.isExporting = false;
     this.setSaveBtnLoading(false);
@@ -1269,14 +1332,30 @@ class ThreadCubFloatingButton {
         source: conversationData.platform?.toLowerCase() || 'unknown',
         title: conversationData.title || 'Untitled Conversation',
         userAuthToken: userAuthToken,
-        session_id: sessionId
+        session_id: sessionId,
+        capture_method: 'save',
+        parent_conversation_id: null
       };
 
       // API call via ApiService - save only, no tab open
       try {
         const data = await window.ApiService.saveConversation(apiData);
+
+        // Store session_id returned from server (ensures anonymous saves are claimable)
+        if (data.session_id) {
+          try {
+            localStorage.setItem('threadcubSessionId', data.session_id);
+            chrome.storage.local.set({ threadcubSessionId: data.session_id });
+            console.log('🔑 ThreadCub: session_id stored from server response:', data.session_id);
+          } catch(e) {
+            console.log('🔑 ThreadCub: could not store session_id', e);
+          }
+        }
+
         console.log('🐻 ThreadCub: Conversation saved to ThreadCub successfully');
+        // 📊 GA: save succeeded — conversation successfully saved to ThreadCub
         if (window.AnalyticsService) window.AnalyticsService.trackFeatureUsed('sync_success', { platform: conversationData.platform || 'unknown' });
+        sendMessageWithRetry({ action: 'trackEvent', eventType: 'save_success', data: { platform: conversationData.platform || 'unknown', message_count: conversationData.messages.length } });
 
         this.setBearExpression('happy');
 
@@ -1285,6 +1364,10 @@ class ThreadCubFloatingButton {
 
         // Cache the save result so Continue can reuse it without re-saving
         this.lastSavedConversationId = undoConversationId;
+        // Persist to chrome.storage so Continue works even after page reload
+        if (undoConversationId && conversationData.url) {
+          chrome.storage.local.set({ [`tc_parent_${conversationData.url}`]: undoConversationId });
+        }
         this.lastSavedShareUrl = data.shareableUrl || (undoConversationId ? `https://threadcub.com/api/share/${undoConversationId}` : null);
         this.lastSavedConversationData = conversationData;
         this.lastSavedAt = Date.now();
@@ -1320,6 +1403,8 @@ class ThreadCubFloatingButton {
 
       } catch (apiError) {
         console.error('🐻 ThreadCub: API save failed:', apiError);
+        // 📊 GA: save failed — API call returned an error
+        sendMessageWithRetry({ action: 'trackEvent', eventType: 'save_failed', data: { reason: 'api_error', platform: conversationData?.platform || 'unknown', error: apiError.message } });
         this.showErrorToast('Failed to save conversation');
         this.isExporting = false;
     this.setSaveBtnLoading(false);
@@ -1327,6 +1412,8 @@ class ThreadCubFloatingButton {
 
     } catch (error) {
       console.error('🐻 ThreadCub: Save error:', error);
+      // 📊 GA: save failed — unexpected error during save process
+      sendMessageWithRetry({ action: 'trackEvent', eventType: 'save_failed', data: { reason: 'unexpected_error', error: error.message } });
       this.showErrorToast('Save failed: ' + error.message);
       this.isExporting = false;
     this.setSaveBtnLoading(false);

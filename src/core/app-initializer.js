@@ -60,13 +60,19 @@ function startThreadCub() {
         console.log('🧵 ThreadCub: ⚠️ ThreadCubTagging not available, will initialize on demand');
       }
       
-      // Check for continuation data
+      // Check for continuation data — only on new/empty chats
       if (typeof window.ContinuationSystem !== 'undefined') {
         try {
-          window.ContinuationSystem.checkForContinuationData();
-          console.log('🧵 ThreadCub: ✅ Continuation data check completed');
+          const currentPath = window.location.pathname;
+          const currentHost = window.location.hostname;
+          const isClaudeExistingChat = currentHost.includes('claude.ai') && currentPath.startsWith('/chat/');
+          if (!isClaudeExistingChat) {
+            window.ContinuationSystem.checkForContinuationData();
+          } else {
+            console.log('ThreadCub: Skipping continuation — existing Claude chat');
+          }
         } catch (continuationError) {
-          console.error('🧵 ThreadCub: ❌ Error checking continuation data:', continuationError);
+          console.error('ThreadCub: Error checking continuation data:', continuationError);
         }
       }
 

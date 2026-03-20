@@ -117,7 +117,9 @@ function enhanceFloatingButtonWithConversationFeatures() {
             source: conversationData.platform?.toLowerCase() || 'unknown',
             title: conversationData.title || 'Untitled Conversation',
             userAuthToken: userAuthToken,
-            session_id: sessionId
+            session_id: sessionId,
+            capture_method: 'save',
+            parent_conversation_id: null
         };
         
         console.log('🐻 ThreadCub: Making DIRECT API call to ThreadCub...');

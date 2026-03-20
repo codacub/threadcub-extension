@@ -5,8 +5,8 @@ function checkForContinuationData() {
   console.log('🐻 ThreadCub: Checking for continuation data using Chrome storage');
   
   let retryCount = 0;
-  const maxRetries = 10; // Try up to 10 times
-  const retryDelay = 500; // Every 500ms
+  const maxRetries = 15; // Try up to 15 times
+  const retryDelay = 300; // Every 300ms
   
   // Check if chrome storage is available
   if (typeof chrome !== 'undefined' && chrome.storage) {
@@ -37,15 +37,13 @@ function checkForContinuationData() {
             const isRecent = (Date.now() - data.timestamp) < 5 * 60 * 1000;
             
             if (isRecent) {
-              // Clear the data so it's only used once
-              chrome.storage.local.remove(['threadcubContinuationData'], () => {
-                console.log('🐻 ThreadCub: Cleared used continuation data');
-              });
+              // NOTE: data is cleared inside executeStreamlinedContinuation
+              // only after confirming we are on a safe page to fill
               
               // STREAMLINED: Execute continuation immediately (no modal)
               setTimeout(() => {
                 executeStreamlinedContinuation(data.prompt, data.shareUrl, data);
-              }, 800); // Quick delay for page load
+              }, 200); // Minimal delay — page already loaded
             } else {
               console.log('🐻 ThreadCub: Continuation data too old, ignoring');
               chrome.storage.local.remove(['threadcubContinuationData']);
@@ -96,8 +94,8 @@ function checkForContinuationData() {
         const isRecent = (Date.now() - data.timestamp) < 5 * 60 * 1000;
         
         if (isRecent) {
-          // Clear the data
-          localStorage.removeItem('threadcubContinuationData');
+          // NOTE: data is cleared inside executeStreamlinedContinuation
+          // only after confirming we are on a safe page to fill
           
           // STREAMLINED: Execute continuation immediately
           setTimeout(() => {
@@ -120,13 +118,9 @@ function checkForContinuationData() {
 function executeStreamlinedContinuation(fullPrompt, shareUrl, continuationData) {
   console.log('🚀 ThreadCub: Executing streamlined continuation');
 
-  // 🐻 Track continuation started
-  chrome.runtime.sendMessage({
-    action: 'trackEvent',
-    eventType: 'continuation_started',
-    data: {
-      platform: continuationData.platform || window.PlatformDetector?.detectPlatform() || 'unknown'
-    }
+  // 📊 GA: continuation_started — fired when continuation data is found and execution begins
+  safeTrackEvent('continuation_started', {
+    platform: continuationData.platform || window.PlatformDetector?.detectPlatform() || 'unknown'
   });
   
   console.log('🚀 Platform:', continuationData.platform);
@@ -154,6 +148,13 @@ function executeStreamlinedContinuation(fullPrompt, shareUrl, continuationData) 
                  platform === window.PlatformDetector.PLATFORMS.GROK ||
                  platform === 'grok';
 
+  // 📊 GA: continuation_executed — fired when continuation is about to fill the input field
+  // Distinguishes between file-based (user uploads JSON) and URL-based (auto-fills and sends)
+  safeTrackEvent('continuation_executed', {
+    platform: continuationData.platform || platform || 'unknown',
+    flow_type: isFileBased ? 'file_based' : isGrok ? 'grok_spa' : 'url_based'
+  });
+
   if (isFileBased) {
     // File-based platforms (ChatGPT, Gemini, DeepSeek, Perplexity) need retry logic
     console.log('🔧 Using retry logic for file-based platform:', platform);
@@ -163,10 +164,26 @@ function executeStreamlinedContinuation(fullPrompt, shareUrl, continuationData) 
     console.log('🔧 Using retry logic for Grok (SPA input field):', platform);
     fillInputFieldWithRetry(fullPrompt, 10, 800);
   } else {
-    // URL-based platforms (Claude) - single fill usually sufficient
-    console.log('🔧 Using single fill for URL-based platform');
-    const populateSuccess = fillInputFieldWithPrompt(fullPrompt);
-    console.log('🔧 Population result:', populateSuccess);
+    // URL-based platforms (Claude) - ensure we are on a new/empty chat before filling
+    const currentPath = window.location.pathname;
+    const currentHost = window.location.hostname;
+    const isClaudeExistingChat = currentHost.includes('claude.ai') && currentPath.startsWith('/chat/');
+    if (isClaudeExistingChat) {
+      // Claude has auto-redirected to an existing conversation — re-store data and navigate to /new
+      console.log('🔧 Claude redirected to existing chat, re-storing data and navigating to /new...');
+      chrome.storage.local.set({ threadcubContinuationData: { ...continuationData, timestamp: Date.now() } }, () => {
+        console.log('🔧 Re-stored continuation data for next page load');
+        window.location.href = 'https://claude.ai/new';
+      });
+      return;
+    }
+    // Safe to fill — clear the data now so it is only used once
+    chrome.storage.local.remove(['threadcubContinuationData'], () => {
+      console.log('🐻 ThreadCub: Cleared used continuation data');
+    });
+    // Use retry logic for Claude — Lexical editor may not be ready yet
+    console.log('🔧 Using retry fill for Claude');
+    fillInputFieldWithRetry(fullPrompt, 20, 500);
   }
 
   // Show subtle success notification
@@ -179,6 +196,12 @@ function executeStreamlinedContinuation(fullPrompt, shareUrl, continuationData) 
     const autoStartDelay = isGrok ? 10000 : 1500;
     setTimeout(() => {
       console.log('🔧 Auto-starting conversation for URL-based platform...');
+      // 📊 GA: continuation_auto_started — fired when the send button is clicked automatically
+      // Only fires for URL-based platforms (Claude, Grok) — file-based platforms skip this
+      safeTrackEvent('continuation_auto_started', {
+        platform: continuationData.platform || platform || 'unknown',
+        is_grok: isGrok
+      });
       attemptAutoStart(platform);
     }, autoStartDelay);
   } else {
@@ -344,53 +367,29 @@ function fillInputFieldWithPrompt(prompt) {
           console.log('🔧 Verify value length:', inputField.value.length);
           
         } else if (inputField.contentEditable === 'true') {
-          console.log('🔧 Filling contenteditable field (Lexical/React editor)');
-          
-          // Clear existing content
-          inputField.textContent = '';
-          inputField.innerHTML = '';
-          
-          // Set new content with multiple methods for reliability
-          inputField.textContent = prompt;
-          inputField.innerHTML = prompt.replace(/\n/g, '<br>');
-          
-          // Also try innerText for some platforms
-          try {
-            inputField.innerText = prompt;
-          } catch (e) {
-            console.log('🔧 innerText method not available');
+          console.log('🔧 Filling contenteditable field (Lexical/React editor) via execCommand');
+
+          // Focus first
+          inputField.focus();
+
+          // Select all existing content and delete it
+          document.execCommand('selectAll', false, null);
+          document.execCommand('delete', false, null);
+
+          // Insert text through native editing pipeline — Lexical listens to this
+          const inserted = document.execCommand('insertText', false, prompt);
+          console.log('🔧 execCommand insertText result:', inserted);
+
+          // Fallback: if execCommand returned false, try InputEvent approach
+          if (!inserted) {
+            console.log('🔧 execCommand failed, falling back to InputEvent');
+            inputField.textContent = '';
+            inputField.dispatchEvent(new InputEvent('beforeinput', { bubbles: true, cancelable: true, inputType: 'insertText', data: prompt }));
+            inputField.textContent = prompt;
+            inputField.dispatchEvent(new InputEvent('input', { bubbles: true, cancelable: true, inputType: 'insertText', data: prompt }));
           }
-          
-          // Trigger comprehensive events (including InputEvent for Lexical/React)
-          const events = [
-            new Event('focus', { bubbles: true }),
-            new InputEvent('beforeinput', { bubbles: true, cancelable: true, inputType: 'insertText', data: prompt }),
-            new Event('input', { bubbles: true, cancelable: true }),
-            new InputEvent('input', { bubbles: true, cancelable: true, inputType: 'insertText', data: prompt }),
-            new Event('change', { bubbles: true, cancelable: true }),
-            new KeyboardEvent('keydown', { bubbles: true }),
-            new KeyboardEvent('keyup', { bubbles: true }),
-            new Event('blur', { bubbles: true })
-          ];
-          
-          events.forEach((event, index) => {
-            try {
-              console.log(`🔧 Dispatching event ${index + 1}/${events.length}: ${event.type}`);
-              inputField.dispatchEvent(event);
-            } catch (e) {
-              console.log(`🔧 Could not dispatch ${event.type}:`, e.message);
-            }
-          });
-          
-          // Refocus after blur
-          setTimeout(() => {
-            inputField.focus();
-            console.log('🔧 Refocused input field');
-          }, 50);
-          
-          console.log('✅ Contenteditable filled successfully');
-          console.log('🔧 Final textContent length:', inputField.textContent.length);
-          console.log('🔧 Final innerHTML length:', inputField.innerHTML.length);
+
+          console.log('✅ Contenteditable filled, textContent length:', inputField.textContent.length);
         }
         
       }, 100);
@@ -448,6 +447,14 @@ function fillInputFieldWithRetry(prompt, maxAttempts = 20, retryDelay = 1000) {
       setTimeout(tryFill, retryDelay);
     } else {
       console.error(`\n❌ FAILED to fill input after ${maxAttempts} attempts (${maxAttempts * retryDelay / 1000} seconds total)`);
+
+      // 📊 GA: continuation_fill_failed — fired when input field could not be filled after all retries
+      // Useful for identifying platforms where the selector logic is broken
+      safeTrackEvent('continuation_fill_failed', {
+        platform: platform || 'unknown',
+        attempts_made: maxAttempts
+      });
+
       console.log('💡 The JSON file has been downloaded. You can manually:');
       console.log('   1. Copy the prompt from the JSON file');
       console.log('   2. Paste it into the input field');
@@ -483,28 +490,36 @@ function attemptAutoStart(platform) {
 }
 
 function attemptClaudeAutoStart() {
-  try {
-    const sendSelectors = [
-      'button[data-testid="send-button"]',
-      'button[aria-label*="Send"]',
-      'button[type="submit"]',
-      'button:has(svg[data-testid="send-icon"])'
-    ];
-
-    for (const selector of sendSelectors) {
-      const sendButton = document.querySelector(selector);
-      if (sendButton && !sendButton.disabled) {
-        console.log('🔧 Found Claude send button, clicking...');
-        sendButton.click();
-        return;
+  const sendSelectors = [
+    'button[data-testid="send-button"]',
+    'button[aria-label*="Send"]',
+    'button[type="submit"]',
+    'button:has(svg[data-testid="send-icon"])'
+  ];
+  let attempts = 0;
+  const maxAttempts = 20;
+  const interval = setInterval(() => {
+    attempts++;
+    try {
+      for (const selector of sendSelectors) {
+        const sendButton = document.querySelector(selector);
+        if (sendButton && !sendButton.disabled) {
+          console.log(`🔧 Found enabled Claude send button on attempt ${attempts}, clicking...`);
+          clearInterval(interval);
+          sendButton.click();
+          return;
+        }
       }
+      console.log(`🔧 Send button not ready yet (attempt ${attempts}/${maxAttempts})`);
+      if (attempts >= maxAttempts) {
+        clearInterval(interval);
+        console.log('🔧 Give up waiting for send button — user can send manually');
+      }
+    } catch (error) {
+      clearInterval(interval);
+      console.log('🔧 Claude auto-start failed:', error);
     }
-
-    console.log('🔧 No Claude send button found or all disabled');
-
-  } catch (error) {
-    console.log('🔧 Claude auto-start failed:', error);
-  }
+  }, 250);
 }
 
 function attemptChatGPTAutoStart() {
@@ -653,3 +668,11 @@ window.ContinuationSystem = {
 };
 
 console.log('🐻 ThreadCub: Continuation system module loaded');
+// 📊 Safe GA tracking — swallows errors if service worker not yet awake
+function safeTrackEvent(eventType, data) {
+  try {
+    chrome.runtime.sendMessage({ action: 'trackEvent', eventType, data }, () => {
+      void chrome.runtime.lastError;
+    });
+  } catch (e) {}
+}

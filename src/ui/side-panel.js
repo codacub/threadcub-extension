@@ -11,6 +11,18 @@ class ThreadCubSidePanel {
     this.currentPriorityFilter = 'all'; // 'all', 'high', 'medium', 'low'
   }
 
+  // ---------------------------------------------------------------------------
+  // 📊 GA: Analytics helper — routes events through background.js
+  // Search '📊 GA:' in this file to find all tracked interactions
+  // ---------------------------------------------------------------------------
+  _trackEvent(eventType, data) {
+    try {
+      chrome.runtime.sendMessage({ action: 'trackEvent', eventType, data });
+    } catch (e) {
+      console.warn('Side panel: could not send analytics event:', e.message);
+    }
+  }
+
   // ===== MAIN UPDATE METHOD =====
   updateTagsList() {
     const tagsList = this.sidePanel.querySelector('#threadcub-tags-container');
@@ -38,8 +50,7 @@ class ThreadCubSidePanel {
     }
 
     container.innerHTML = `
-      ${this.createPriorityFilterDropdown()}
-      <div class="threadcub-items-list">
+      <div class="threadcub-items-list" style="display: flex; flex-direction: column; gap: 8px;">
         ${filteredTags.map(tag => this.createTagCard(tag)).join('')}
       </div>
     `;
@@ -97,6 +108,8 @@ class ThreadCubSidePanel {
     if (select) {
       select.addEventListener('change', (e) => {
         this.currentPriorityFilter = e.target.value;
+        // 📊 GA: side panel priority filter changed — filter = all | high | medium | low
+        this._trackEvent('side_panel_priority_filter_changed', { filter: e.target.value });
         this.updateTagsList();
       });
     }
@@ -111,10 +124,10 @@ class ThreadCubSidePanel {
         </div>
         <div class="anchor-item-actions">
           <button class="anchor-action-btn jump-to-btn" data-anchor-id="${anchor.id}" title="Jump to">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22V8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/><circle cx="12" cy="5" r="3"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22V8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/><circle cx="12" cy="5" r="3"/></svg>
           </button>
           <button class="anchor-action-btn delete-btn" data-anchor-id="${anchor.id}" title="Delete">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
           </button>
         </div>
       </div>
@@ -129,6 +142,8 @@ class ThreadCubSidePanel {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         const anchorId = parseInt(btn.getAttribute('data-anchor-id'));
+        // 📊 GA: anchor jump-to clicked from side panel
+        this._trackEvent('side_panel_anchor_jumped', { anchor_id: anchorId });
         if (this.taggingSystem.jumpToAnchor) {
           this.taggingSystem.jumpToAnchor(anchorId);
         }
@@ -141,6 +156,8 @@ class ThreadCubSidePanel {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         const anchorId = parseInt(btn.getAttribute('data-anchor-id'));
+        // 📊 GA: anchor deleted from side panel
+        this._trackEvent('side_panel_anchor_deleted', { anchor_id: anchorId });
         this.taggingSystem.deleteTagWithUndo(anchorId);
       });
     });
@@ -149,6 +166,8 @@ class ThreadCubSidePanel {
   // Switch tab
   switchTab(tab) {
     this.currentTab = tab;
+    // 📊 GA: side panel tab switched — tab = tags | anchors
+    this._trackEvent('side_panel_tab_switched', { tab });
     this.updateTabStyles();
     this.updateTagsList();
   }
@@ -163,21 +182,25 @@ class ThreadCubSidePanel {
         tagsTab.classList.add('active');
         anchorsTab.classList.remove('active');
         // Update inline styles to override initial values
-        tagsTab.style.borderBottom = '2px solid #7C3AED';
-        tagsTab.style.color = '#7C3AED';
+        tagsTab.style.borderBottom = 'none';
+        tagsTab.style.background = 'var(--color-white)';
+        tagsTab.style.color = 'var(--color-warm-900)';
         tagsTab.style.fontWeight = '600';
-        anchorsTab.style.borderBottom = '2px solid transparent';
-        anchorsTab.style.color = '#64748b';
+        anchorsTab.style.borderBottom = 'none';
+        anchorsTab.style.background = 'transparent';
+        anchorsTab.style.color = 'var(--color-warm-600)';
         anchorsTab.style.fontWeight = '500';
       } else {
         tagsTab.classList.remove('active');
         anchorsTab.classList.add('active');
         // Update inline styles to override initial values
-        anchorsTab.style.borderBottom = '2px solid #7C3AED';
-        anchorsTab.style.color = '#7C3AED';
+        anchorsTab.style.borderBottom = 'none';
+        anchorsTab.style.background = 'var(--color-white)';
+        anchorsTab.style.color = 'var(--color-warm-900)';
         anchorsTab.style.fontWeight = '600';
-        tagsTab.style.borderBottom = '2px solid transparent';
-        tagsTab.style.color = '#64748b';
+        tagsTab.style.borderBottom = 'none';
+        tagsTab.style.background = 'transparent';
+        tagsTab.style.color = 'var(--color-warm-600)';
         tagsTab.style.fontWeight = '500';
       }
     }
@@ -205,6 +228,8 @@ class ThreadCubSidePanel {
     }
 
     console.log('Jumping to tag:', tag);
+    // 📊 GA: tag jump-to clicked from side panel
+    this._trackEvent('side_panel_tag_jumped', { tag_id: tagId, category: tag.category || 'unknown' });
 
     // Strategy 1: Use rangeInfo if available (TextQuote-style)
     if (tag.rangeInfo) {
@@ -231,6 +256,8 @@ class ThreadCubSidePanel {
     }
 
     navigator.clipboard.writeText(tag.text).then(() => {
+      // 📊 GA: tag text copied from side panel
+      this._trackEvent('side_panel_tag_copied', { tag_id: tagId, category: tag.category || 'unknown' });
       // Show feedback
       this.showCopiedFeedback(card);
     }).catch(err => {
@@ -448,7 +475,7 @@ class ThreadCubSidePanel {
     const notification = document.createElement('div');
     notification.className = 'threadcub-jump-failed';
     notification.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
       <span>Could not find this text in the conversation</span>
     `;
 
@@ -543,34 +570,77 @@ class ThreadCubSidePanel {
 
   // ===== TAG CARD CREATION =====
   createTagCard(tag) {
-    const hasNote = tag.note && tag.note.trim().length > 0;
-    const hasTags = tag.tags && tag.tags.length > 0;
-
-    // This version includes SVG icons directly, as they are not style tokens.
     return `
-      <div class="threadcub-tag-card" data-tag-id="${tag.id}" data-state="default">
-        <div class="card-content">
-          <div class="tag-text">${tag.text}</div>
-
-          ${hasTags ? this.createPriorityTags(tag.tags) : ''}
-          ${hasNote ? this.createNoteDisplay(tag.note, tag.id) : ''}
-
-          <div class="default-state">
-            <div class="card-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="4" r="2"/><circle cx="18" cy="8" r="2"/><circle cx="20" cy="16" r="2"/><path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z"/></svg>
-            </div>
-            <div class="action-buttons">
-              ${this.createActionButton('copy', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>', tag.id)}
-              ${this.createActionButton('jump-to-tag', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4v7a4 4 0 0 1-4 4H4"/><path d="m9 10-5 5 5 5"/></svg>', tag.id)}
-              ${this.createActionButton('edit-note', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg>', tag.id)}
-              ${this.createActionButton('add-tag', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></svg>', tag.id)}
-              ${this.createActionButton('delete', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>', tag.id)}
-            </div>
+      <div class="threadcub-tag-card" data-tag-id="${tag.id}" style="
+        background: #FFFFFF;
+        border: 1px solid var(--color-warm-400);
+        border-radius: 8px;
+        overflow: visible;
+        transition: all 0.2s ease;
+      ">
+        <div class="default-state" style="display: flex; flex-direction: column;">
+        <div style="
+          display: flex;
+          align-items: flex-start;
+          padding: 12px 16px;
+          gap: 8px;
+          box-sizing: border-box;
+        ">
+          <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; align-self: center; align-items: flex-start;">
+            ${ tag.tags && tag.tags[0] ? (() => { const colours = { amber: {bg: '#FEF3C7', text: '#92400E'}, rose: {bg: '#FFE4E6', text: '#9F1239'}, teal: {bg: '#CCFBF1', text: '#134E4A'} }; const c = colours[tag.tags[0].colour] || colours.amber; return '<div style="display:inline-block; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 600; background:' + c.bg + '; color:' + c.text + '; margin-bottom: 8px;">' + tag.tags[0].label + '</div>'; })() : '' }
+            <div style="font-family: var(--font-family-primary); font-size: var(--font-size-sm); color: var(--color-warm-900);">${tag.text}</div>
+            ${ tag.note && tag.note.trim().length > 0 ? '<div style="font-size: var(--font-size-xs); color: var(--color-warm-700); font-style: italic; margin-top: var(--spacing-2);">' + tag.note + '</div>' : '' }
           </div>
-
-          ${this.createNoteEditingState(tag)}
-          ${this.createTagEditingState(tag)}
+          <button class="action-button tc-tooltip-btn" data-action="jump-to-tag" data-tag-id="${tag.id}" data-tooltip="Jump to highlight" style="flex-shrink: 0; position: relative;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="9 10 4 15 9 20"></polyline>
+              <path d="M20 4v7a4 4 0 0 1-4 4H4"></path>
+            </svg>
+          </button>
+          <button class="action-button tc-chevron-btn tc-tooltip-btn" data-tag-id="${tag.id}" data-tooltip="Actions" style="flex-shrink: 0; position: relative;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s ease;">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
         </div>
+        <div class="tc-actions-row" style="
+          display: none;
+          justify-content: flex-end;
+          align-items: center;
+          padding: 4px 12px 8px;
+          gap: 4px;
+          border-top: 1px solid #F3F4F6;
+        ">
+          <button class="action-button" data-action="copy" data-tag-id="${tag.id}" data-tooltip="Copy">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+          </button>
+          <button class="action-button" data-action="edit-note" data-tag-id="${tag.id}" data-tooltip="Edit">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
+          </button>
+          <button class="action-button" data-action="add-tag" data-tag-id="${tag.id}" data-tooltip="Tag">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+              <line x1="7" y1="7" x2="7.01" y2="7"></line>
+            </svg>
+          </button>
+          <button class="action-button" data-action="delete" data-tag-id="${tag.id}" data-tooltip="Delete">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+              <path d="M10 11v6"></path><path d="M14 11v6"></path>
+              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+            </svg>
+          </button>
+        </div>
+        </div>
+        ${this.createNoteEditingState(tag)}
+        ${this.createTagEditingState(tag)}
       </div>
     `;
   }
@@ -625,26 +695,24 @@ class ThreadCubSidePanel {
 
         <div class="note-actions">
           ${this.createSaveButton(tag.id)}
+          ${tag.note && tag.note.trim().length > 0 ? `<button class="remove-note-btn" data-tag-id="${tag.id}">Remove</button>` : ''}
           ${this.createCancelButton(tag.id)}
         </div>
       </div>
     `;
   }
-
-  createTagEditingState(tag) { // Removed 'tokens' parameter
+  createTagEditingState(tag) {
     return `
       <div class="tag-editing" style="display: none;" data-tag-id="${tag.id}">
-        <div class="priority-options">
-          ${this.createPriorityButton('high')}
-          ${this.createPriorityButton('medium')}
-          ${this.createPriorityButton('low')}
-          ${/* TODO: Re-enable when custom tag functionality is implemented
-          this.createAddTagButton()
-          */ ''}
+        <input class="tag-name-input" type="text" placeholder="Tag name" maxlength="20" value="${tag.tags && tag.tags[0] ? tag.tags[0].label : ''}" />
+        <div class="tag-colour-options">
+          <button class="tag-colour-btn selected" data-colour="amber" style="background: #FEF3C7; color: #92400E;">Amber</button>
+          <button class="tag-colour-btn" data-colour="rose" style="background: #FFE4E6; color: #9F1239;">Rose</button>
+          <button class="tag-colour-btn" data-colour="teal" style="background: #CCFBF1; color: #134E4A;">Teal</button>
         </div>
-
         <div class="tag-actions">
-          ${this.createCancelTagButton(tag.id)}
+          <button class="save-tag-btn" data-tag-id="${tag.id}">Save</button>
+          <button class="cancel-tag-btn" data-tag-id="${tag.id}">Cancel</button>
         </div>
       </div>
     `;
@@ -668,19 +736,19 @@ class ThreadCubSidePanel {
 
   createSaveButton(tagId) { // Removed 'tokens' parameter
     return `
-      <button class="save-note-btn" data-tag-id="${tagId}">SAVE</button>
+      <button class="save-note-btn" data-tag-id="${tagId}">Save</button>
     `;
   }
 
   createCancelButton(tagId) { // Removed 'tokens' parameter
     return `
-      <button class="cancel-note-btn" data-tag-id="${tagId}">CANCEL</button>
+      <button class="cancel-note-btn" data-tag-id="${tagId}">Cancel</button>
     `;
   }
 
   createCancelTagButton(tagId) { // Removed 'tokens' parameter
     return `
-      <button class="cancel-tag-btn" data-tag-id="${tagId}">CANCEL</button>
+      <button class="cancel-tag-btn" data-tag-id="${tagId}">Cancel</button>
     `;
   }
 
@@ -752,6 +820,7 @@ class ThreadCubSidePanel {
     if (editBtn) {
       editBtn.addEventListener('click', (e) => {
         e.stopPropagation();
+        console.log("EDIT NOTE CLICKED", card, tagId);
         this.enterNoteEditingState(card, tagId);
       });
     }
@@ -843,22 +912,59 @@ class ThreadCubSidePanel {
 
   // Setup listeners for tag cards (existing functionality)
   setupTagCardListeners(card, tagId) {
-    // Card hover effects: Using CSS classes/pseudo-classes is preferred, but
-    // for direct manipulation requested earlier, using CSS variables.
-    card.addEventListener('mouseenter', () => {
-      card.style.boxShadow = 'var(--shadow-card-hover)'; // Use CSS variable
-    });
+    const WARM = '#F7F3EE';
 
-    card.addEventListener('mouseleave', () => {
-      const currentState = card.getAttribute('data-state');
-      if (currentState === 'default') {
-        card.style.boxShadow = 'var(--shadow-card)'; // Use CSS variable for default
-      }
+    // Chevron toggle + hover
+    const chevronBtn = card.querySelector('.tc-chevron-btn');
+    if (chevronBtn) {
+      chevronBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const actionsRow = card.querySelector('.tc-actions-row');
+        const chevronSvg = chevronBtn.querySelector('svg');
+        const isOpen = actionsRow.style.display === 'flex';
+        actionsRow.style.display = isOpen ? 'none' : 'flex';
+        chevronSvg.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+      });
+      chevronBtn.addEventListener('mouseenter', () => {
+        chevronBtn.style.background = WARM;
+        chevronBtn.style.color = '#374151';
+      });
+      chevronBtn.addEventListener('mouseleave', () => {
+        chevronBtn.style.background = 'transparent';
+        chevronBtn.style.color = '#9CA3AF';
+      });
+    }
+
+    // Jump button hover
+    const jumpBtn = card.querySelector('[data-action="jump-to-tag"]');
+    if (jumpBtn) {
+      jumpBtn.addEventListener('mouseenter', () => {
+        jumpBtn.style.background = WARM;
+        jumpBtn.style.color = '#6C74FB';
+      });
+      jumpBtn.addEventListener('mouseleave', () => {
+        jumpBtn.style.background = 'transparent';
+        jumpBtn.style.color = '#9CA3AF';
+      });
+    }
+
+    // Action buttons hover
+    card.querySelectorAll('.tc-actions-row .action-button').forEach(btn => {
+      const isDelete = btn.getAttribute('data-action') === 'delete';
+      btn.addEventListener('mouseenter', () => {
+        btn.style.background = isDelete ? '#FEF2F2' : WARM;
+        btn.style.color = isDelete ? '#EF4444' : '#374151';
+      });
+      btn.addEventListener('mouseleave', () => {
+        btn.style.background = 'transparent';
+        btn.style.color = '#9CA3AF';
+      });
     });
 
     // Action button listeners
     this.setupCardActionListeners(card, tagId);
   }
+
 
   setupCardActionListeners(card, tagId) {
     // Copy to clipboard
@@ -940,7 +1046,7 @@ class ThreadCubSidePanel {
 
     if (defaultState) defaultState.style.display = 'none';
     if (noteEditing) {
-      noteEditing.style.display = 'block';
+      noteEditing.style.display = 'flex';
 
       const textarea = noteEditing.querySelector('.note-textarea');
       if (textarea) {
@@ -1009,29 +1115,62 @@ class ThreadCubSidePanel {
         this.exitEditingState(card);
       });
     }
+    const removeBtn = card.querySelector('.remove-note-btn');
+    if (removeBtn) {
+      removeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.taggingSystem.saveNoteForCard(tagId, '');
+        this.exitEditingState(card);
+      });
+    }
   }
 
   // ===== TAG EDITING =====
   setupTagEditingListeners(card, tagId) {
-    const priorityBtns = card.querySelectorAll('.priority-btn');
     const cancelBtn = card.querySelector('.cancel-tag-btn');
+    const saveTagBtn = card.querySelector('.save-tag-btn');
+    const tagInput = card.querySelector('.tag-name-input');
+    const colourBtns = card.querySelectorAll('.tag-colour-btn');
 
-    priorityBtns.forEach(btn => {
+    colourBtns.forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const priority = btn.getAttribute('data-priority');
-
-        if (priority) {
-          this.taggingSystem.addPriorityTag(tagId, priority);
-          this.exitEditingState(card);
-          this.updateTagsList(); // Refresh to show new tag
-        }
+        colourBtns.forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
       });
     });
+
+    if (saveTagBtn && tagInput) {
+      tagInput.addEventListener('input', () => {
+        if (tagInput.value.trim().length > 0) {
+          saveTagBtn.classList.add('active');
+        } else {
+          saveTagBtn.classList.remove('active');
+        }
+      });
+      saveTagBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const label = tagInput.value.trim();
+        if (!label) return;
+        const selectedColour = card.querySelector('.tag-colour-btn.selected');
+        const colour = selectedColour ? selectedColour.getAttribute('data-colour') : 'amber';
+        this.taggingSystem.addCustomTag(tagId, label, colour);
+        this.exitEditingState(card);
+        this.updateTagsList();
+      });
+    }
 
     if (cancelBtn) {
       cancelBtn.addEventListener('click', (e) => {
         e.stopPropagation();
+        this.exitEditingState(card);
+      });
+    }
+    const removeBtn = card.querySelector('.remove-note-btn');
+    if (removeBtn) {
+      removeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.taggingSystem.saveNoteForCard(tagId, '');
         this.exitEditingState(card);
       });
     }

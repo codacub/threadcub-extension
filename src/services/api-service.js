@@ -66,8 +66,8 @@ const ApiService = {
         // Content script context — AuthService not available in window scope,
         // so ask the background script for the stored token instead
         const response = await chrome.runtime.sendMessage({ action: 'getAuthToken' });
-        if (response?.token) {
-          headers['Authorization'] = `Bearer ${response.token}`;
+        if (response?.token || response?.authToken) {
+          headers['Authorization'] = `Bearer ${response.token || response.authToken}`;
           console.log('🔐 ApiService: Added Bearer auth header (via background message)');
         } else {
           console.log('🔐 ApiService: No token returned from background');
@@ -190,7 +190,9 @@ const ApiService = {
                   encryption_format: 'aes-gcm',
                   title: title,
                   source: source,
-                  session_id: apiData?.session_id || apiData?.sessionId || null
+                  session_id: apiData?.session_id || apiData?.sessionId || null,
+                  capture_method: apiData?.capture_method || 'save',
+                  parent_conversation_id: apiData?.parent_conversation_id || null
                 })
               });
 
@@ -246,7 +248,9 @@ const ApiService = {
         },
         title: title,
         source: source,
-        session_id: apiData?.session_id || apiData?.sessionId || null
+        session_id: apiData?.session_id || apiData?.sessionId || null,
+        capture_method: apiData?.capture_method || 'save',
+        parent_conversation_id: apiData?.parent_conversation_id || null
       };
 
       console.log('🔍 Sending unencrypted payload:', JSON.stringify(unencryptedPayload, null, 2));

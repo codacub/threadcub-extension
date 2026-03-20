@@ -1139,11 +1139,15 @@ const title = (rawTitle
     console.log('🐻 ThreadCub: Generating continuation prompt for platform:', platform);
 
     // URL-based prompt for platforms with web_fetch capability (Claude, Grok)
-    const urlBasedPrompt = `I'd like to continue our previous conversation. The complete context is available at: ${shareUrl}
-
-Please attempt to fetch this URL using your web_fetch tool to access the conversation history. The URL returns a JSON response with the full conversation.
-
-If you're able to retrieve it, let me know you're ready to continue from where we left off. If you cannot access it for any reason, please let me know and I'll share the conversation content directly.`;
+    const totalMessages = conversationData?.total_messages || conversationData?.messages?.length || 0;
+    const needsPagination = totalMessages > 50;
+    const pageCount = needsPagination ? Math.ceil(totalMessages / 30) : 1;
+    const pageUrls = needsPagination
+      ? Array.from({ length: pageCount }, (_, i) => `Page ${i + 1}: ${shareUrl}?page=${i + 1}&limit=30`).join('\n')
+      : '';
+    const urlBasedPrompt = needsPagination
+      ? `I'd like to continue our previous conversation. The complete context is available at: ${shareUrl}\n\nThis conversation has ${totalMessages} messages which is too large to fetch in one go. Please fetch each page sequentially using your web_fetch tool:\n${pageUrls}\n\nOnce you have all pages, confirm you have the full context and are ready to continue from where we left off.`
+      : `I'd like to continue our previous conversation. The complete context is available at: ${shareUrl}\n\nPlease attempt to fetch this URL using your web_fetch tool to access the conversation history. The URL returns a JSON response with the full conversation.\n\nIf you're able to retrieve it, let me know you're ready to continue from where we left off. If you cannot access it for any reason, please let me know and I'll share the conversation content directly.`;
 
     // GROK - URL-based (confirmed working with web_fetch)
     if (platform && platform.toLowerCase().includes('grok')) {

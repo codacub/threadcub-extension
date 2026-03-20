@@ -25,6 +25,18 @@ class AnchorSystem {
     this.adapter = null;
   }
 
+  // ---------------------------------------------------------------------------
+  // 📊 GA: Analytics helper — routes events through background.js
+  // Search '📊 GA:' in this file to find all tracked interactions
+  // ---------------------------------------------------------------------------
+  _trackEvent(eventType, data) {
+    try {
+      chrome.runtime.sendMessage({ action: 'trackEvent', eventType, data });
+    } catch (e) {
+      console.warn('Anchor system: could not send analytics event:', e.message);
+    }
+  }
+
   /**
    * Initialize the anchor system
    */
@@ -90,6 +102,10 @@ class AnchorSystem {
     };
 
     console.log('Anchor created:', anchor);
+
+    // 📊 GA: anchor created — tracks platform
+    this._trackEvent('anchor_created', { platform: anchor.platform || 'unknown' });
+
     return anchor;
   }
 
@@ -193,22 +209,40 @@ class AnchorSystem {
 
     // Strategy A: Use messageSelector (fast path)
     let result = await this.jumpViaSelector(anchor);
-    if (result.success) return result;
+    if (result.success) {
+      // 📊 GA: anchor jump succeeded — method = selector
+      this._trackEvent('anchor_jump_attempted', { success: true, method: result.method });
+      return result;
+    }
 
     // Strategy B: Search all message containers
     result = await this.jumpViaMessageSearch(anchor);
-    if (result.success) return result;
+    if (result.success) {
+      // 📊 GA: anchor jump succeeded — method = message-search
+      this._trackEvent('anchor_jump_attempted', { success: true, method: result.method });
+      return result;
+    }
 
     // Strategy C: Full DOM text search (walks all text nodes)
     result = await this.jumpViaFullTextSearch(anchor);
-    if (result.success) return result;
+    if (result.success) {
+      // 📊 GA: anchor jump succeeded — method = full-text-search
+      this._trackEvent('anchor_jump_attempted', { success: true, method: result.method });
+      return result;
+    }
 
     // Strategy D: Fallback to messageIndex
     result = await this.jumpViaMessageIndex(anchor);
-    if (result.success) return result;
+    if (result.success) {
+      // 📊 GA: anchor jump succeeded — method = index
+      this._trackEvent('anchor_jump_attempted', { success: true, method: result.method });
+      return result;
+    }
 
     // Strategy E: Failure
     console.log('All anchor resolution strategies failed');
+    // 📊 GA: anchor jump failed — all strategies exhausted
+    this._trackEvent('anchor_jump_attempted', { success: false, method: 'none' });
     return { success: false, method: 'none', approximate: false };
   }
 

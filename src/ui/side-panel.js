@@ -220,7 +220,7 @@ class ThreadCubSidePanel {
   }
 
   // Jump to a tag location in the conversation
-  jumpToTag(tagId) {
+  async jumpToTag(tagId) {
     const tag = this.taggingSystem.tags.find(t => t.id === tagId);
     if (!tag) {
       console.log('Tag not found:', tagId);
@@ -239,7 +239,7 @@ class ThreadCubSidePanel {
 
     // Strategy 2: Use anchor context if available
     if (tag.anchor) {
-      const result = window.anchorSystem?.jumpToAnchor(tag.anchor);
+      const result = await window.anchorSystem?.jumpToAnchor(tag.anchor);
       if (result?.success) return;
     }
 

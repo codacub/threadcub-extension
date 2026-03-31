@@ -1111,8 +1111,8 @@ class ThreadCubFloatingButton {
     // Resolve parent_conversation_id — in-memory first, then chrome.storage fallback
     let parentConversationId = this.lastSavedConversationId || null;
     if (!parentConversationId && conversationData.url) {
-      const stored = await chrome.storage.local.get([`tc_parent_${conversationData.url}`]);
-      parentConversationId = stored[`tc_parent_${conversationData.url}`] || null;
+      const stored = await chrome.storage.local.get([`tc_parent_${conversationData.url}`, 'tc_last_saved_id']);
+      parentConversationId = stored[`tc_parent_${conversationData.url}`] || stored['tc_last_saved_id'] || null;
     }
     console.log('🔍 Resolved parentConversationId:', parentConversationId);
 
@@ -1175,6 +1175,7 @@ class ThreadCubFloatingButton {
         // Persist ThreadCub UUID so next Continue on same Claude URL knows its parent
         if (conversationId && conversationData.url) {
           chrome.storage.local.set({ [`tc_parent_${conversationData.url}`]: conversationId });
+          chrome.storage.local.set({ 'tc_last_saved_id': conversationId });
           console.log('🔍 DEBUG: Persisted parent ID for URL:', conversationData.url);
         }
 
@@ -2201,7 +2202,7 @@ Once you've reviewed it, let me know you're ready to continue from where we left
       console.log('🐻 ThreadCub: JSON download completed with filename:', filename);
 
       // Download Markdown after a brief delay for browser compatibility
-      setTimeout(() => this.downloadMarkdown(tagsData), 200);
+      // Markdown auto-download removed — use explicit MD button instead
 
     } catch (error) {
       console.error('🐻 ThreadCub: Error in createDownloadFromData:', error);

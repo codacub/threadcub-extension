@@ -168,37 +168,43 @@ const ConversationExtractor = {
       const chatId = chatPath.split('/chat/')[1]?.split('/')[0]?.split('?')[0];
       console.log('🐻 ThreadCub: Date extraction — chatPath:', chatPath, 'chatId:', chatId);
 
-      // Try progressively broader selectors — Claude may not use a plain <a> for the active item
-      let sidebarLink =
-        document.querySelector(`nav a[href="${chatPath}"]`) ||
-        document.querySelector(`a[href="${chatPath}"]`) ||
-        document.querySelector(`[href="${chatPath}"]`) ||
-        (chatId ? document.querySelector(`a[href*="${chatId}"]`) : null) ||
-        (chatId ? document.querySelector(`[href*="${chatId}"]`) : null) ||
-        (chatId ? document.querySelector(`[data-id*="${chatId}"]`) : null) ||
-        document.querySelector(`nav [aria-current="page"]`) ||
-        document.querySelector(`[aria-current="page"]`);
+      const nav = document.querySelector('nav') || document.body;
 
-      // Last resort: scan all nav elements for any attribute containing the chat ID
-      if (!sidebarLink && chatId) {
-        const nav = document.querySelector('nav') || document.body;
-        for (const el of nav.querySelectorAll('*')) {
-          const attrs = Array.from(el.attributes || []);
-          if (attrs.some(a => a.value.includes(chatId))) {
-            sidebarLink = el;
-            break;
+      // Claude removes the href from the active conversation item (you're already on it),
+      // so we can't find it by URL. Try multiple strategies in order.
+      let sidebarLink =
+        // 1. Any element with the chat ID in an attribute (works when not active)
+        (chatId ? nav.querySelector(`[href*="${chatId}"]`) : null) ||
+        (chatId ? nav.querySelector(`[data-id*="${chatId}"]`) : null) ||
+        // 2. aria-current / aria-selected
+        nav.querySelector('[aria-current="page"]') ||
+        nav.querySelector('[aria-selected="true"]') ||
+        // 3. role="button" in nav — Claude renders the active item as a button, not a link
+        nav.querySelector('[role="button"]') ||
+        // 4. Any nav element with a class containing "selected" or "active"
+        nav.querySelector('[class*="selected"]') ||
+        nav.querySelector('[class*="active"]');
+
+      // 5. Title-text match — find nav leaf whose text matches the page title
+      if (!sidebarLink) {
+        const pageTitle = document.title.replace(/\s*[-–|]\s*Claude\s*$/i, '').trim().toLowerCase();
+        if (pageTitle && pageTitle !== 'claude') {
+          for (const el of nav.querySelectorAll('*')) {
+            if (el.children.length > 0) continue;
+            const t = (el.innerText || el.textContent || '').trim().toLowerCase();
+            if (t.length > 3 && t.length < 120 && pageTitle.startsWith(t.substring(0, Math.min(t.length, 30)))) {
+              sidebarLink = el;
+              break;
+            }
           }
         }
       }
 
       if (!sidebarLink) {
-        console.log('🐻 ThreadCub: No sidebar link found for date extraction');
+        console.log('🐻 ThreadCub: No sidebar element found for date extraction');
         return null;
       }
-      console.log('🐻 ThreadCub: Found sidebar element:', sidebarLink.tagName, sidebarLink.className?.substring(0, 60));
-
-      // Find the nav container
-      const nav = sidebarLink.closest('nav') || document.querySelector('nav') || document.body;
+      console.log('🐻 ThreadCub: Found sidebar element:', sidebarLink.tagName, sidebarLink.getAttribute('role'), sidebarLink.innerText?.substring(0, 40));
 
       // Walk every element in the nav, find ones that look like date headings
       // and come BEFORE our link in document order — take the last (closest) one
@@ -1263,8 +1269,8 @@ const title = (rawTitle
       ? Array.from({ length: pageCount }, (_, i) => `Page ${i + 1}: ${shareUrl}?page=${i + 1}&limit=30`).join('\n')
       : '';
     const urlBasedPrompt = needsPagination
-      ? `I'd like to continue our previous conversation. The complete context is available at: ${shareUrl}\n\nThis conversation has ${totalMessages} messages which is too large to fetch in one go. Please fetch each page sequentially using your web_fetch tool:\n${pageUrls}\n\nOnce you have all pages, confirm you have the full context and are ready to continue from where we left off.`
-      : `I'd like to continue our previous conversation. The complete context is available at: ${shareUrl}\n\nPlease attempt to fetch this URL using your web_fetch tool to access the conversation history. The URL returns a JSON response with the full conversation.\n\nIf you're able to retrieve it, let me know you're ready to continue from where we left off. If you cannot access it for any reason, please let me know and I'll share the conversation content directly.`;
+      ? `Continuing from '${conversationData?.title || 'our previous conversation'}' — I'd like to pick up where we left off. The complete context is available at: ${shareUrl}\n\nThis conversation has ${totalMessages} messages which is too large to fetch in one go. Please fetch each page sequentially using your web_fetch tool:\n${pageUrls}\n\nOnce you have all pages, confirm you have the full context and are ready to continue from where we left off.`
+      : `Continuing from '${conversationData?.title || 'our previous conversation'}' — I'd like to pick up where we left off. The complete context is available at: ${shareUrl}\n\nPlease attempt to fetch this URL using your web_fetch tool to access the conversation history. The URL returns a JSON response with the full conversation.\n\nIf you're able to retrieve it, let me know you're ready to continue from where we left off. If you cannot access it for any reason, please let me know and I'll share the conversation content directly.`;
 
     // GROK - URL-based (confirmed working with web_fetch)
     if (platform && platform.toLowerCase().includes('grok')) {

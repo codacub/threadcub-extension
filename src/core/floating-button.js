@@ -1111,8 +1111,8 @@ class ThreadCubFloatingButton {
     // Resolve parent_conversation_id — in-memory first, then chrome.storage fallback
     let parentConversationId = this.lastSavedConversationId || null;
     if (!parentConversationId && conversationData.url) {
-      const stored = await chrome.storage.local.get([`tc_parent_${conversationData.url}`]);
-      parentConversationId = stored[`tc_parent_${conversationData.url}`] || null;
+      const stored = await chrome.storage.local.get([`tc_parent_${conversationData.url}`, 'tc_last_saved_id']);
+      parentConversationId = stored[`tc_parent_${conversationData.url}`] || stored['tc_last_saved_id'] || null;
     }
     console.log('🔍 Resolved parentConversationId:', parentConversationId);
 
@@ -1175,6 +1175,7 @@ class ThreadCubFloatingButton {
         // Persist ThreadCub UUID so next Continue on same Claude URL knows its parent
         if (conversationId && conversationData.url) {
           chrome.storage.local.set({ [`tc_parent_${conversationData.url}`]: conversationId });
+          chrome.storage.local.set({ 'tc_last_saved_id': conversationId });
           console.log('🔍 DEBUG: Persisted parent ID for URL:', conversationData.url);
         }
 
@@ -1354,8 +1355,8 @@ class ThreadCubFloatingButton {
 
         console.log('🐻 ThreadCub: Conversation saved to ThreadCub successfully');
         // 📊 GA: save succeeded — conversation successfully saved to ThreadCub
-        if (window.AnalyticsService) window.AnalyticsService.trackFeatureUsed('sync_success', { platform: conversationData.platform || 'unknown' });
-        sendMessageWithRetry({ action: 'trackEvent', eventType: 'save_success', data: { platform: conversationData.platform || 'unknown', message_count: conversationData.messages.length } });
+        try { if (window.AnalyticsService) window.AnalyticsService.trackFeatureUsed('sync_success', { platform: conversationData.platform || 'unknown' }); } catch(e) {}
+        try { sendMessageWithRetry({ action: 'trackEvent', eventType: 'save_success', data: { platform: conversationData.platform || 'unknown', message_count: conversationData.messages.length } }); } catch(e) {}
 
         this.setBearExpression('happy');
 
@@ -1402,21 +1403,29 @@ class ThreadCubFloatingButton {
     this.setSaveBtnLoading(false);
 
       } catch (apiError) {
-        console.error('🐻 ThreadCub: API save failed:', apiError);
-        // 📊 GA: save failed — API call returned an error
-        sendMessageWithRetry({ action: 'trackEvent', eventType: 'save_failed', data: { reason: 'api_error', platform: conversationData?.platform || 'unknown', error: apiError.message } });
-        this.showErrorToast('Failed to save conversation');
+        const isContextError = apiError?.message?.includes('Extension context invalidated') || apiError?.message?.includes('context invalidated');
+        if (isContextError) {
+          console.warn('🐻 ThreadCub: Extension context invalidated after save — save likely succeeded. Refresh page to re-activate extension.');
+        } else {
+          console.error('🐻 ThreadCub: API save failed:', apiError);
+          try { sendMessageWithRetry({ action: 'trackEvent', eventType: 'save_failed', data: { reason: 'api_error', platform: conversationData?.platform || 'unknown', error: apiError.message } }); } catch(e) {}
+          this.showErrorToast('Failed to save conversation');
+        }
         this.isExporting = false;
-    this.setSaveBtnLoading(false);
+        this.setSaveBtnLoading(false);
       }
 
     } catch (error) {
-      console.error('🐻 ThreadCub: Save error:', error);
-      // 📊 GA: save failed — unexpected error during save process
-      sendMessageWithRetry({ action: 'trackEvent', eventType: 'save_failed', data: { reason: 'unexpected_error', error: error.message } });
-      this.showErrorToast('Save failed: ' + error.message);
+      const isContextError = error?.message?.includes('Extension context invalidated') || error?.message?.includes('context invalidated');
+      if (isContextError) {
+        console.warn('🐻 ThreadCub: Extension context invalidated — save likely succeeded. Refresh page to re-activate extension.');
+      } else {
+        console.error('🐻 ThreadCub: Save error:', error);
+        try { sendMessageWithRetry({ action: 'trackEvent', eventType: 'save_failed', data: { reason: 'unexpected_error', error: error.message } }); } catch(e) {}
+        this.showErrorToast('Save failed: ' + error.message);
+      }
       this.isExporting = false;
-    this.setSaveBtnLoading(false);
+      this.setSaveBtnLoading(false);
     }
   }
 
@@ -2193,7 +2202,7 @@ Once you've reviewed it, let me know you're ready to continue from where we left
       console.log('🐻 ThreadCub: JSON download completed with filename:', filename);
 
       // Download Markdown after a brief delay for browser compatibility
-      setTimeout(() => this.downloadMarkdown(tagsData), 200);
+      // Markdown auto-download removed — use explicit MD button instead
 
     } catch (error) {
       console.error('🐻 ThreadCub: Error in createDownloadFromData:', error);

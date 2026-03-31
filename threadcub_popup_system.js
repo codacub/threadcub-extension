@@ -130,7 +130,10 @@ function extractConversationPreview(fullPrompt) {
     
     continueBtn.addEventListener('click', () => {
       const platform = detectCurrentPlatform();
-      const simplePrompt = createSimpleContinuationPrompt(shareUrl, platform);
+      const { summary: _s } = extractConversationPreview(fullPrompt);
+      const titleMatch = fullPrompt.match(/\*\*Conversation Title:\*\*\s*([^\n]+)/);
+      const conversationTitle = titleMatch ? titleMatch[1].trim() : null;
+      const simplePrompt = createSimpleContinuationPrompt(shareUrl, platform, conversationTitle);
       
       fillInputFieldWithPrompt(simplePrompt);
       closePopup();
@@ -168,21 +171,22 @@ function extractConversationPreview(fullPrompt) {
   }
   
   // 4. SIMPLIFIED CONTINUATION PROMPTS
-  function createSimpleContinuationPrompt(shareUrl, platform) {
+  function createSimpleContinuationPrompt(shareUrl, platform, title) {
+    const titlePrefix = title ? `Continuing from '${title}' — ` : '';
     const prompts = {
-      'chatgpt': `Please continue our previous conversation. You can access the full context here: ${shareUrl}
+      'chatgpt': `${titlePrefix}Please continue our previous conversation. You can access the full context here: ${shareUrl}
   
   I'd like to pick up where we left off. Please review the conversation history and let me know you're ready to continue!`,
   
-      'claude.ai': `I'd like to continue our previous conversation. The complete context is available at: ${shareUrl}
+      'claude.ai': `${titlePrefix}I'd like to continue our previous conversation. The complete context is available at: ${shareUrl}
   
   Please access the conversation history and let me know when you're ready to continue from where we left off.`,
   
-      'gemini': `Continuing our previous conversation. Full context: ${shareUrl}
+      'gemini': `${titlePrefix}Continuing our previous conversation. Full context: ${shareUrl}
   
   Please review our discussion history and continue helping me with the topic.`,
   
-      'default': `Continue previous conversation. Full context: ${shareUrl}`
+      'default': `${titlePrefix}Continue previous conversation. Full context: ${shareUrl}`
     };
     
     return prompts[platform] || prompts['default'];

@@ -104,6 +104,7 @@ const ConversationExtractor = {
       title: title,
       url: window.location.href,
       timestamp: new Date().toISOString(),
+      source_created_at: this.extractClaudeConversationDate(),
       platform: 'claude.ai',
       total_messages: messages.length,
       messages: messages
@@ -157,6 +158,128 @@ const ConversationExtractor = {
     // Method 3: Fallback
     console.log('🐻 ThreadCub: Using fallback title');
     return 'Untitled Conversation';
+  },
+
+  extractClaudeConversationDate() {
+    try {
+      const chatPath = window.location.pathname;
+      if (!chatPath.includes('/chat/')) return null;
+
+      const chatId = chatPath.split('/chat/')[1]?.split('/')[0]?.split('?')[0];
+      console.log('🐻 ThreadCub: Date extraction — chatPath:', chatPath, 'chatId:', chatId);
+
+      const nav = document.querySelector('nav') || document.body;
+
+      // Claude removes the href from the active conversation item (you're already on it),
+      // so we can't find it by URL. Try multiple strategies in order.
+      let sidebarLink =
+        // 1. Any element with the chat ID in an attribute (works when not active)
+        (chatId ? nav.querySelector(`[href*="${chatId}"]`) : null) ||
+        (chatId ? nav.querySelector(`[data-id*="${chatId}"]`) : null) ||
+        // 2. aria-current / aria-selected
+        nav.querySelector('[aria-current="page"]') ||
+        nav.querySelector('[aria-selected="true"]') ||
+        // 3. role="button" in nav — Claude renders the active item as a button, not a link
+        nav.querySelector('[role="button"]') ||
+        // 4. Any nav element with a class containing "selected" or "active"
+        nav.querySelector('[class*="selected"]') ||
+        nav.querySelector('[class*="active"]');
+
+      // 5. Title-text match — find nav leaf whose text matches the page title
+      if (!sidebarLink) {
+        const pageTitle = document.title.replace(/\s*[-–|]\s*Claude\s*$/i, '').trim().toLowerCase();
+        if (pageTitle && pageTitle !== 'claude') {
+          for (const el of nav.querySelectorAll('*')) {
+            if (el.children.length > 0) continue;
+            const t = (el.innerText || el.textContent || '').trim().toLowerCase();
+            if (t.length > 3 && t.length < 120 && pageTitle.startsWith(t.substring(0, Math.min(t.length, 30)))) {
+              sidebarLink = el;
+              break;
+            }
+          }
+        }
+      }
+
+      if (!sidebarLink) {
+        console.log('🐻 ThreadCub: No sidebar element found for date extraction');
+        return null;
+      }
+      console.log('🐻 ThreadCub: Found sidebar element:', sidebarLink.tagName, sidebarLink.getAttribute('role'), sidebarLink.innerText?.substring(0, 40));
+
+      // Walk every element in the nav, find ones that look like date headings
+      // and come BEFORE our link in document order — take the last (closest) one
+      let lastHeadingText = null;
+      const allNavEls = nav.querySelectorAll('*');
+
+      for (const el of allNavEls) {
+        // Only look at elements with no child elements (leaf nodes)
+        if (el.children.length !== 0) continue;
+
+        const raw = (el.innerText || el.textContent || '').trim();
+        // Date headings are short — skip anything too long or too short
+        if (!raw || raw.length < 2 || raw.length > 40) continue;
+
+        if (!this._isClaudeDateHeading(raw)) continue;
+
+        // Check this heading comes BEFORE the sidebar link in document order
+        const pos = el.compareDocumentPosition(sidebarLink);
+        if (pos & Node.DOCUMENT_POSITION_FOLLOWING) {
+          lastHeadingText = raw;
+        }
+      }
+
+      if (!lastHeadingText) {
+        console.log('🐻 ThreadCub: No date heading found before sidebar link');
+        return null;
+      }
+
+      const parsed = this._parseClaudeDateHeading(lastHeadingText);
+      if (parsed) {
+        console.log('🐻 ThreadCub: Claude conversation date from heading "' + lastHeadingText + '":', parsed);
+      }
+      return parsed;
+    } catch (e) {
+      console.log('🐻 ThreadCub: Could not extract Claude conversation date:', e);
+      return null;
+    }
+  },
+
+  _isClaudeDateHeading(text) {
+    const t = text.trim().toLowerCase();
+    if (['today', 'yesterday', 'previous 7 days', 'last 7 days', 'previous 30 days', 'last 30 days', 'last week', 'this month'].includes(t)) return true;
+    if (/^(january|february|march|april|may|june|july|august|september|october|november|december)(\s+\d{4})?$/i.test(t)) return true;
+    if (/^\d{4}$/.test(t)) return true;
+    return false;
+  },
+
+  _parseClaudeDateHeading(heading) {
+    const now = new Date();
+    const t = heading.trim().toLowerCase();
+
+    if (t === 'today') {
+      const d = new Date(now); d.setHours(12, 0, 0, 0); return d.toISOString();
+    }
+    if (t === 'yesterday') {
+      const d = new Date(now); d.setDate(d.getDate() - 1); d.setHours(12, 0, 0, 0); return d.toISOString();
+    }
+    if (['previous 7 days', 'last 7 days', 'last week'].includes(t)) {
+      const d = new Date(now); d.setDate(d.getDate() - 4); d.setHours(12, 0, 0, 0); return d.toISOString();
+    }
+    if (['previous 30 days', 'last 30 days', 'this month'].includes(t)) {
+      const d = new Date(now); d.setDate(d.getDate() - 15); d.setHours(12, 0, 0, 0); return d.toISOString();
+    }
+    const MONTHS = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+    const monthYearMatch = t.match(/^(january|february|march|april|may|june|july|august|september|october|november|december)(?:\s+(\d{4}))?$/);
+    if (monthYearMatch) {
+      const month = MONTHS.indexOf(monthYearMatch[1]);
+      const year = monthYearMatch[2] ? parseInt(monthYearMatch[2]) : now.getFullYear();
+      return new Date(year, month, 15, 12, 0, 0).toISOString();
+    }
+    const yearMatch = t.match(/^(\d{4})$/);
+    if (yearMatch) {
+      return new Date(parseInt(yearMatch[1]), 5, 15, 12, 0, 0).toISOString();
+    }
+    return null;
   },
 
   simpleCleanContent(text) {
@@ -1146,8 +1269,8 @@ const title = (rawTitle
       ? Array.from({ length: pageCount }, (_, i) => `Page ${i + 1}: ${shareUrl}?page=${i + 1}&limit=30`).join('\n')
       : '';
     const urlBasedPrompt = needsPagination
-      ? `I'd like to continue our previous conversation. The complete context is available at: ${shareUrl}\n\nThis conversation has ${totalMessages} messages which is too large to fetch in one go. Please fetch each page sequentially using your web_fetch tool:\n${pageUrls}\n\nOnce you have all pages, confirm you have the full context and are ready to continue from where we left off.`
-      : `I'd like to continue our previous conversation. The complete context is available at: ${shareUrl}\n\nPlease attempt to fetch this URL using your web_fetch tool to access the conversation history. The URL returns a JSON response with the full conversation.\n\nIf you're able to retrieve it, let me know you're ready to continue from where we left off. If you cannot access it for any reason, please let me know and I'll share the conversation content directly.`;
+      ? `Continuing from '${conversationData?.title || 'our previous conversation'}' — I'd like to pick up where we left off. The complete context is available at: ${shareUrl}\n\nThis conversation has ${totalMessages} messages which is too large to fetch in one go. Please fetch each page sequentially using your web_fetch tool:\n${pageUrls}\n\nOnce you have all pages, confirm you have the full context and are ready to continue from where we left off.`
+      : `Continuing from '${conversationData?.title || 'our previous conversation'}' — I'd like to pick up where we left off. The complete context is available at: ${shareUrl}\n\nPlease attempt to fetch this URL using your web_fetch tool to access the conversation history. The URL returns a JSON response with the full conversation.\n\nIf you're able to retrieve it, let me know you're ready to continue from where we left off. If you cannot access it for any reason, please let me know and I'll share the conversation content directly.`;
 
     // GROK - URL-based (confirmed working with web_fetch)
     if (platform && platform.toLowerCase().includes('grok')) {

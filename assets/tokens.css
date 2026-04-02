@@ -184,7 +184,7 @@
   --transition-slow: 0.3s ease;
 
   /* ===== COMPONENT SIZES ===== */
-  --popup-width:         380px;
+  --popup-width:         400px;
   --popup-height:        600px;
   --logo-size:           80px;
   --icon-size-base:      32px;
@@ -237,7 +237,7 @@
   --transition-base: 0.2s ease;
   --border-radius-lg: 8px;
   --border-radius-xl: 12px;
-  --popup-width: 380px;
+  --popup-width: 400px;
   --popup-height: 600px;
   --toggle-width: 52px;
   --toggle-height: 28px;

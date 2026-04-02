@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         await checkAuthState();
         await initializeFloatingButtonState();
         setupEventListeners();
+        setupFeedbackListeners();
         listenForStorageChanges();
 
         console.log('🐻 ThreadCub Popup: Initialization complete!');
@@ -41,13 +42,13 @@ async function initializeLogo() {
     if (!logo) return;
 
     if (typeof chrome !== 'undefined' && chrome.runtime?.getURL) {
-        const fullPath = chrome.runtime.getURL('assets/images/logo-stacked.svg');
+        const fullPath = chrome.runtime.getURL('assets/images/logo.svg');
         const img = new Image();
         img.onload = () => {
             const imgEl = document.createElement('img');
             imgEl.src = fullPath;
             imgEl.alt = 'ThreadCub';
-            imgEl.style.cssText = 'width:140px;height:auto;display:block;';
+            imgEl.style.cssText = 'width:48px;height:auto;display:block;';
             logo.innerHTML = '';
             logo.appendChild(imgEl);
         };
@@ -84,11 +85,9 @@ async function checkAuthState() {
         console.log('🔐 Popup: Auth validation response:', response);
 
         if (response?.success && response?.authenticated) {
-            // 📊 GA: popup opened — user is authenticated
             chrome.runtime.sendMessage({ action: 'trackEvent', eventType: 'popup_opened', data: { auth_state: 'authenticated' } });
             showAuthenticatedView(response.user);
         } else {
-            // 📊 GA: popup opened — user is unauthenticated
             chrome.runtime.sendMessage({ action: 'trackEvent', eventType: 'popup_opened', data: { auth_state: 'unauthenticated' } });
             showUnauthenticatedView();
         }
@@ -157,7 +156,6 @@ async function initializeFloatingButtonState() {
     updateFloatingButtonUI(!!stored.threadcub_button_hidden);
 }
 
-// Updates both the authed and unauthed toggle buttons to stay in sync
 function updateFloatingButtonUI(isHidden) {
     ['Authed', 'Unauthed'].forEach(suffix => {
         const title = document.getElementById(`toggleFloatingTitle${suffix}`);
@@ -191,23 +189,15 @@ async function handleFloatingToggle() {
     updateFloatingButtonUI(newState);
     console.log('🐻 Popup: Floating button hidden:', newState);
 
-    // 📊 GA: floating button toggled from popup — new_state = hidden | visible
     chrome.runtime.sendMessage({ action: 'trackEvent', eventType: 'popup_floating_toggle', data: { new_state: newState ? 'hidden' : 'visible' } });
 
-    // Directly message the active tab as a reliable fallback —
-    // the content script's storage listener can miss the change
-    // if the script loaded before the key was ever written.
     try {
         const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
         if (tabs[0]?.id) {
             const action = newState ? 'hideFloatingButton' : 'showFloatingButton';
-            chrome.tabs.sendMessage(tabs[0].id, { action }).catch(() => {
-                // Tab doesn't have the content script — safe to ignore
-            });
+            chrome.tabs.sendMessage(tabs[0].id, { action }).catch(() => {});
         }
-    } catch (e) {
-        // Non-critical
-    }
+    } catch (e) {}
 }
 
 // =============================================================================
@@ -216,11 +206,10 @@ async function handleFloatingToggle() {
 
 function setupEventListeners() {
 
-    // Login button (unauthed view)
+    // Login button
     const loginBtn = document.getElementById('loginBtn');
     if (loginBtn) {
         loginBtn.addEventListener('click', () => {
-            // 📊 GA: login button clicked from popup
             chrome.runtime.sendMessage({ action: 'trackEvent', eventType: 'popup_login_clicked', data: {} });
             chrome.tabs.create({ url: 'https://threadcub.com/auth/extension-login' }, (tab) => {
                 chrome.storage.local.set({ threadcub_login_tab_id: tab.id });
@@ -228,12 +217,10 @@ function setupEventListeners() {
         });
     }
 
-    // Logout button (authed view)
+    // Logout button
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {
         logoutBtn.addEventListener('click', async () => {
-            console.log('🔐 Popup: Logout clicked');
-            // 📊 GA: logout button clicked from popup
             chrome.runtime.sendMessage({ action: 'trackEvent', eventType: 'popup_logout_clicked', data: {} });
             logoutBtn.disabled = true;
             try {
@@ -247,58 +234,64 @@ function setupEventListeners() {
         });
     }
 
-    // Open Dashboard (authed view)
+    // Open Dashboard
     const openDashboardBtn = document.getElementById('openDashboardBtn');
     if (openDashboardBtn) {
         openDashboardBtn.addEventListener('click', () => {
-            // 📊 GA: dashboard opened from popup
             chrome.runtime.sendMessage({ action: 'trackEvent', eventType: 'popup_dashboard_opened', data: {} });
             chrome.tabs.create({ url: 'https://threadcub.com/dashboard' });
         });
     }
 
-    // Discord — authed view
+    // Discord — authed
     const openDiscordBtn = document.getElementById('openDiscordBtn');
     if (openDiscordBtn) {
         openDiscordBtn.addEventListener('click', () => {
-            // 📊 GA: discord clicked from popup (authenticated view)
             chrome.runtime.sendMessage({ action: 'trackEvent', eventType: 'popup_discord_clicked', data: { auth_state: 'authenticated' } });
             chrome.tabs.create({ url: 'https://discord.gg/PDjByPDqRR' });
         });
     }
 
-    // Discord — unauthed view
+    // Discord — unauthed
     const openDiscordBtnUnauthed = document.getElementById('openDiscordBtnUnauthed');
     if (openDiscordBtnUnauthed) {
         openDiscordBtnUnauthed.addEventListener('click', () => {
-            // 📊 GA: discord clicked from popup (unauthenticated view)
             chrome.runtime.sendMessage({ action: 'trackEvent', eventType: 'popup_discord_clicked', data: { auth_state: 'unauthenticated' } });
             chrome.tabs.create({ url: 'https://discord.gg/PDjByPDqRR' });
         });
     }
 
-    // Quick tips / onboarding — authed view
+    // Onboarding — authed
     const showOnboardingBtnAuthed = document.getElementById('showOnboardingBtnAuthed');
     if (showOnboardingBtnAuthed) {
         showOnboardingBtnAuthed.addEventListener('click', triggerOnboarding);
     }
 
-    // Quick tips / onboarding — unauthed view
+    // Onboarding — unauthed
     const showOnboardingBtnUnauthed = document.getElementById('showOnboardingBtnUnauthed');
     if (showOnboardingBtnUnauthed) {
         showOnboardingBtnUnauthed.addEventListener('click', triggerOnboarding);
     }
 
-    // Floating toggle — authed view
+    // Floating toggle — authed
     const toggleFloatingBtnAuthed = document.getElementById('toggleFloatingBtnAuthed');
     if (toggleFloatingBtnAuthed) {
         toggleFloatingBtnAuthed.addEventListener('click', handleFloatingToggle);
     }
 
-    // Floating toggle — unauthed view
+    // Floating toggle — unauthed
     const toggleFloatingBtnUnauthed = document.getElementById('toggleFloatingBtnUnauthed');
     if (toggleFloatingBtnUnauthed) {
         toggleFloatingBtnUnauthed.addEventListener('click', handleFloatingToggle);
+    }
+
+    // Waitlist button
+    const joinWaitlistBtn = document.getElementById('joinWaitlistBtn');
+    if (joinWaitlistBtn) {
+        joinWaitlistBtn.addEventListener('click', () => {
+            chrome.runtime.sendMessage({ action: 'trackEvent', eventType: 'popup_waitlist_clicked', data: {} });
+            chrome.tabs.create({ url: 'https://www.threadcub.com/auth?mode=waitlist' });
+        });
     }
 
     // Header shadow on scroll
@@ -309,13 +302,11 @@ function setupEventListeners() {
         });
     });
 
-    // Make full rows clickable by delegating to the inner button/checkbox
+    // Make full rows clickable
     document.querySelectorAll('.action-row').forEach(row => {
         row.style.cursor = 'pointer';
         row.addEventListener('click', (e) => {
-            // Don't double-fire if the click was directly on the button/checkbox/toggle
             if (e.target.closest('.action-end-btn') || e.target.closest('.toggle')) return;
-            // Find the actionable element inside this row and trigger it
             const btn = row.querySelector('.action-end-btn');
             const toggle = row.querySelector('.toggle input');
             if (toggle) {
@@ -332,18 +323,12 @@ function setupEventListeners() {
 // =============================================================================
 
 async function triggerOnboarding(e) {
-    // 📊 GA: onboarding / quick tips triggered from popup
-    // Determine auth state from which button was clicked (authed vs unauthed view)
     const authState = e?.currentTarget?.id?.includes('Authed') ? 'authenticated' : 'unauthenticated';
     chrome.runtime.sendMessage({ action: 'trackEvent', eventType: 'popup_onboarding_triggered', data: { auth_state: authState } });
 
-    // Reset the done flag so the tour will run again, but keep welcome_seen
-    // so it doesn't wait for the welcome tab to be closed
     await chrome.storage.local.remove('threadcub_onboarding_done');
     await chrome.storage.local.set({ threadcub_welcome_seen: true });
 
-    // Try to trigger directly on the active tab — onboarding.js exposes
-    // window.threadcubOnboarding.start() which we can call via executeScript
     try {
         const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
         if (tabs[0]?.id) {
@@ -357,8 +342,6 @@ async function triggerOnboarding(e) {
             });
         }
     } catch (e) {
-        // scripting permission may not be available — the flag reset above
-        // means the tour will start automatically on the next page load
         console.warn('🐻 Popup: Could not trigger onboarding directly:', e.message);
     }
 
@@ -375,7 +358,6 @@ function listenForStorageChanges() {
     chrome.storage.onChanged.addListener((changes, areaName) => {
         if (areaName !== 'local') return;
 
-        // Auth token changed externally (e.g. login tab completed)
         if (changes.threadcub_auth_token) {
             if (changes.threadcub_auth_token.newValue) {
                 checkAuthState();
@@ -384,13 +366,225 @@ function listenForStorageChanges() {
             }
         }
 
-        // Floating button hidden/shown from the page (X button on the bear)
         if ('threadcub_button_hidden' in changes) {
             updateFloatingButtonUI(!!changes.threadcub_button_hidden.newValue);
         }
     });
 
     console.log('🔐 Popup: Listening for storage changes');
+}
+
+// =============================================================================
+// TOAST
+// =============================================================================
+
+function showPopupToast(message, type = 'success') {
+    const existing = document.querySelector('.popup-toast');
+    if (existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.className = `popup-toast popup-toast-${type}`;
+    toast.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+            <path d="m9 12 2 2 4-4"/>
+        </svg>
+        <span>${message}</span>
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.classList.add('show'), 50);
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// =============================================================================
+// FEEDBACK & BUG LISTENERS
+// =============================================================================
+
+function setupFeedbackListeners() {
+    let previousView = null;
+
+    function showView(viewId) {
+        const views = ['unauthedView', 'authedView', 'feedbackView', 'bugView'];
+        views.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = id === viewId ? 'flex' : 'none';
+        });
+    }
+
+    function openFeedbackView(fromView) {
+        previousView = fromView;
+        const comment = document.getElementById('feedbackComment');
+        const consent = document.getElementById('feedbackContactConsent');
+        if (comment) comment.value = '';
+        if (consent) consent.checked = false;
+        document.querySelectorAll('.rating-btn').forEach(b => b.classList.remove('selected'));
+        showView('feedbackView');
+    }
+
+    function openBugView(fromView) {
+        previousView = fromView;
+        const comment = document.getElementById('bugComment');
+        const consent = document.getElementById('bugContactConsent');
+        if (comment) comment.value = '';
+        if (consent) consent.checked = false;
+        showView('bugView');
+    }
+
+    // Feedback — open buttons
+    const openFeedbackBtnAuthed = document.getElementById('openFeedbackBtnAuthed');
+    if (openFeedbackBtnAuthed) {
+        openFeedbackBtnAuthed.addEventListener('click', () => openFeedbackView('authedView'));
+    }
+
+    const openFeedbackBtnUnauthed = document.getElementById('openFeedbackBtnUnauthed');
+    if (openFeedbackBtnUnauthed) {
+        openFeedbackBtnUnauthed.addEventListener('click', () => openFeedbackView('unauthedView'));
+    }
+
+    // Bug — open buttons
+    const openBugBtnAuthed = document.getElementById('openBugBtnAuthed');
+    if (openBugBtnAuthed) {
+        openBugBtnAuthed.addEventListener('click', () => openBugView('authedView'));
+    }
+
+    const openBugBtnUnauthed = document.getElementById('openBugBtnUnauthed');
+    if (openBugBtnUnauthed) {
+        openBugBtnUnauthed.addEventListener('click', () => openBugView('unauthedView'));
+    }
+
+    // Rating buttons — hover + click
+    document.querySelectorAll('.rating-btn').forEach(btn => {
+        const img = btn.querySelector('.rating-img');
+        if (!img) return;
+        btn.addEventListener('mouseenter', () => {
+            if (!btn.classList.contains('selected')) img.src = img.dataset.active;
+        });
+        btn.addEventListener('mouseleave', () => {
+            if (!btn.classList.contains('selected')) img.src = img.dataset.default;
+        });
+    });
+
+    document.querySelectorAll('.rating-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.rating-btn').forEach(b => {
+                b.classList.remove('selected');
+                const img = b.querySelector('.rating-img');
+                if (img) img.src = img.dataset.default;
+            });
+            btn.classList.add('selected');
+            const activeImg = btn.querySelector('.rating-img');
+            if (activeImg) activeImg.src = activeImg.dataset.active;
+        });
+    });
+
+    // Feedback — back + send
+    const feedbackBackBtn = document.getElementById('feedbackBackBtn');
+    if (feedbackBackBtn) {
+        feedbackBackBtn.addEventListener('click', () => {
+            showView(previousView || 'unauthedView');
+        });
+    }
+
+    const feedbackSendBtn = document.getElementById('feedbackSendBtn');
+    if (feedbackSendBtn) {
+        feedbackSendBtn.addEventListener('click', async () => {
+            const rating = document.querySelector('.rating-btn.selected')?.dataset.value || null;
+            const comment = document.getElementById('feedbackComment')?.value?.trim() || '';
+            const canContact = document.getElementById('feedbackContactConsent')?.checked || false;
+
+            if (!rating && !comment) {
+                feedbackSendBtn.textContent = 'Add a rating or comment first';
+                setTimeout(() => { feedbackSendBtn.textContent = 'Send'; }, 2000);
+                return;
+            }
+
+            feedbackSendBtn.disabled = true;
+            feedbackSendBtn.textContent = 'Sending…';
+
+            try {
+                const res = await fetch('https://www.threadcub.com/api/feedback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: 'feedback', rating, comment, canContact })
+                });
+                if (res.ok) {
+                    document.querySelectorAll('.rating-btn').forEach(b => {
+                        b.classList.remove('selected');
+                        const img = b.querySelector('.rating-img');
+                        if (img) img.src = img.dataset.default;
+                    });
+                    document.getElementById('feedbackComment').value = '';
+                    document.getElementById('feedbackContactConsent').checked = false;
+                    feedbackSendBtn.textContent = 'Send';
+                    feedbackSendBtn.disabled = false;
+                    showView(previousView || 'unauthedView');
+                    showPopupToast('Thanks for your feedback!');
+                } else {
+                    throw new Error('Server error');
+                }
+            } catch (err) {
+                feedbackSendBtn.textContent = 'Failed. Please try again';
+                feedbackSendBtn.disabled = false;
+                setTimeout(() => {
+                    feedbackSendBtn.textContent = 'Send';
+                    feedbackSendBtn.disabled = false;
+                }, 2000);
+            }
+        });
+    }
+
+    // Bug — back + send
+    const bugBackBtn = document.getElementById('bugBackBtn');
+    if (bugBackBtn) {
+        bugBackBtn.addEventListener('click', () => {
+            showView(previousView || 'unauthedView');
+        });
+    }
+
+    const bugSendBtn = document.getElementById('bugSendBtn');
+    if (bugSendBtn) {
+        bugSendBtn.addEventListener('click', async () => {
+            const comment = document.getElementById('bugComment')?.value?.trim() || '';
+            const canContact = document.getElementById('bugContactConsent')?.checked || false;
+
+            if (!comment) {
+                bugSendBtn.textContent = 'Add a description first';
+                setTimeout(() => { bugSendBtn.textContent = 'Send'; }, 2000);
+                return;
+            }
+
+            bugSendBtn.disabled = true;
+            bugSendBtn.textContent = 'Sending…';
+
+            try {
+                const res = await fetch('https://www.threadcub.com/api/feedback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: 'bug', comment, canContact })
+                });
+                if (res.ok) {
+                    document.getElementById('bugComment').value = '';
+                    document.getElementById('bugContactConsent').checked = false;
+                    bugSendBtn.textContent = 'Send';
+                    bugSendBtn.disabled = false;
+                    showView(previousView || 'unauthedView');
+                    showPopupToast('Bug reported. Thanks!');
+                } else {
+                    throw new Error('Server error');
+                }
+            } catch (err) {
+                bugSendBtn.textContent = 'Failed. Please try again';
+                bugSendBtn.disabled = false;
+                setTimeout(() => {
+                    bugSendBtn.textContent = 'Send';
+                    bugSendBtn.disabled = false;
+                }, 2000);
+            }
+        });
+    }
 }
 
 console.log('🐻 ThreadCub Popup: JavaScript loaded');

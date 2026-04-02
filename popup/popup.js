@@ -294,6 +294,15 @@ function setupEventListeners() {
         });
     }
 
+    // Sign in link
+    const signupLink = document.getElementById('signupLink');
+    if (signupLink) {
+        signupLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            chrome.tabs.create({ url: 'https://www.threadcub.com/auth?mode=signin&from=extension' });
+        });
+    }
+
     // Header shadow on scroll
     const header = document.querySelector('.header');
     document.querySelectorAll('.view').forEach(view => {
@@ -384,13 +393,10 @@ function showPopupToast(message, type = 'success') {
 
     const toast = document.createElement('div');
     toast.className = `popup-toast popup-toast-${type}`;
-    toast.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
-            <path d="m9 12 2 2 4-4"/>
-        </svg>
-        <span>${message}</span>
-    `;
+    const icon = type === 'error'
+    ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`
+    : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg>`;
+toast.innerHTML = `${icon}<span>${message}</span>`;
     document.body.appendChild(toast);
     setTimeout(() => toast.classList.add('show'), 50);
     setTimeout(() => {
@@ -408,10 +414,15 @@ function setupFeedbackListeners() {
 
     function showView(viewId) {
         const views = ['unauthedView', 'authedView', 'feedbackView', 'bugView'];
+        const formViews = ['feedbackView', 'bugView'];
+        const header = document.querySelector('.header');
         views.forEach(id => {
             const el = document.getElementById(id);
             if (el) el.style.display = id === viewId ? 'flex' : 'none';
         });
+        if (header) {
+            header.classList.toggle('hidden', formViews.includes(viewId));
+        }
     }
 
     function openFeedbackView(fromView) {
@@ -496,8 +507,7 @@ function setupFeedbackListeners() {
             const canContact = document.getElementById('feedbackContactConsent')?.checked || false;
 
             if (!rating && !comment) {
-                feedbackSendBtn.textContent = 'Add a rating or comment first';
-                setTimeout(() => { feedbackSendBtn.textContent = 'Send'; }, 2000);
+                showPopupToast('Please add a rating or comment first.', 'error');
                 return;
             }
 

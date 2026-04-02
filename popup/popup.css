@@ -51,7 +51,8 @@ html, body {
     height: var(--popup-height);
     background: var(--color-warm-white);
     color: var(--color-text-primary);
-    overflow: visible;
+    overflow: hidden;
+    border-radius: 8px;
 }
 
 /* =============================================================================
@@ -63,6 +64,7 @@ html, body {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    border-radius: 8px;
 }
 
 /* =============================================================================
@@ -80,6 +82,10 @@ html, body {
 
 .header.scrolled {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.header.hidden {
+    display: none;
 }
 
 .logo {
@@ -547,8 +553,8 @@ html, body {
 }
 
 .rating-img {
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
 }
 
 .form-textarea {
@@ -661,7 +667,7 @@ html, body {
 #bugView {
     gap: var(--spacing-4);
     overflow-y: auto;
-    padding-top: var(--spacing-4);
+    padding-top: var(--spacing-8);
 }
 
 .form-card {
@@ -716,4 +722,9 @@ html, body {
 .popup-toast-success {
     background: var(--color-toast-success-bg);
     color: var(--color-toast-success-text);
+}
+
+.popup-toast-error {
+    background: var(--color-toast-error-bg);
+    color: var(--color-toast-error-text);
 }

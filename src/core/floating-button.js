@@ -1123,7 +1123,8 @@ class ThreadCubFloatingButton {
       userAuthToken: userAuthToken,
       session_id: sessionId,
       capture_method: 'continue',
-      parent_conversation_id: parentConversationId
+      parent_conversation_id: parentConversationId,
+      source_chat_url: conversationData.url || null
     };
 
     console.log('🔍 parent_conversation_id:', apiData.parent_conversation_id, 'conversationData.url:', conversationData.url);

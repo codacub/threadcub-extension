@@ -113,11 +113,14 @@ function enhanceFloatingButtonWithConversationFeatures() {
 
         // Resolve parent_conversation_id — in-memory first, then chrome.storage fallback
         let parentConversationId = this.lastSavedConversationId || null;
+        console.log('🔍 [DM] parent lookup — in-memory lastSavedConversationId:', this.lastSavedConversationId);
         if (!parentConversationId && conversationData.url) {
           const stored = await chrome.storage.local.get([`tc_parent_${conversationData.url}`, 'tc_last_saved_id']);
+          console.log('🔍 [DM] parent lookup — tc_parent_<url>:', stored[`tc_parent_${conversationData.url}`]);
+          console.log('🔍 [DM] parent lookup — tc_last_saved_id:', stored['tc_last_saved_id']);
           parentConversationId = stored[`tc_parent_${conversationData.url}`] || stored['tc_last_saved_id'] || null;
         }
-        console.log('🔍 Resolved parentConversationId:', parentConversationId);
+        console.log('🔍 [DM] parent lookup — resolved parentConversationId:', parentConversationId);
 
         // FIXED: Use DIRECT fetch() call to API (same as working main branch) + AUTH TOKEN
         const apiData = {
@@ -140,11 +143,18 @@ function enhanceFloatingButtonWithConversationFeatures() {
           // Extract and persist conversation ID so the next Continue knows its parent
           const rawId = data.conversationId ?? data.id ?? data.conversation?.id ?? data.data?.id ?? null;
           const conversationId = (rawId && typeof rawId === 'string' && rawId !== 'undefined') ? rawId : null;
+          console.log('🔍 [DM] post-save — rawId:', rawId, '| conversationId:', conversationId);
           this.lastSavedConversationId = conversationId;
+          console.log('🔍 [DM] post-save — set this.lastSavedConversationId:', this.lastSavedConversationId);
           if (conversationId && conversationData.url) {
             chrome.storage.local.set({ [`tc_parent_${conversationData.url}`]: conversationId });
+            console.log('🔍 [DM] post-save — wrote tc_parent_' + conversationData.url + ':', conversationId);
             chrome.storage.local.set({ 'tc_last_saved_id': conversationId });
+            console.log('🔍 [DM] post-save — wrote tc_last_saved_id:', conversationId);
             chrome.runtime.sendMessage({ action: 'setPendingParent', conversationId: conversationId });
+            console.log('🔍 [DM] post-save — sent setPendingParent:', conversationId);
+          } else {
+            console.warn('🔍 [DM] post-save — skipped storage write. conversationId:', conversationId, '| url:', conversationData.url);
           }
 
           // Generate continuation prompt with real API data

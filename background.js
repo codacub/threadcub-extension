@@ -488,8 +488,14 @@ async function handleSaveConversation(data) {
 
           if (secretKey) {
             const conversationData = data.conversationData || data;
+            const payloadToEncrypt = {
+              ...conversationData,
+              capture_method: data.capture_method || 'save',
+              source_chat_url: data.source_chat_url || null,
+              parent_conversation_id: data.parent_conversation_id || null
+            };
             const encryptedBase64 = CryptoJSLib.AES.encrypt(
-              JSON.stringify(conversationData),
+              JSON.stringify(payloadToEncrypt),
               secretKey
             ).toString();
 

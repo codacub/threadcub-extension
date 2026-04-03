@@ -176,7 +176,13 @@ const ApiService = {
             const source = apiData?.source || conversationData?.source || conversationData?.platform?.toLowerCase() || 'unknown';
 
             console.log('🔒 ApiService.saveConversation: Encrypting with AES-GCM...');
-            const encryptedString = await CryptoSvc.encryptPayload(conversationData);
+            const payloadToEncrypt = {
+              ...conversationData,
+              capture_method: apiData?.capture_method || 'save',
+              source_chat_url: apiData?.source_chat_url || null,
+              parent_conversation_id: apiData?.parent_conversation_id || null
+            };
+            const encryptedString = await CryptoSvc.encryptPayload(payloadToEncrypt);
 
             if (encryptedString) {
               console.log('🔒 Encrypted payload length:', encryptedString.length);
@@ -332,7 +338,13 @@ const ApiService = {
               console.log('🔒 handleSaveConversation: No encryption key — skipping encryption, sending plaintext');
             } else {
               const conversationData = data.conversationData || data;
-              const encryptedBase64 = await CryptoSvc.encryptPayload(conversationData);
+              const payloadToEncrypt = {
+                ...conversationData,
+                capture_method: data.capture_method || 'save',
+                source_chat_url: data.source_chat_url || null,
+                parent_conversation_id: data.parent_conversation_id || null
+              };
+              const encryptedBase64 = await CryptoSvc.encryptPayload(payloadToEncrypt);
 
               if (encryptedBase64) {
                 const encryptedPayload = {

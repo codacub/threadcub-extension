@@ -110,7 +110,15 @@ function enhanceFloatingButtonWithConversationFeatures() {
 
         // Get session ID for anonymous conversation tracking
         const sessionId = await window.StorageService.getOrCreateSessionId();
-        
+
+        // Resolve parent_conversation_id — in-memory first, then chrome.storage fallback
+        let parentConversationId = this.lastSavedConversationId || null;
+        if (!parentConversationId && conversationData.url) {
+          const stored = await chrome.storage.local.get([`tc_parent_${conversationData.url}`, 'tc_last_saved_id']);
+          parentConversationId = stored[`tc_parent_${conversationData.url}`] || stored['tc_last_saved_id'] || null;
+        }
+        console.log('🔍 Resolved parentConversationId:', parentConversationId);
+
         // FIXED: Use DIRECT fetch() call to API (same as working main branch) + AUTH TOKEN
         const apiData = {
             conversationData: conversationData,
@@ -119,7 +127,7 @@ function enhanceFloatingButtonWithConversationFeatures() {
             userAuthToken: userAuthToken,
             session_id: sessionId,
             capture_method: 'continue',
-            parent_conversation_id: null,
+            parent_conversation_id: parentConversationId,
             source_chat_url: conversationData.url || null
         };
         

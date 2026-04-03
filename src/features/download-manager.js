@@ -118,7 +118,7 @@ function enhanceFloatingButtonWithConversationFeatures() {
             title: conversationData.title || 'Untitled Conversation',
             userAuthToken: userAuthToken,
             session_id: sessionId,
-            capture_method: 'save',
+            capture_method: 'continue',
             parent_conversation_id: null,
             source_chat_url: conversationData.url || null
         };

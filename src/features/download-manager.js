@@ -136,10 +136,20 @@ function enhanceFloatingButtonWithConversationFeatures() {
         try {
           // API call via ApiService
           const data = await window.ApiService.saveConversation(apiData);
-          
+
+          // Extract and persist conversation ID so the next Continue knows its parent
+          const rawId = data.conversationId ?? data.id ?? data.conversation?.id ?? data.data?.id ?? null;
+          const conversationId = (rawId && typeof rawId === 'string' && rawId !== 'undefined') ? rawId : null;
+          this.lastSavedConversationId = conversationId;
+          if (conversationId && conversationData.url) {
+            chrome.storage.local.set({ [`tc_parent_${conversationData.url}`]: conversationId });
+            chrome.storage.local.set({ 'tc_last_saved_id': conversationId });
+            chrome.runtime.sendMessage({ action: 'setPendingParent', conversationId: conversationId });
+          }
+
           // Generate continuation prompt with real API data
           const summary = data.summary || window.ConversationExtractor.generateQuickSummary(conversationData.messages);
-          const shareUrl = data.shareableUrl || `https://threadcub.com/api/share/${data.conversationId}`;
+          const shareUrl = data.shareableUrl || (conversationId ? `https://threadcub.com/api/share/${conversationId}` : null);
 
           const minimalPrompt = window.ConversationExtractor.generateContinuationPrompt(summary, shareUrl, conversationData.platform, conversationData);
           

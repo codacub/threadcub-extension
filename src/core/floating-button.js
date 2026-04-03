@@ -959,7 +959,7 @@ class ThreadCubFloatingButton {
       right: 2px;
       width: 14px;
       height: 14px;
-      background: {window.ThreadCubRebrand?.colors?.error || '#EF4444'};
+      background: ${window.ThreadCubRebrand?.colors?.error || '#EF4444'};
       border-radius: 50%;
       border: 2px solid white;
       cursor: pointer;
@@ -1115,6 +1115,11 @@ class ThreadCubFloatingButton {
       parentConversationId = stored[`tc_parent_${conversationData.url}`] || stored['tc_last_saved_id'] || null;
     }
     console.log('🔍 Resolved parentConversationId:', parentConversationId);
+    // Write parent ID to storage BEFORE opening new tab — avoids race condition
+    if (parentConversationId) {
+      await chrome.storage.local.set({ 'tc_pending_parent': parentConversationId });
+      console.log('🔍 DEBUG: Pre-wrote tc_pending_parent before API call:', parentConversationId);
+    }
 
     const apiData = {
       conversationData: conversationData,
@@ -1146,6 +1151,7 @@ class ThreadCubFloatingButton {
         this.lastSavedConversationData = null;
         this.lastSavedAt = null;
       } else {
+        console.log('🐻 PRE-API CALL:', apiData?.capture_method, apiData?.source_chat_url);
         const data = await window.ApiService.saveConversation(apiData);
 
         // Store session_id returned from server (ensures anonymous saves are claimable)
@@ -1169,6 +1175,7 @@ class ThreadCubFloatingButton {
         // Use nullish coalescing to avoid picking up JS `undefined` values, which
         // would coerce to the string "undefined" inside the template literal below.
         const rawId = data.conversationId ?? data.id ?? data.conversation?.id ?? data.data?.id ?? null;
+        console.log('🔍 RAW CHECK:', typeof data.conversationId, JSON.stringify(data).substring(0, 200));
         const conversationId = (rawId && typeof rawId === 'string' && rawId !== 'undefined') ? rawId : null;
         console.log('🔍 DEBUG: conversationId resolved as:', conversationId);
         this.lastSavedConversationId = conversationId;
@@ -1177,7 +1184,9 @@ class ThreadCubFloatingButton {
         if (conversationId && conversationData.url) {
           chrome.storage.local.set({ [`tc_parent_${conversationData.url}`]: conversationId });
           chrome.storage.local.set({ 'tc_last_saved_id': conversationId });
+          sendMessageWithRetry({ action: 'setPendingParent', conversationId: conversationId });
           console.log('🔍 DEBUG: Persisted parent ID for URL:', conversationData.url);
+          console.log('🔍 DEBUG: Set tc_pending_parent for new tab:', conversationId);
         }
 
         // Build shareUrl — only if we have a real UUID
@@ -1211,7 +1220,7 @@ class ThreadCubFloatingButton {
         console.log('🤖 ThreadCub: Routing to Claude flow (no file download)');
         // 📊 GA: continue succeeded — routed to Claude
         sendMessageWithRetry({ action: 'trackEvent', eventType: 'continue_success', data: { platform: 'claude', message_count: conversationData.messages.length } });
-        this.handleClaudeFlow(minimalPrompt, shareUrl, conversationData);
+        this.handleClaudeFlow(minimalPrompt, shareUrl, conversationData, conversationId);
       } else if (targetPlatform === 'gemini') {
         console.log('🤖 ThreadCub: Routing to Gemini flow (with file download)');
         // 📊 GA: continue succeeded — routed to Gemini
@@ -1327,7 +1336,19 @@ class ThreadCubFloatingButton {
       console.log(`🐻 ThreadCub: Successfully extracted ${conversationData.messages.length} messages`);
 
       // Get session ID for anonymous conversation tracking
-      const sessionId = await window.StorageService.getOrCreateSessionId();
+     const sessionId = await window.StorageService.getOrCreateSessionId();
+
+      // Check for pending parent from a Continue flow
+      const pendingParentData = await sendMessageWithRetry({ action: 'getPendingParent' });
+      console.log('🔍 RAW TC_PENDING_PARENT:', JSON.stringify(pendingParentData));
+      const urlParams = new URLSearchParams(window.location.search);
+      const parentFromContinue = pendingParentData?.conversationId 
+        || urlParams.get('tc_parent') 
+        || null;
+      if (parentFromContinue) {
+        await chrome.storage.local.remove('tc_pending_parent');
+        console.log('🔍 DEBUG: Found pending parent from Continue flow:', parentFromContinue);
+      }
 
       const apiData = {
         conversationData: conversationData,
@@ -1335,12 +1356,15 @@ class ThreadCubFloatingButton {
         title: conversationData.title || 'Untitled Conversation',
         userAuthToken: userAuthToken,
         session_id: sessionId,
-        capture_method: 'save',
-        parent_conversation_id: null
+        // capture_method: parentFromContinue ? 'continue' : (new URLSearchParams(window.location.search).get('tc_parent') ? 'continue' : 'save'),
+        capture_method: 'continue',
+        parent_conversation_id: parentFromContinue,
+        source_chat_url: conversationData.url || null
       };
 
       // API call via ApiService - save only, no tab open
       try {
+        console.log('🐻 PRE-API CALL:', apiData?.capture_method, apiData?.source_chat_url);
         const data = await window.ApiService.saveConversation(apiData);
 
         // Store session_id returned from server (ensures anonymous saves are claimable)
@@ -1687,13 +1711,14 @@ Please read through the attached conversation file and provide your assessment o
 Once you've reviewed it, let me know you're ready to continue from where we left off.`;
 }
 
-  handleClaudeFlow(continuationPrompt, shareUrl, conversationData) {
+  handleClaudeFlow(continuationPrompt, shareUrl, conversationData, parentId = null) {
     console.log('🤖 ThreadCub: Starting Claude flow (API-only, no downloads)...');
 
     const continuationData = {
       prompt: continuationPrompt,
       shareUrl: shareUrl,
-      platform: 'Claude',
+     platform: 'Claude',
+      parentId: parentId,
       timestamp: Date.now(),
       messages: conversationData.messages || [],
       totalMessages: conversationData.total_messages || conversationData.messages?.length || 0,
@@ -1712,7 +1737,9 @@ Once you've reviewed it, let me know you're ready to continue from where we left
       window.StorageService.storeWithChrome(continuationData)
         .then(() => {
           console.log('🐻 ThreadCub: Claude data stored successfully');
-          const claudeUrl = 'https://claude.ai/';
+          const claudeUrl = continuationData.parentId
+          ? `https://claude.ai/?tc_parent=${continuationData.parentId}`
+          : 'https://claude.ai/';
           window.open(claudeUrl, '_blank');
           this.showSuccessToast('Opening Claude with conversation context...');
         })

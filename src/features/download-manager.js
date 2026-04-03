@@ -141,7 +141,7 @@ function enhanceFloatingButtonWithConversationFeatures() {
             this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
           } else if (targetPlatform === 'claude') {
             console.log('🤖 ThreadCub: Routing to Claude flow (no file download)');
-            this.handleClaudeFlow(minimalPrompt, shareUrl, conversationData);
+            this.handleClaudeFlow(minimalPrompt, shareUrl, conversationData, data.conversationId || null);
           } else if (targetPlatform === 'gemini') {
             console.log('🤖 ThreadCub: Routing to Gemini flow (with file download)');
             this.handleGeminiFlow(minimalPrompt, shareUrl, conversationData);

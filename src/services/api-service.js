@@ -236,22 +236,25 @@ const ApiService = {
         console.log('🔒 ApiService.saveConversation: Retrying with original unencrypted payload...');
       }
 
+      console.log('🔍 APIDATA CAPTURE METHOD:', apiData?.capture_method, '| SOURCE CHAT URL:', apiData?.source_chat_url);
+      
       const title  = apiData?.title || apiData?.conversationData?.title || 'Untitled Conversation';
       const source = apiData?.source || apiData?.conversationData?.source || apiData?.platform?.toLowerCase() || 'unknown';
 
       const unencryptedPayload = {
-        conversationData: {
-          messages: messages,
-          title: title,
-          source: source,
-          url: apiData?.conversationData?.url || null
-        },
+      conversationData: {
+        messages: messages,
         title: title,
         source: source,
-        session_id: apiData?.session_id || apiData?.sessionId || null,
-        capture_method: apiData?.capture_method || 'save',
-        parent_conversation_id: apiData?.parent_conversation_id || null
-      };
+        url: apiData?.conversationData?.url || null
+      },
+      title: title,
+      source: source,
+      session_id: apiData?.session_id || apiData?.sessionId || null,
+      capture_method: apiData?.capture_method || 'save',
+      parent_conversation_id: apiData?.parent_conversation_id || null,
+      source_chat_url: apiData?.source_chat_url || null   // ← ADD THIS LINE
+    };
 
       console.log('🔍 Sending unencrypted payload:', JSON.stringify(unencryptedPayload, null, 2));
 

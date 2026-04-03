@@ -41,6 +41,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         .catch(error => sendResponse({ success: false, error: error.message }));
       return true;
 
+        case 'setPendingParent':
+      chrome.storage.local.set({ tc_pending_parent: request.conversationId })
+        .then(() => sendResponse({ success: true }));
+      return true;
+    case 'getPendingParent':
+      chrome.storage.local.get(['tc_pending_parent']).then(stored => {
+        chrome.storage.local.remove('tc_pending_parent');
+        sendResponse({ success: true, conversationId: stored.tc_pending_parent || null });
+      });
+      return true;
     case 'getPendingCount':
       chrome.storage.local.get(TC_PENDING_KEY).then(stored => {
         const queue = stored[TC_PENDING_KEY] || [];

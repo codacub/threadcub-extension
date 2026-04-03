@@ -192,7 +192,8 @@ const ApiService = {
                   source: source,
                   session_id: apiData?.session_id || apiData?.sessionId || null,
                   capture_method: apiData?.capture_method || 'save',
-                  parent_conversation_id: apiData?.parent_conversation_id || null
+                  parent_conversation_id: apiData?.parent_conversation_id || null,
+                  source_chat_url: apiData?.source_chat_url || null
                 })
               });
 
@@ -338,7 +339,11 @@ const ApiService = {
                   encrypted_payload: encryptedBase64,
                   encryption_format: 'aes-gcm',
                   source: data.source || data.conversationData?.platform?.toLowerCase() || 'unknown',
-                  title: data.title || data.conversationData?.title || 'Untitled'
+                  title: data.title || data.conversationData?.title || 'Untitled',
+                  session_id: data.session_id || data.sessionId || null,
+                  capture_method: data.capture_method || 'save',
+                  parent_conversation_id: data.parent_conversation_id || null,
+                  source_chat_url: data.source_chat_url || null
                 };
 
                 console.log('🔒 ApiService.handleSaveConversation: Sending encrypted payload');
@@ -401,7 +406,11 @@ const ApiService = {
           source: source
         },
         title: title,
-        source: source
+        source: source,
+        session_id: data.session_id || data.sessionId || null,
+        capture_method: data.capture_method || 'save',
+        parent_conversation_id: data.parent_conversation_id || null,
+        source_chat_url: data.source_chat_url || null
       };
 
       console.log('🔍 ApiService.handleSaveConversation: Unencrypted payload:', JSON.stringify(unencryptedPayload, null, 2));

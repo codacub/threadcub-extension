@@ -365,7 +365,9 @@ class ConversationLengthDetector {
         source: conversationData.platform?.toLowerCase() || 'unknown',
         title: conversationData.title || 'Untitled Conversation',
         userAuthToken: userAuthToken,
-        sessionId: sessionId
+        session_id: sessionId,
+        capture_method: 'save',
+        source_chat_url: conversationData.url || null
       };
 
       // Save to API

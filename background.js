@@ -498,7 +498,10 @@ async function handleSaveConversation(data) {
               encrypted_payload: encryptedBase64,
               source: data.source || data.conversationData?.platform?.toLowerCase() || 'unknown',
               title: data.title || data.conversationData?.title || 'Untitled',
-              session_id: data.sessionId || null
+              session_id: data.session_id || data.sessionId || null,
+              capture_method: data.capture_method || 'save',
+              parent_conversation_id: data.parent_conversation_id || null,
+              source_chat_url: data.source_chat_url || null
             };
             console.log('🔒 Background.handleSaveConversation: session_id included:', !!encryptedPayload.session_id);
 
@@ -569,9 +572,10 @@ async function handleSaveConversation(data) {
       },
       title: title,
       source: source,
-      session_id: data.sessionId || null,
+      session_id: data.session_id || data.sessionId || null,
       capture_method: data.capture_method || 'save',
-      parent_conversation_id: data.parent_conversation_id || null
+      parent_conversation_id: data.parent_conversation_id || null,
+      source_chat_url: data.source_chat_url || null
     };
     console.log('🔍 Background.handleSaveConversation: session_id in unencrypted payload:', !!unencryptedPayload.session_id);
 

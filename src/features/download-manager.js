@@ -55,11 +55,11 @@ function createDownloadFromData(conversationData) {
 
 function enhanceFloatingButtonWithConversationFeatures() {
   if (window.threadcubButton && typeof window.threadcubButton === 'object') {
-    console.log('🐻 ThreadCub: Enhancing modular floating button with conversation features...');
+    console.log('🔍 [DM] enhanceFloatingButtonWithConversationFeatures — installing override on window.threadcubButton:', window.threadcubButton?.constructor?.name);
     
     // Override with DIRECT API CALLS + AuthService token
     window.threadcubButton.saveAndOpenConversation = async function(source = 'floating') {
-      console.log('🐻 ThreadCub: saveAndOpenConversation called from:', source);
+      console.log('🔍 [DM] saveAndOpenConversation OVERRIDE running, source:', source);
 
       // ===== GET USER AUTH TOKEN VIA AuthService =====
       console.log('🔐 Getting user auth token via AuthService...');

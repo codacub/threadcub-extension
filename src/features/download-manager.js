@@ -134,8 +134,13 @@ function enhanceFloatingButtonWithConversationFeatures() {
             source_chat_url: conversationData.url || null
         };
         
-        console.log('🐻 ThreadCub: Making DIRECT API call to ThreadCub...');
-        
+        console.log('🔍 [DM] apiData pre-call — keys:', Object.keys(apiData));
+        console.log('🔍 [DM] apiData pre-call — capture_method:', apiData.capture_method);
+        console.log('🔍 [DM] apiData pre-call — parent_conversation_id:', apiData.parent_conversation_id);
+        console.log('🔍 [DM] apiData pre-call — session_id:', apiData.session_id);
+        console.log('🔍 [DM] apiData pre-call — source:', apiData.source);
+        console.log('🔍 [DM] apiData pre-call — source_chat_url:', apiData.source_chat_url);
+
         try {
           // API call via ApiService
           const data = await window.ApiService.saveConversation(apiData);

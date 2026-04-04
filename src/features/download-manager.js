@@ -64,13 +64,14 @@ function enhanceFloatingButtonWithConversationFeatures() {
       // ===== GET USER AUTH TOKEN VIA AuthService =====
       console.log('🔐 Getting user auth token via AuthService...');
       let userAuthToken = null;
+      let extensionContextInvalid = false;
 
       try {
         if (window.AuthService) {
           userAuthToken = await window.AuthService.getToken();
           console.log('🔐 Auth token from AuthService:', !!userAuthToken);
         }
-        // Fallback to old method if AuthService token not available
+        // Fallback to background message if AuthService token not available
         if (!userAuthToken) {
           const response = await chrome.runtime.sendMessage({ action: 'getAuthToken' });
           if (response && response.success) {
@@ -79,7 +80,27 @@ function enhanceFloatingButtonWithConversationFeatures() {
           }
         }
       } catch (error) {
-        console.log('🔐 Auth token retrieval failed:', error);
+        const msg = error?.message || '';
+        if (msg.includes('Extension context invalidated') || msg.includes('Extension context')) {
+          extensionContextInvalid = true;
+          console.warn('🔐 Extension context invalidated — falling back to localStorage for auth token');
+        } else {
+          console.log('🔐 Auth token retrieval failed:', error);
+        }
+      }
+
+      // Final localStorage fallback — works even when extension context is dead
+      if (!userAuthToken) {
+        try {
+          userAuthToken = localStorage.getItem('threadcub_auth_token');
+          if (userAuthToken) console.log('🔐 Auth token recovered from localStorage:', !!userAuthToken);
+        } catch (e) { /* ignore */ }
+      }
+
+      if (extensionContextInvalid) {
+        this.showErrorToast('ThreadCub was updated — please reload this page to continue saving.');
+        this.isExporting = false;
+        return;
       }
 
       const now = Date.now();

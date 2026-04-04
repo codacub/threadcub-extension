@@ -41,6 +41,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         .catch(error => sendResponse({ success: false, error: error.message }));
       return true;
 
+        case 'setPendingParent':
+      chrome.storage.local.set({ tc_pending_parent: request.conversationId })
+        .then(() => sendResponse({ success: true }));
+      return true;
+    case 'getPendingParent':
+      chrome.storage.local.get(['tc_pending_parent']).then(stored => {
+        chrome.storage.local.remove('tc_pending_parent');
+        sendResponse({ success: true, conversationId: stored.tc_pending_parent || null });
+      });
+      return true;
     case 'getPendingCount':
       chrome.storage.local.get(TC_PENDING_KEY).then(stored => {
         const queue = stored[TC_PENDING_KEY] || [];
@@ -478,8 +488,14 @@ async function handleSaveConversation(data) {
 
           if (secretKey) {
             const conversationData = data.conversationData || data;
+            const payloadToEncrypt = {
+              ...conversationData,
+              capture_method: data.capture_method || 'save',
+              source_chat_url: data.source_chat_url || null,
+              parent_conversation_id: data.parent_conversation_id || null
+            };
             const encryptedBase64 = CryptoJSLib.AES.encrypt(
-              JSON.stringify(conversationData),
+              JSON.stringify(payloadToEncrypt),
               secretKey
             ).toString();
 
@@ -488,7 +504,10 @@ async function handleSaveConversation(data) {
               encrypted_payload: encryptedBase64,
               source: data.source || data.conversationData?.platform?.toLowerCase() || 'unknown',
               title: data.title || data.conversationData?.title || 'Untitled',
-              session_id: data.sessionId || null
+              session_id: data.session_id || data.sessionId || null,
+              capture_method: data.capture_method || 'save',
+              parent_conversation_id: data.parent_conversation_id || null,
+              source_chat_url: data.source_chat_url || null
             };
             console.log('🔒 Background.handleSaveConversation: session_id included:', !!encryptedPayload.session_id);
 
@@ -559,9 +578,10 @@ async function handleSaveConversation(data) {
       },
       title: title,
       source: source,
-      session_id: data.sessionId || null,
+      session_id: data.session_id || data.sessionId || null,
       capture_method: data.capture_method || 'save',
-      parent_conversation_id: data.parent_conversation_id || null
+      parent_conversation_id: data.parent_conversation_id || null,
+      source_chat_url: data.source_chat_url || null
     };
     console.log('🔍 Background.handleSaveConversation: session_id in unencrypted payload:', !!unencryptedPayload.session_id);
 

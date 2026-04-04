@@ -55,22 +55,23 @@ function createDownloadFromData(conversationData) {
 
 function enhanceFloatingButtonWithConversationFeatures() {
   if (window.threadcubButton && typeof window.threadcubButton === 'object') {
-    console.log('🐻 ThreadCub: Enhancing modular floating button with conversation features...');
+    console.log('🔍 [DM] enhanceFloatingButtonWithConversationFeatures — installing override on window.threadcubButton:', window.threadcubButton?.constructor?.name);
     
     // Override with DIRECT API CALLS + AuthService token
     window.threadcubButton.saveAndOpenConversation = async function(source = 'floating') {
-      console.log('🐻 ThreadCub: saveAndOpenConversation called from:', source);
+      console.log('🔍 [DM] saveAndOpenConversation OVERRIDE running, source:', source);
 
       // ===== GET USER AUTH TOKEN VIA AuthService =====
       console.log('🔐 Getting user auth token via AuthService...');
       let userAuthToken = null;
+      let extensionContextInvalid = false;
 
       try {
         if (window.AuthService) {
           userAuthToken = await window.AuthService.getToken();
           console.log('🔐 Auth token from AuthService:', !!userAuthToken);
         }
-        // Fallback to old method if AuthService token not available
+        // Fallback to background message if AuthService token not available
         if (!userAuthToken) {
           const response = await chrome.runtime.sendMessage({ action: 'getAuthToken' });
           if (response && response.success) {
@@ -79,7 +80,27 @@ function enhanceFloatingButtonWithConversationFeatures() {
           }
         }
       } catch (error) {
-        console.log('🔐 Auth token retrieval failed:', error);
+        const msg = error?.message || '';
+        if (msg.includes('Extension context invalidated') || msg.includes('Extension context')) {
+          extensionContextInvalid = true;
+          console.warn('🔐 Extension context invalidated — falling back to localStorage for auth token');
+        } else {
+          console.log('🔐 Auth token retrieval failed:', error);
+        }
+      }
+
+      // Final localStorage fallback — works even when extension context is dead
+      if (!userAuthToken) {
+        try {
+          userAuthToken = localStorage.getItem('threadcub_auth_token');
+          if (userAuthToken) console.log('🔐 Auth token recovered from localStorage:', !!userAuthToken);
+        } catch (e) { /* ignore */ }
+      }
+
+      if (extensionContextInvalid) {
+        this.showErrorToast('ThreadCub was updated — please reload this page to continue saving.');
+        this.isExporting = false;
+        return;
       }
 
       const now = Date.now();
@@ -110,7 +131,18 @@ function enhanceFloatingButtonWithConversationFeatures() {
 
         // Get session ID for anonymous conversation tracking
         const sessionId = await window.StorageService.getOrCreateSessionId();
-        
+
+        // Resolve parent_conversation_id — in-memory first, then chrome.storage fallback
+        let parentConversationId = this.lastSavedConversationId || null;
+        console.log('🔍 [DM] parent lookup — in-memory lastSavedConversationId:', this.lastSavedConversationId);
+        if (!parentConversationId && conversationData.url) {
+          const stored = await chrome.storage.local.get([`tc_parent_${conversationData.url}`, 'tc_last_saved_id']);
+          console.log('🔍 [DM] parent lookup — tc_parent_<url>:', stored[`tc_parent_${conversationData.url}`]);
+          console.log('🔍 [DM] parent lookup — tc_last_saved_id:', stored['tc_last_saved_id']);
+          parentConversationId = stored[`tc_parent_${conversationData.url}`] || stored['tc_last_saved_id'] || null;
+        }
+        console.log('🔍 [DM] parent lookup — resolved parentConversationId:', parentConversationId);
+
         // FIXED: Use DIRECT fetch() call to API (same as working main branch) + AUTH TOKEN
         const apiData = {
             conversationData: conversationData,
@@ -118,19 +150,42 @@ function enhanceFloatingButtonWithConversationFeatures() {
             title: conversationData.title || 'Untitled Conversation',
             userAuthToken: userAuthToken,
             session_id: sessionId,
-            capture_method: 'save',
-            parent_conversation_id: null
+            capture_method: 'continue',
+            parent_conversation_id: parentConversationId,
+            source_chat_url: conversationData.url || null
         };
         
-        console.log('🐻 ThreadCub: Making DIRECT API call to ThreadCub...');
-        
+        console.log('🔍 [DM] apiData pre-call — keys:', Object.keys(apiData));
+        console.log('🔍 [DM] apiData pre-call — capture_method:', apiData.capture_method);
+        console.log('🔍 [DM] apiData pre-call — parent_conversation_id:', apiData.parent_conversation_id);
+        console.log('🔍 [DM] apiData pre-call — session_id:', apiData.session_id);
+        console.log('🔍 [DM] apiData pre-call — source:', apiData.source);
+        console.log('🔍 [DM] apiData pre-call — source_chat_url:', apiData.source_chat_url);
+
         try {
           // API call via ApiService
           const data = await window.ApiService.saveConversation(apiData);
-          
+
+          // Extract and persist conversation ID so the next Continue knows its parent
+          const rawId = data.conversationId ?? data.id ?? data.conversation?.id ?? data.data?.id ?? null;
+          const conversationId = (rawId && typeof rawId === 'string' && rawId !== 'undefined') ? rawId : null;
+          console.log('🔍 [DM] post-save — rawId:', rawId, '| conversationId:', conversationId);
+          this.lastSavedConversationId = conversationId;
+          console.log('🔍 [DM] post-save — set this.lastSavedConversationId:', this.lastSavedConversationId);
+          if (conversationId && conversationData.url) {
+            chrome.storage.local.set({ [`tc_parent_${conversationData.url}`]: conversationId });
+            console.log('🔍 [DM] post-save — wrote tc_parent_' + conversationData.url + ':', conversationId);
+            chrome.storage.local.set({ 'tc_last_saved_id': conversationId });
+            console.log('🔍 [DM] post-save — wrote tc_last_saved_id:', conversationId);
+            chrome.runtime.sendMessage({ action: 'setPendingParent', conversationId: conversationId });
+            console.log('🔍 [DM] post-save — sent setPendingParent:', conversationId);
+          } else {
+            console.warn('🔍 [DM] post-save — skipped storage write. conversationId:', conversationId, '| url:', conversationData.url);
+          }
+
           // Generate continuation prompt with real API data
           const summary = data.summary || window.ConversationExtractor.generateQuickSummary(conversationData.messages);
-          const shareUrl = data.shareableUrl || `https://threadcub.com/api/share/${data.conversationId}`;
+          const shareUrl = data.shareableUrl || (conversationId ? `https://threadcub.com/api/share/${conversationId}` : null);
 
           const minimalPrompt = window.ConversationExtractor.generateContinuationPrompt(summary, shareUrl, conversationData.platform, conversationData);
           
@@ -141,7 +196,7 @@ function enhanceFloatingButtonWithConversationFeatures() {
             this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
           } else if (targetPlatform === 'claude') {
             console.log('🤖 ThreadCub: Routing to Claude flow (no file download)');
-            this.handleClaudeFlow(minimalPrompt, shareUrl, conversationData);
+            this.handleClaudeFlow(minimalPrompt, shareUrl, conversationData, data.conversationId || null);
           } else if (targetPlatform === 'gemini') {
             console.log('🤖 ThreadCub: Routing to Gemini flow (with file download)');
             this.handleGeminiFlow(minimalPrompt, shareUrl, conversationData);

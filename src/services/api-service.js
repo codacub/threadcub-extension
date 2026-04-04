@@ -176,7 +176,13 @@ const ApiService = {
             const source = apiData?.source || conversationData?.source || conversationData?.platform?.toLowerCase() || 'unknown';
 
             console.log('🔒 ApiService.saveConversation: Encrypting with AES-GCM...');
-            const encryptedString = await CryptoSvc.encryptPayload(conversationData);
+            const payloadToEncrypt = {
+              ...conversationData,
+              capture_method: apiData?.capture_method || 'save',
+              source_chat_url: apiData?.source_chat_url || null,
+              parent_conversation_id: apiData?.parent_conversation_id || null
+            };
+            const encryptedString = await CryptoSvc.encryptPayload(payloadToEncrypt);
 
             if (encryptedString) {
               console.log('🔒 Encrypted payload length:', encryptedString.length);
@@ -192,7 +198,8 @@ const ApiService = {
                   source: source,
                   session_id: apiData?.session_id || apiData?.sessionId || null,
                   capture_method: apiData?.capture_method || 'save',
-                  parent_conversation_id: apiData?.parent_conversation_id || null
+                  parent_conversation_id: apiData?.parent_conversation_id || null,
+                  source_chat_url: apiData?.source_chat_url || null
                 })
               });
 
@@ -236,22 +243,25 @@ const ApiService = {
         console.log('🔒 ApiService.saveConversation: Retrying with original unencrypted payload...');
       }
 
+      console.log('🔍 APIDATA CAPTURE METHOD:', apiData?.capture_method, '| SOURCE CHAT URL:', apiData?.source_chat_url);
+      
       const title  = apiData?.title || apiData?.conversationData?.title || 'Untitled Conversation';
       const source = apiData?.source || apiData?.conversationData?.source || apiData?.platform?.toLowerCase() || 'unknown';
 
       const unencryptedPayload = {
-        conversationData: {
-          messages: messages,
-          title: title,
-          source: source,
-          url: apiData?.conversationData?.url || null
-        },
+      conversationData: {
+        messages: messages,
         title: title,
         source: source,
-        session_id: apiData?.session_id || apiData?.sessionId || null,
-        capture_method: apiData?.capture_method || 'save',
-        parent_conversation_id: apiData?.parent_conversation_id || null
-      };
+        url: apiData?.conversationData?.url || null
+      },
+      title: title,
+      source: source,
+      session_id: apiData?.session_id || apiData?.sessionId || null,
+      capture_method: apiData?.capture_method || 'save',
+      parent_conversation_id: apiData?.parent_conversation_id || null,
+      source_chat_url: apiData?.source_chat_url || null   // ← ADD THIS LINE
+    };
 
       console.log('🔍 Sending unencrypted payload:', JSON.stringify(unencryptedPayload, null, 2));
 
@@ -328,14 +338,24 @@ const ApiService = {
               console.log('🔒 handleSaveConversation: No encryption key — skipping encryption, sending plaintext');
             } else {
               const conversationData = data.conversationData || data;
-              const encryptedBase64 = await CryptoSvc.encryptPayload(conversationData);
+              const payloadToEncrypt = {
+                ...conversationData,
+                capture_method: data.capture_method || 'save',
+                source_chat_url: data.source_chat_url || null,
+                parent_conversation_id: data.parent_conversation_id || null
+              };
+              const encryptedBase64 = await CryptoSvc.encryptPayload(payloadToEncrypt);
 
               if (encryptedBase64) {
                 const encryptedPayload = {
                   encrypted_payload: encryptedBase64,
                   encryption_format: 'aes-gcm',
                   source: data.source || data.conversationData?.platform?.toLowerCase() || 'unknown',
-                  title: data.title || data.conversationData?.title || 'Untitled'
+                  title: data.title || data.conversationData?.title || 'Untitled',
+                  session_id: data.session_id || data.sessionId || null,
+                  capture_method: data.capture_method || 'save',
+                  parent_conversation_id: data.parent_conversation_id || null,
+                  source_chat_url: data.source_chat_url || null
                 };
 
                 console.log('🔒 ApiService.handleSaveConversation: Sending encrypted payload');
@@ -398,7 +418,11 @@ const ApiService = {
           source: source
         },
         title: title,
-        source: source
+        source: source,
+        session_id: data.session_id || data.sessionId || null,
+        capture_method: data.capture_method || 'save',
+        parent_conversation_id: data.parent_conversation_id || null,
+        source_chat_url: data.source_chat_url || null
       };
 
       console.log('🔍 ApiService.handleSaveConversation: Unencrypted payload:', JSON.stringify(unencryptedPayload, null, 2));

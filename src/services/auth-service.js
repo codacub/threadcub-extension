@@ -59,8 +59,8 @@ const AuthService = {
       if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
         chrome.storage.local.get([this.TOKEN_KEY], (result) => {
           if (chrome.runtime.lastError) {
-            console.log('🔐 AuthService: Error getting token:', chrome.runtime.lastError);
-            resolve(null);
+            console.warn('🔐 AuthService: chrome.storage error, falling back to localStorage:', chrome.runtime.lastError.message);
+            try { resolve(localStorage.getItem(this.TOKEN_KEY)); } catch (e) { resolve(null); }
           } else {
             const token = result[this.TOKEN_KEY] || null;
             console.log('🔐 AuthService: Token retrieved:', !!token);

@@ -160,7 +160,7 @@
     popoverEl = buildPopover({
       step:    '1 of 4',
       title:   "Hey! I'm Coda",
-      body:    gifBlock(GIFS.step0()) + "I live on the edge of your screen and I'm here to help you keep on top of all your AI chats.",
+      body:    gifBlock(GIFS.step0()) + "Hey! I'm Coda. I live on the edge of your screen and make sure your best AI conversations never get lost.",
       primary: { label: 'Show me around', action: () => goToStep(1) },
       dismiss: { label: 'Dismiss', action: endTour },
       wide: true

@@ -167,7 +167,7 @@ class CopilotOnboarding {
       <div class="threadcub-copilot-onboarding-content">
         <div class="threadcub-copilot-onboarding-header">
           <div class="threadcub-copilot-onboarding-title">
-            Thanks for installing ThreadCub
+            👋 A quick note about Copilot
           </div>
           <button class="threadcub-copilot-onboarding-close" data-action="close">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -179,13 +179,13 @@ class CopilotOnboarding {
         
         <div class="threadcub-copilot-onboarding-message">
           <p style="margin: 0;">
-            Unfortunately this version isn't working 100% on CoPilot. You're able to use our 'pawmarks' feature though the anchor and tag page highlights don't retain across chats. We're hoping to have this fixed in a future release.
+            Pawmarks (highlights and tags) are available on Copilot, but don't carry over between chats yet — we're working on it. Saving and continuing conversations works great. 🐻
           </p>
         </div>
         
         <div class="threadcub-copilot-onboarding-actions">
           <button class="threadcub-copilot-onboarding-action threadcub-copilot-onboarding-cta" data-action="got-it">
-            <span>Got it!</span>
+            <span>Got it, let's go!</span>
           </button>
         </div>
       </div>

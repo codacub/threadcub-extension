@@ -289,8 +289,8 @@ function setupEventListeners() {
     const joinWaitlistBtn = document.getElementById('joinWaitlistBtn');
     if (joinWaitlistBtn) {
         joinWaitlistBtn.addEventListener('click', () => {
-            chrome.runtime.sendMessage({ action: 'trackEvent', eventType: 'popup_waitlist_clicked', data: {} });
-            chrome.tabs.create({ url: 'https://www.threadcub.com/auth?mode=waitlist' });
+            chrome.runtime.sendMessage({ action: 'trackEvent', eventType: 'popup_signup_clicked', data: {} });
+            chrome.tabs.create({ url: 'https://www.threadcub.com/auth?mode=signup&from=extension' });
         });
     }
 

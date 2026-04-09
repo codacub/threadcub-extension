@@ -11,6 +11,7 @@ const AUTH_BASE = AUTH_IS_LOCAL_DEV ? 'http://localhost:3000' : 'https://threadc
 const AuthService = {
   // Storage key for the auth token
   TOKEN_KEY: 'threadcub_auth_token',
+  REFRESH_KEY: 'threadcub_refresh_token',
   USER_KEY: 'threadcub_auth_user',
   ENCRYPTION_KEY: 'threadcub_user_encryption_key',
 
@@ -86,7 +87,7 @@ const AuthService = {
     console.log('🔐 AuthService: Clearing auth token...');
     return new Promise((resolve, reject) => {
       if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        chrome.storage.local.remove([this.TOKEN_KEY, this.USER_KEY, this.ENCRYPTION_KEY], () => {
+        chrome.storage.local.remove([this.TOKEN_KEY, this.REFRESH_KEY, this.USER_KEY, this.ENCRYPTION_KEY], () => {
           if (chrome.runtime.lastError) {
             console.error('🔐 AuthService: Error clearing token:', chrome.runtime.lastError);
             reject(chrome.runtime.lastError);
@@ -256,11 +257,15 @@ const AuthService = {
         }
         return data;
       } else if (response.status === 401) {
-        console.log('🔐 AuthService: Token expired or invalid (401)');
-        // Clear expired token
-        await this.clearToken();
-        return null;
-      } else {
+      console.log('🔐 AuthService: Token expired (401), attempting refresh...');
+      const newToken = await this.refreshAccessToken();
+      if (newToken) {
+        console.log('🔐 AuthService: Refreshed successfully, retrying validation...');
+        return await this.validateToken(newToken);
+      }
+      await this.clearToken();
+      return null;
+    } else {
         console.error('🔐 AuthService: Validation request failed:', response.status);
         return null;
       }
@@ -268,6 +273,53 @@ const AuthService = {
       console.error('🔐 AuthService: Validation error:', error);
       return null;
     }
+  },
+
+  async storeRefreshToken(refreshToken) {
+    return new Promise((resolve, reject) => {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({ [this.REFRESH_KEY]: refreshToken }, () => {
+          if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+          else { console.log('🔐 AuthService: Refresh token stored'); resolve(); }
+        });
+      } else {
+        try { localStorage.setItem(this.REFRESH_KEY, refreshToken); resolve(); }
+        catch (e) { reject(e); }
+      }
+    });
+  },
+
+  async refreshAccessToken() {
+    console.log('🔐 AuthService: Attempting token refresh...');
+    return new Promise((resolve) => {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.get([this.REFRESH_KEY], async (result) => {
+          const refreshToken = result[this.REFRESH_KEY];
+          if (!refreshToken) { console.log('🔐 AuthService: No refresh token stored'); resolve(null); return; }
+          try {
+            const response = await fetch(`${AUTH_BASE}/api/auth/refresh`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ refresh_token: refreshToken })
+            });
+            if (response.ok) {
+              const data = await response.json();
+              await this.storeToken(data.access_token);
+              if (data.refresh_token) await this.storeRefreshToken(data.refresh_token);
+              console.log('🔐 AuthService: Token refreshed successfully');
+              resolve(data.access_token);
+            } else {
+              console.log('🔐 AuthService: Refresh failed, clearing auth');
+              await this.clearToken();
+              resolve(null);
+            }
+          } catch (e) {
+            console.error('🔐 AuthService: Refresh error:', e);
+            resolve(null);
+          }
+        });
+      } else { resolve(null); }
+    });
   },
 
   // =========================================================================

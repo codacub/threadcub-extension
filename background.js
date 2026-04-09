@@ -1055,13 +1055,17 @@ function extractSupabaseAuthToken() {
 async function handleStoreAuthToken(request, sendResponse) {
   console.log('🔐 Background: Storing auth token from callback...');
   try {
-    const { token, encryptionKey } = request;
+    const { token, refreshToken, encryptionKey } = request;
     if (!token) {
       sendResponse({ success: false, error: 'No token provided' });
       return;
     }
 
     await self.AuthService.storeToken(token);
+
+    if (refreshToken) {
+      await self.AuthService.storeRefreshToken(refreshToken);
+    }
 
     // If encryptionKey was passed directly in the request, store it immediately
     if (encryptionKey) {
@@ -1169,7 +1173,7 @@ chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => 
   if (request.action === 'storeAuthToken' && request.token) {
     console.log('🔐 Background: Auth callback received with token');
 
-    handleStoreAuthToken({ token: request.token, encryptionKey: request.encryptionKey }, sendResponse);
+    handleStoreAuthToken({ token: request.token, refreshToken: request.refreshToken, encryptionKey: request.encryptionKey }, sendResponse);
     return true;
   }
 

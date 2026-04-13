@@ -1400,7 +1400,7 @@ class ThreadCubFloatingButton {
         console.log('🐻 ThreadCub: Cached save result — shareUrl:', this.lastSavedShareUrl);
 
         window.UIComponents.showUndoToast(
-          'Saved for when ThreadCub launches. Changed your mind?',
+          'Saved for later. Changed your mind?',
           async () => {
             try {
               await window.ApiService.deleteConversation(undoConversationId, undoSessionId);

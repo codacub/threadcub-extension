@@ -21,7 +21,12 @@
         localStorage.removeItem('threadcub_pending_auth');
         return false;
       }
-      chrome.runtime.sendMessage({ action: 'storeAuthToken', token: data.token, encryptionKey: data.encryptionKey }, function() {
+      chrome.runtime.sendMessage({ 
+        action: 'storeAuthToken', 
+        token: data.token,
+        refreshToken: data.refreshToken,  // ← add this
+        encryptionKey: data.encryptionKey 
+      }, function() {
         localStorage.removeItem('threadcub_pending_auth');
       });
       return true;

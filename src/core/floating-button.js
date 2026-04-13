@@ -1042,6 +1042,17 @@ class ThreadCubFloatingButton {
   async saveAndOpenConversation(source = 'floating') {
   console.log('🐻 ThreadCub: Starting conversation save and open from:', source);
 
+  // Prevent double exports — guard runs synchronously before any await so no
+  // two concurrent calls can both pass the check.
+  const now = Date.now();
+  if (this.isExporting || (now - this.lastExportTime) < 2000) {
+    console.log('🐻 ThreadCub: Export already in progress or too soon after last export');
+    return;
+  }
+  this.isExporting = true;
+  this.lastExportTime = now;
+  this.setSaveBtnLoading(true);
+
   // ===== GET USER AUTH TOKEN VIA BACKGROUND SCRIPT =====
   console.log('🔧 Getting user auth token via background script...');
   let userAuthToken = null;
@@ -1058,16 +1069,6 @@ class ThreadCubFloatingButton {
   } catch (error) {
     console.log('🔧 Background script communication failed:', error);
   }
-
-  // Prevent double exports with debounce
-  const now = Date.now();
-  if (this.isExporting || (now - this.lastExportTime) < 2000) {
-    console.log('🐻 ThreadCub: Export already in progress or too soon after last export');
-    return;
-  }
-
-  this.isExporting = true;
-  this.setSaveBtnLoading(true);
 
   try {
     // Extract conversation data from the current AI platform
@@ -1283,6 +1284,17 @@ class ThreadCubFloatingButton {
   async saveConversationOnly(source = 'floating') {
     console.log('🐻 ThreadCub: Starting save-only (no tab open) from:', source);
 
+    // Prevent double exports — guard runs synchronously before any await so no
+    // two concurrent calls can both pass the check.
+    const now = Date.now();
+    if (this.isExporting || (now - this.lastExportTime) < 2000) {
+      console.log('🐻 ThreadCub: Export already in progress or too soon after last export');
+      return;
+    }
+    this.isExporting = true;
+    this.lastExportTime = now;
+    this.setSaveBtnLoading(true);
+
     // ===== GET USER AUTH TOKEN VIA BACKGROUND SCRIPT =====
     console.log('🔧 Getting user auth token via background script...');
     let userAuthToken = null;
@@ -1298,16 +1310,6 @@ class ThreadCubFloatingButton {
     } catch (error) {
       console.log('🔧 Background script communication failed:', error);
     }
-
-    // Prevent double exports with debounce
-    const now = Date.now();
-    if (this.isExporting || (now - this.lastExportTime) < 2000) {
-      console.log('🐻 ThreadCub: Export already in progress or too soon after last export');
-      return;
-    }
-
-    this.isExporting = true;
-    this.setSaveBtnLoading(true);
 
     try {
       // Extract conversation data from the current AI platform

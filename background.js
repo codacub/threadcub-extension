@@ -527,9 +527,16 @@ async function handleSaveConversation(data) {
             console.log('🔒 Background.handleSaveConversation: Encrypted POST status:', encResponse.status);
 
             if (encResponse.status === 401) {
-              console.log('🐻 Background: Auth token expired, clearing...');
-              await self.AuthService.clearToken();
-              throw new Error('Authentication expired. Please log in again.');
+              console.log('🐻 Background: Encrypted send got 401, attempting token refresh...');
+              const newToken = await self.AuthService.refreshAccessToken();
+              if (newToken) {
+                console.log('🐻 Background: Token refreshed — retrying via unencrypted fallback with new token');
+                headers['Authorization'] = `Bearer ${newToken}`;
+                // Do not throw; fall through so the unencrypted path below retries with the fresh token.
+              } else {
+                await self.AuthService.clearToken();
+                throw new Error('Authentication expired. Please log in again.');
+              }
             }
 
             if (encResponse.ok) {
@@ -601,7 +608,23 @@ async function handleSaveConversation(data) {
                      'Status:', response.status, '| Body:', errorText);
 
       if (response.status === 401) {
-        console.log('🐻 Background: Auth token expired, clearing...');
+        console.log('🐻 Background: Unencrypted send got 401, attempting token refresh...');
+        const newToken = await self.AuthService.refreshAccessToken();
+        if (newToken) {
+          console.log('🐻 Background: Token refreshed — retrying unencrypted save with new token...');
+          const retryResponse = await fetch(`${BG_API_BASE}/conversations/save`, {
+            method: 'POST',
+            headers: { ...headers, 'Authorization': `Bearer ${newToken}` },
+            body: JSON.stringify(unencryptedPayload)
+          });
+          if (retryResponse.ok) {
+            const retryResult = await retryResponse.json();
+            console.log('✅ Background: Retry after token refresh succeeded:', retryResult);
+            return retryResult;
+          }
+          const retryError = await retryResponse.text();
+          throw new Error(`API call failed after token refresh: ${retryResponse.status} - ${retryError}`);
+        }
         await self.AuthService.clearToken();
         throw new Error('Authentication expired. Please log in again.');
       }
@@ -943,8 +966,21 @@ async function handleGetAuthToken(sendResponse) {
     });
 
     if (results?.[0]?.result?.success && results[0].result.authToken) {
-      console.log('🔧 Background: ✅ Auth token extracted from tab');
-      sendResponse({ success: true, authToken: results[0].result.authToken });
+      const { authToken, refreshToken } = results[0].result;
+      console.log('🔧 Background: ✅ Auth token extracted from tab — persisting to storage...');
+      // Persist so future requests and token refresh work even without a ThreadCub tab open.
+      try {
+        await self.AuthService.storeToken(authToken);
+        if (refreshToken) {
+          await self.AuthService.storeRefreshToken(refreshToken);
+          console.log('🔧 Background: ✅ Refresh token also persisted from tab scrape');
+        } else {
+          console.log('🔧 Background: No refresh token found in tab scrape');
+        }
+      } catch (storageErr) {
+        console.warn('🔧 Background: Failed to persist scraped tokens to storage:', storageErr.message);
+      }
+      sendResponse({ success: true, authToken });
     } else {
       console.log('🔧 Background: ❌ Failed to extract auth token:', results?.[0]?.result?.error);
       sendResponse({ success: false, error: results?.[0]?.result?.error || 'No auth token found' });
@@ -996,19 +1032,19 @@ function extractSupabaseAuthToken() {
             // Check for access_token in various formats
             if (parsed.access_token) {
               console.log('🔧 Dashboard: Found access_token in localStorage');
-              return { success: true, authToken: parsed.access_token };
+              return { success: true, authToken: parsed.access_token, refreshToken: parsed.refresh_token || null };
             }
-            
+
             // Check if it's an array with access token as first element
             if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'string') {
               console.log('🔧 Dashboard: Found token in array format');
-              return { success: true, authToken: parsed[0] };
+              return { success: true, authToken: parsed[0], refreshToken: null };
             }
-            
+
             // Check for nested session data
             if (parsed.session && parsed.session.access_token) {
               console.log('🔧 Dashboard: Found token in session object');
-              return { success: true, authToken: parsed.session.access_token };
+              return { success: true, authToken: parsed.session.access_token, refreshToken: parsed.session.refresh_token || null };
             }
           }
         } catch (parseError) {
@@ -1033,7 +1069,7 @@ function extractSupabaseAuthToken() {
           const parsed = JSON.parse(authData);
           if (parsed.access_token) {
             console.log('🔧 Dashboard: Found token with common key pattern:', key);
-            return { success: true, authToken: parsed.access_token };
+            return { success: true, authToken: parsed.access_token, refreshToken: parsed.refresh_token || null };
           }
         } catch (e) {
           continue;

@@ -85,15 +85,22 @@ const ApiService = {
   // =============================================================================
 
   async _handleUnauthorized() {
-    console.log('🔐 ApiService: Received 401, clearing expired token...');
+    console.log('🔐 ApiService: Received 401, attempting token refresh before clearing...');
     try {
       const AuthSvc = _getAuthService();
       if (AuthSvc) {
+        const newToken = await AuthSvc.refreshAccessToken();
+        if (newToken) {
+          console.log('🔐 ApiService: Token refreshed successfully after 401');
+          return newToken;
+        }
+        console.log('🔐 ApiService: Refresh failed — clearing auth');
         await AuthSvc.clearToken();
       }
     } catch (error) {
-      console.log('🔐 ApiService: Error clearing token:', error.message);
+      console.log('🔐 ApiService: Error handling 401:', error.message);
     }
+    return null;
   },
 
   // =============================================================================
@@ -206,8 +213,11 @@ const ApiService = {
               console.log('🔒 ApiService.saveConversation: Encrypted POST response status:', encResponse.status);
 
               if (encResponse.status === 401) {
-                await this._handleUnauthorized();
-                console.log('🔐 ApiService.saveConversation: Token expired, falling back to guest save...');
+                const refreshedToken = await this._handleUnauthorized();
+                // If refresh succeeded, update the headers so the unencrypted fallback below
+                // sends the fresh token rather than the expired one.
+                if (refreshedToken) headers['Authorization'] = `Bearer ${refreshedToken}`;
+                console.log('🔐 ApiService.saveConversation: Token expired, falling back to unencrypted send...');
               } else if (encResponse.ok) {
                 const data = await encResponse.json();
                 console.log('✅ ThreadCub: Encrypted API call successful:', JSON.stringify(data));

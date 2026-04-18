@@ -15,6 +15,16 @@ function initializeThreadCub() {
 
 function startThreadCub() {
   console.log('🧵 ThreadCub: Starting ThreadCub application...');
+
+  // DEBUG: read back last stored button state from previous run
+  chrome.storage.local.get(['debug_threadcub_button'], (result) => {
+    if (result.debug_threadcub_button) {
+      console.log('🧵 [DEBUG] Last stored debug_threadcub_button:', JSON.stringify(result.debug_threadcub_button));
+    } else {
+      console.log('🧵 [DEBUG] No debug_threadcub_button in storage (first run or cleared)');
+    }
+  });
+
   console.log('🧵 ThreadCub: Checking modular classes...');
   console.log('🧵 ThreadCub: ThreadCubFloatingButton available:', typeof window.ThreadCubFloatingButton);
   console.log('🧵 ThreadCub: ThreadCubTagging available:', typeof window.ThreadCubTagging);
@@ -32,6 +42,17 @@ function startThreadCub() {
       } else {
         console.log('🧵 ThreadCub: ℹ️ Floating button already exists, keeping existing instance');
       }
+
+      // DEBUG: persist button state immediately after construction
+      chrome.storage.local.set({
+        debug_threadcub_button: {
+          type: typeof window.threadcubButton,
+          value: String(window.threadcubButton),
+          constructorName: window.threadcubButton?.constructor?.name || 'n/a',
+          hasEnhance: typeof window.DownloadManager?.enhanceFloatingButtonWithConversationFeatures,
+          ts: Date.now()
+        }
+      });
 
       // CRITICAL: Enhance the modular floating button with all conversation functionality
       if (typeof window.DownloadManager !== 'undefined' && typeof window.DownloadManager.enhanceFloatingButtonWithConversationFeatures === 'function') {

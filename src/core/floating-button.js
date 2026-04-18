@@ -1138,7 +1138,7 @@ class ThreadCubFloatingButton {
 
     // API call via ApiService — reuse cached save if Save was clicked recently (within 30s)
     try {
-      let shareUrl, summary;
+      let shareUrl, summary, data;
 
       const recentSave = apiData.capture_method !== 'continue' && this.lastSavedAt && (Date.now() - this.lastSavedAt) < 30000 && this.lastSavedShareUrl;
 
@@ -1153,7 +1153,7 @@ class ThreadCubFloatingButton {
         this.lastSavedAt = null;
       } else {
         console.log('🐻 PRE-API CALL:', apiData?.capture_method, apiData?.source_chat_url);
-        const data = await window.ApiService.saveConversation(apiData);
+        data = await window.ApiService.saveConversation(apiData);
 
         // Store session_id returned from server (ensures anonymous saves are claimable)
         if (data.session_id) {

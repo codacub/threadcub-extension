@@ -1747,6 +1747,7 @@ Once you've reviewed it, let me know you're ready to continue from where we left
     console.log('🤖 ThreadCub: Claude continuation data with message count:', continuationData.totalMessages);
 
     const canUseChrome = window.StorageService.canUseChromStorage();
+    console.log('🔍 [handleClaudeFlow] canUseChromStorage:', canUseChrome, '| parentId:', parentId);
 
     if (canUseChrome) {
       console.log('🤖 ThreadCub: Using Chrome storage for Claude...');

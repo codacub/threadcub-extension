@@ -188,16 +188,19 @@ function enhanceFloatingButtonWithConversationFeatures() {
           const summary = data.summary || window.ConversationExtractor.generateQuickSummary(conversationData.messages);
           const shareUrl = data.shareableUrl || (conversationId ? `https://threadcub.com/api/share/${conversationId}` : null);
 
-          const minimalPrompt = window.ConversationExtractor.generateContinuationPrompt(summary, shareUrl, conversationData.platform, conversationData);
-          
+          console.log('🔍 [DM] generateContinuationPrompt — continuation_number:', data.continuation_number, '| root_title:', data.root_title);
+          const minimalPrompt = window.ConversationExtractor.generateContinuationPrompt(summary, shareUrl, conversationData.platform, conversationData, data.continuation_number, data.root_title);
+
           const targetPlatform = window.PlatformDetector.detectPlatform();
-          
+          console.log('🔍 [DM] platform routing — targetPlatform:', targetPlatform);
+
           if (targetPlatform === 'chatgpt') {
             console.log('🤖 ThreadCub: Routing to ChatGPT flow (with file download)');
             this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
           } else if (targetPlatform === 'claude') {
             console.log('🤖 ThreadCub: Routing to Claude flow (no file download)');
-            this.handleClaudeFlow(minimalPrompt, shareUrl, conversationData, data.conversationId || null);
+            console.log('🔍 [DM] calling handleClaudeFlow — conversationId:', conversationId, '| data.conversationId:', data.conversationId);
+            this.handleClaudeFlow(minimalPrompt, shareUrl, conversationData, conversationId || data.conversationId || null);
           } else if (targetPlatform === 'gemini') {
             console.log('🤖 ThreadCub: Routing to Gemini flow (with file download)');
             this.handleGeminiFlow(minimalPrompt, shareUrl, conversationData);
@@ -226,8 +229,10 @@ function enhanceFloatingButtonWithConversationFeatures() {
           
         } catch (apiError) {
           console.error('🐻 ThreadCub: Direct API call failed:', apiError);
+          console.error('🔍 [DM] apiError name:', apiError?.name, '| message:', apiError?.message);
+          console.error('🔍 [DM] apiError stack:', apiError?.stack);
           console.log('🐻 ThreadCub: Falling back to direct continuation without API save...');
-          
+
           // FALLBACK: Skip API save and go straight to continuation
           this.handleDirectContinuation(conversationData);
           this.isExporting = false;

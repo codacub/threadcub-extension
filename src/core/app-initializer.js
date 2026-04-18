@@ -94,6 +94,8 @@ function startThreadCub() {
 
     } catch (buttonError) {
       console.error('🧵 ThreadCub: ❌ Error creating floating button instance:', buttonError);
+      console.error('🧵 ThreadCub: ❌ Error stack:', buttonError?.stack);
+      console.error('🧵 ThreadCub: ❌ State at failure — ThreadCubFloatingButton:', typeof window.ThreadCubFloatingButton, '| DownloadManager:', typeof window.DownloadManager, '| threadcubButton:', typeof window.threadcubButton);
     }
 
   } else {

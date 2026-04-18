@@ -54,6 +54,7 @@ function createDownloadFromData(conversationData) {
 // === SECTION 4A-4E: Floating Button Integration with Modular Architecture ===
 
 function enhanceFloatingButtonWithConversationFeatures() {
+  console.log('[DM] enhance called — window.threadcubButton:', typeof window.threadcubButton, window.threadcubButton);
   if (window.threadcubButton && typeof window.threadcubButton === 'object') {
     console.log('🔍 [DM] enhanceFloatingButtonWithConversationFeatures — installing override on window.threadcubButton:', window.threadcubButton?.constructor?.name);
     

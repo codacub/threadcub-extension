@@ -294,6 +294,10 @@ function enhanceFloatingButtonWithConversationFeatures() {
     };
     
     console.log('🐻 ThreadCub: ✅ Floating button enhanced with DIRECT API calls + AuthService token');
+
+    // Debug alias — call window._tcBtn.saveAndOpenConversation('floating') from DevTools
+    window._tcBtn = window.threadcubButton;
+    console.log('🐻 ThreadCub: [debug] window._tcBtn set:', typeof window._tcBtn);
   }
 }
 

@@ -133,9 +133,28 @@ function enhanceFloatingButtonWithConversationFeatures() {
         // Get session ID for anonymous conversation tracking
         const sessionId = await window.StorageService.getOrCreateSessionId();
 
-        // Resolve parent_conversation_id — in-memory first, then chrome.storage fallback
+        // Resolve parent_conversation_id — in-memory → background pending → chrome.storage
         let parentConversationId = this.lastSavedConversationId || null;
         console.log('🔍 [DM] parent lookup — in-memory lastSavedConversationId:', this.lastSavedConversationId);
+
+        if (!parentConversationId) {
+          // Background script stores tc_pending_parent via the service worker context,
+          // which is reliable even when the content script context is invalidated.
+          // getPendingParent is one-shot (clears on read); setPendingParent is called after
+          // each save, so the chain is maintained across multiple Continues.
+          try {
+            const pendingParentData = await chrome.runtime.sendMessage({ action: 'getPendingParent' });
+            if (pendingParentData?.conversationId) {
+              parentConversationId = pendingParentData.conversationId;
+              console.log('🔍 [DM] parent lookup — from getPendingParent:', parentConversationId);
+            } else {
+              console.log('🔍 [DM] parent lookup — getPendingParent returned:', JSON.stringify(pendingParentData));
+            }
+          } catch (e) {
+            console.log('🔍 [DM] parent lookup — getPendingParent failed:', e?.message);
+          }
+        }
+
         if (!parentConversationId && conversationData.url) {
           const stored = await chrome.storage.local.get([`tc_parent_${conversationData.url}`, 'tc_last_saved_id']);
           console.log('🔍 [DM] parent lookup — tc_parent_<url>:', stored[`tc_parent_${conversationData.url}`]);

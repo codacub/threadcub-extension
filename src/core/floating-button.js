@@ -1208,7 +1208,7 @@ class ThreadCubFloatingButton {
       // Generate minimal continuation prompt
       // Enrich with API message count so pagination threshold is accurate
       const enrichedConversationData = { ...conversationData, total_messages: data?.message_count || data?.total_messages || conversationData.messages?.length || 0 };
-      const minimalPrompt = window.ConversationExtractor.generateContinuationPrompt(summary, shareUrl, conversationData.platform, enrichedConversationData);
+      const minimalPrompt = window.ConversationExtractor.generateContinuationPrompt(summary, shareUrl, conversationData.platform, enrichedConversationData, data.continuation_number, data.root_title);
 
       console.log('🔍 DEBUG: About to route to platform:', targetPlatform);
 

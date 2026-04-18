@@ -1269,7 +1269,7 @@ const title = (rawTitle
       ? Array.from({ length: pageCount }, (_, i) => `Page ${i + 1}: ${shareUrl}?page=${i + 1}&limit=30`).join('\n')
       : '';
     const opener = (continuationNumber != null)
-      ? `Part ${continuationNumber} of '${rootTitle || conversationData?.title || 'our previous conversation'}'`
+      ? `'Part ${continuationNumber} of ${rootTitle || conversationData?.title || 'our previous conversation'}'`
       : `Continuing from '${conversationData?.title || 'our previous conversation'}'`;
     const urlBasedPrompt = needsPagination
       ? `${opener} — I'd like to pick up where we left off. The complete context is available at: ${shareUrl}\n\nThis conversation has ${totalMessages} messages which is too large to fetch in one go. Please fetch each page sequentially using your web_fetch tool:\n${pageUrls}\n\nOnce you have all pages, confirm you have the full context and are ready to continue from where we left off.`

@@ -1118,7 +1118,7 @@ class ThreadCubFloatingButton {
     console.log('🔍 Resolved parentConversationId:', parentConversationId);
     // Write parent ID to storage BEFORE opening new tab — avoids race condition
     if (parentConversationId) {
-      await chrome.storage.local.set({ 'tc_pending_parent': parentConversationId });
+      await chrome.storage.local.set({ 'tc_pending_parent': { conversationId: parentConversationId, ts: Date.now() } });
       console.log('🔍 DEBUG: Pre-wrote tc_pending_parent before API call:', parentConversationId);
     }
 

@@ -3,7 +3,20 @@
 // ===== STREAMLINED: Check for continuation data and auto-execute =====
 function checkForContinuationData() {
   console.log('🐻 ThreadCub: Checking for continuation data using Chrome storage');
-  
+
+  // tc_parent in the URL is set exclusively by handleClaudeFlow when opening a continuation tab.
+  // If we're on Claude and it's absent, this tab was opened manually — clear any stale
+  // tc_pending_parent immediately so this chat doesn't inherit a wrong parent chain.
+  // We read the URL here (before the user types and Claude replaces it with /chat/xxx).
+  const _urlParams = new URLSearchParams(window.location.search);
+  const _tcParentFromUrl = _urlParams.get('tc_parent');
+  if (window.location.hostname.includes('claude.ai') && !_tcParentFromUrl) {
+    try {
+      chrome.storage.local.remove('tc_pending_parent');
+      console.log('🐻 ThreadCub: Cleared tc_pending_parent — manual Claude tab (no tc_parent URL param)');
+    } catch (e) { /* ignore */ }
+  }
+
   let retryCount = 0;
   const maxRetries = 15; // Try up to 15 times
   const retryDelay = 300; // Every 300ms

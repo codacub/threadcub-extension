@@ -1172,6 +1172,20 @@ class ThreadCubFloatingButton {
         // Log the full API response so we can see exactly what keys are returned
         console.log('🔍 DEBUG: Full save API response:', JSON.stringify(data));
 
+        // DEBUG OVERLAY — remove once continuation_number/root_title confirmed working
+        (function() {
+          const el = document.createElement('div');
+          el.id = 'tc-debug-overlay';
+          el.style.cssText = 'position:fixed;top:12px;right:12px;z-index:2147483647;background:#1a1a2e;color:#fff;font:13px/1.5 monospace;padding:12px 16px;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.5);max-width:360px;word-break:break-all;';
+          el.innerHTML = '<strong style="color:#f9c74f">ThreadCub API debug</strong><br>'
+            + '<span style="color:#90be6d">continuation_number:</span> ' + JSON.stringify(data.continuation_number) + '<br>'
+            + '<span style="color:#90be6d">root_title:</span> ' + JSON.stringify(data.root_title) + '<br>'
+            + '<span style="color:#aaa;font-size:11px">click to dismiss</span>';
+          el.onclick = function() { el.remove(); };
+          document.body.appendChild(el);
+          setTimeout(function() { if (el.parentNode) el.remove(); }, 15000);
+        })();
+
         // Extract conversation ID — backend may return it under different keys
         // Use nullish coalescing to avoid picking up JS `undefined` values, which
         // would coerce to the string "undefined" inside the template literal below.

@@ -79,6 +79,7 @@ class ThreadCubFloatingButton {
     this.listenForPendingUpdates();
     this.applyHiddenState();
     this.listenForVisibilityChanges();
+    this.updateStartFreshVisibility();
 
     console.log('🐻 ThreadCub: Floating button ready!');
   }
@@ -102,6 +103,15 @@ class ThreadCubFloatingButton {
             <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/>
             <path d="m21 3-9 9"/>
             <path d="M15 3h6v6"/>
+          </svg>
+        </div>
+        <div class="threadcub-fresh-btn" data-action="fresh">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>
+            <path d="M20 3v4"/>
+            <path d="M22 5h-4"/>
+            <path d="M4 17v2"/>
+            <path d="M5 18H3"/>
           </svg>
         </div>
         <div class="threadcub-save-btn" data-action="save">
@@ -591,6 +601,7 @@ class ThreadCubFloatingButton {
 
     // Check for action button clicks
     const newBtn = e.target.closest('.threadcub-new-btn');
+    const freshBtn = e.target.closest('.threadcub-fresh-btn');
     const saveBtn = e.target.closest('.threadcub-save-btn');
     const downloadBtn = e.target.closest('.threadcub-download-btn');
     const tagBtn = e.target.closest('.threadcub-tag-btn');
@@ -608,6 +619,11 @@ class ThreadCubFloatingButton {
       });
       
       this.saveAndOpenConversation('floating');
+      return;
+    }
+
+    if (freshBtn) {
+      this.handleStartFreshClick();
       return;
     }
 
@@ -928,7 +944,35 @@ class ThreadCubFloatingButton {
           console.log('🐻 ThreadCub: Floating button visibility:', isHidden ? 'hidden' : 'visible');
         }
       }
+      if (area === 'local' && 'tc_pending_parent' in changes) {
+        this.updateStartFreshVisibility();
+      }
     });
+  }
+
+  updateStartFreshVisibility() {
+    const ONE_HOUR_MS = 60 * 60 * 1000;
+    try {
+      chrome.storage.local.get(['tc_pending_parent'], (stored) => {
+        const entry = stored.tc_pending_parent;
+        const isActive = !!(entry && (
+          typeof entry === 'string' ||
+          (entry.conversationId && (Date.now() - entry.ts) < ONE_HOUR_MS)
+        ));
+        const btn = this.button?.querySelector('.threadcub-fresh-btn');
+        if (btn) btn.classList.toggle('chain-active', isActive);
+      });
+    } catch (e) {}
+  }
+
+  async handleStartFreshClick() {
+    try {
+      await chrome.runtime.sendMessage({ action: 'clearPendingParent' });
+    } catch (e) {}
+    // Hide immediately — don't wait for the storage change listener
+    const btn = this.button?.querySelector('.threadcub-fresh-btn');
+    if (btn) btn.classList.remove('chain-active');
+    window.open('https://claude.ai/new', '_blank');
   }
 
   /**

@@ -228,6 +228,7 @@
 
 /* Individual Action Buttons */
 .threadcub-new-btn,
+.threadcub-fresh-btn,
 .threadcub-save-btn,
 .threadcub-download-btn,
 .threadcub-tag-btn,
@@ -249,6 +250,7 @@
 }
 
 .threadcub-new-btn svg,
+.threadcub-fresh-btn svg,
 .threadcub-save-btn svg,
 .threadcub-download-btn svg,
 .threadcub-tag-btn svg,
@@ -257,6 +259,20 @@
   height: var(--icon-size-action-btn) !important;
   stroke: currentColor !important;
   fill: none !important;
+}
+
+/* Start Fresh button — hidden until a continuation chain is active */
+.threadcub-fresh-btn {
+  display: none !important;
+}
+.threadcub-fresh-btn.chain-active {
+  display: flex !important;
+}
+.threadcub-fresh-btn.chain-active:hover {
+  background: var(--color-accent-amber, #f59e0b) !important;
+  color: white !important;
+  transform: scale(1.1) !important;
+  box-shadow: var(--shadow-action-btn-new-hover) !important;
 }
 
 /* Action Button Hover States */

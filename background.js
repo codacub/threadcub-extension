@@ -41,6 +41,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         .catch(error => sendResponse({ success: false, error: error.message }));
       return true;
 
+    case 'clearPendingParent':
+      chrome.storage.local.remove('tc_pending_parent')
+        .then(() => sendResponse({ success: true }));
+      return true;
         case 'setPendingParent':
       chrome.storage.local.set({ tc_pending_parent: { conversationId: request.conversationId, ts: Date.now() } })
         .then(() => sendResponse({ success: true }));

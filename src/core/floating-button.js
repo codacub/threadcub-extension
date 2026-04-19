@@ -1415,6 +1415,11 @@ class ThreadCubFloatingButton {
         this.lastSavedAt = Date.now();
         console.log('🐻 ThreadCub: Cached save result — shareUrl:', this.lastSavedShareUrl);
 
+        // Plain save — clear tc_pending_parent so the next Continue on any unrelated chat
+        // doesn't inherit this conversation as its parent. getPendingParent already cleared it
+        // at the start of this function; this is the defensive belt-and-suspenders clear.
+        try { sendMessageWithRetry({ action: 'clearPendingParent' }); } catch(e) {}
+
         window.UIComponents.showUndoToast(
           'Saved for later. Changed your mind?',
           async () => {

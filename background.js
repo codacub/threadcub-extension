@@ -46,8 +46,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         .then(() => sendResponse({ success: true }));
       return true;
         case 'setPendingParent':
-      chrome.storage.local.set({ tc_pending_parent: { conversationId: request.conversationId, ts: Date.now() } })
-        .then(() => sendResponse({ success: true }));
+      chrome.storage.local.set({ tc_pending_parent: {
+        conversationId: request.conversationId,
+        ts: Date.now(),
+        continuationNumber: request.continuationNumber ?? null,
+        rootTitle: request.rootTitle ?? null
+      } }).then(() => sendResponse({ success: true }));
       return true;
     case 'getPendingParent': {
       const ONE_HOUR_MS = 60 * 60 * 1000;

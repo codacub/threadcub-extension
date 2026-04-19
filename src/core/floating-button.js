@@ -961,8 +961,30 @@ class ThreadCubFloatingButton {
         ));
         const btn = this.button?.querySelector('.threadcub-fresh-btn');
         if (btn) btn.classList.toggle('chain-active', isActive);
+        this.updateChainLabel(isActive && typeof entry === 'object' ? entry : null);
       });
     } catch (e) {}
+  }
+
+  updateChainLabel(entry) {
+    const existing = this.button?.querySelector('.threadcub-chain-label');
+    if (existing) existing.remove();
+    if (!entry || !this.button) return;
+
+    const { continuationNumber, rootTitle } = entry;
+    let text;
+    if (continuationNumber != null && rootTitle) {
+      text = `Part ${continuationNumber} of ${rootTitle}`;
+    } else if (rootTitle) {
+      text = rootTitle;
+    } else {
+      return;
+    }
+
+    const label = document.createElement('div');
+    label.className = 'threadcub-chain-label';
+    label.textContent = text;
+    this.button.appendChild(label);
   }
 
   async handleStartFreshClick() {
@@ -970,8 +992,9 @@ class ThreadCubFloatingButton {
       await chrome.runtime.sendMessage({ action: 'clearPendingParent' });
     } catch (e) {}
     // Hide immediately — don't wait for the storage change listener
-    const btn = this.button?.querySelector('.threadcub-fresh-btn');
-    if (btn) btn.classList.remove('chain-active');
+    const freshBtn = this.button?.querySelector('.threadcub-fresh-btn');
+    if (freshBtn) freshBtn.classList.remove('chain-active');
+    this.updateChainLabel(null);
     window.open('https://claude.ai/new', '_blank');
   }
 
@@ -1243,7 +1266,7 @@ class ThreadCubFloatingButton {
         if (conversationId && conversationData.url) {
           chrome.storage.local.set({ [`tc_parent_${conversationData.url}`]: conversationId });
           chrome.storage.local.set({ 'tc_last_saved_id': conversationId });
-          sendMessageWithRetry({ action: 'setPendingParent', conversationId: conversationId });
+          sendMessageWithRetry({ action: 'setPendingParent', conversationId: conversationId, continuationNumber: data.continuation_number ?? null, rootTitle: data.root_title || conversationData.title || null });
           console.log('🔍 DEBUG: Persisted parent ID for URL:', conversationData.url);
           console.log('🔍 DEBUG: Set tc_pending_parent for new tab:', conversationId);
         }

@@ -180,7 +180,7 @@ function enhanceFloatingButtonWithConversationFeatures() {
             console.log('🔍 [DM] post-save — wrote tc_parent_' + conversationData.url + ':', conversationId);
             chrome.storage.local.set({ 'tc_last_saved_id': conversationId });
             console.log('🔍 [DM] post-save — wrote tc_last_saved_id:', conversationId);
-            chrome.runtime.sendMessage({ action: 'setPendingParent', conversationId: conversationId });
+            chrome.runtime.sendMessage({ action: 'setPendingParent', conversationId: conversationId, continuationNumber: data.continuation_number ?? null, rootTitle: data.root_title || conversationData.title || null });
             console.log('🔍 [DM] post-save — sent setPendingParent:', conversationId);
           } else {
             console.warn('🔍 [DM] post-save — skipped storage write. conversationId:', conversationId, '| url:', conversationData.url);

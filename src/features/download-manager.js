@@ -169,6 +169,8 @@ function enhanceFloatingButtonWithConversationFeatures() {
         console.log('🔍 [DM] apiData pre-call — source:', apiData.source);
         console.log('🔍 [DM] apiData pre-call — source_chat_url:', apiData.source_chat_url);
 
+        console.log('🔍 [DM] ▶ calling ApiService.saveConversation — parent_conversation_id:', parentConversationId, '| truthy:', !!parentConversationId);
+
         try {
           // API call via ApiService
           const data = await window.ApiService.saveConversation(apiData);

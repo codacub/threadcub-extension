@@ -134,14 +134,18 @@ function enhanceFloatingButtonWithConversationFeatures() {
         const sessionId = await window.StorageService.getOrCreateSessionId();
 
         // Resolve parent_conversation_id — single source of truth via background service worker.
-        // getPendingParent is one-shot (clears on read) and survives page navigations and
-        // content script context invalidation. setPendingParent is called after every Continue
-        // save; clearPendingParent is called after every plain save.
+        // getPendingParent is now a non-destructive read (does not auto-delete). We explicitly
+        // clear immediately after reading so the chain label and Start Fresh button can call
+        // getPendingParent any number of times without losing the value, while the intentional
+        // consumption still happens exactly once — here, at the start of a Continue save.
         let parentConversationId = null;
         try {
           const pendingParentData = await chrome.runtime.sendMessage({ action: 'getPendingParent' });
           parentConversationId = pendingParentData?.conversationId || null;
           console.log('🔍 [DM] parent lookup — getPendingParent:', parentConversationId);
+          // Consume intentionally — clearPendingParent is called here (Continue save start),
+          // by clearPendingParent message (plain save / Start Fresh), or by 1-hour expiry.
+          await chrome.runtime.sendMessage({ action: 'clearPendingParent' });
         } catch (e) {
           console.log('🔍 [DM] parent lookup — getPendingParent failed:', e?.message);
         }

@@ -56,15 +56,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     case 'getPendingParent': {
       const ONE_HOUR_MS = 60 * 60 * 1000;
       chrome.storage.local.get(['tc_pending_parent']).then(stored => {
-        chrome.storage.local.remove('tc_pending_parent');
         const entry = stored.tc_pending_parent;
         let conversationId = null;
         if (entry) {
           if (typeof entry === 'string') {
-            // Legacy bare-string format written by floating-button.js direct set — no expiry check
+            // Legacy bare-string format — no expiry check
             conversationId = entry;
           } else if (entry.conversationId && (Date.now() - entry.ts) < ONE_HOUR_MS) {
             conversationId = entry.conversationId;
+          } else if (typeof entry === 'object') {
+            // Expired — clear the stale entry so it stops being returned
+            chrome.storage.local.remove('tc_pending_parent');
           }
         }
         sendResponse({ success: true, conversationId });

@@ -1482,9 +1482,9 @@ class ThreadCubFloatingButton {
         this.lastSavedAt = Date.now();
         console.log('🐻 ThreadCub: Cached save result — shareUrl:', this.lastSavedShareUrl);
 
-        // Plain save — clear tc_pending_parent so the next Continue on any unrelated chat
-        // doesn't inherit this conversation as its parent. getPendingParent already cleared it
-        // at the start of this function; this is the defensive belt-and-suspenders clear.
+        // Plain save — clear tc_pending_parent so the next Continue on an unrelated chat
+        // doesn't inherit this conversation as its parent. getPendingParent no longer
+        // auto-deletes, so this explicit call is the sole clearing mechanism for the save path.
         try { sendMessageWithRetry({ action: 'clearPendingParent' }); } catch(e) {}
 
         window.UIComponents.showUndoToast(

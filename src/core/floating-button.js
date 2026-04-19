@@ -960,7 +960,10 @@ class ThreadCubFloatingButton {
           (entry.conversationId && (Date.now() - entry.ts) < ONE_HOUR_MS)
         ));
         const btn = this.button?.querySelector('.threadcub-fresh-btn');
-        if (btn) btn.classList.toggle('chain-active', isActive);
+        if (btn) {
+          btn.classList.toggle('chain-active', isActive);
+          btn.title = isActive ? 'Start fresh chain' : 'No active chain';
+        }
         this.updateChainLabel(isActive && typeof entry === 'object' ? entry : null);
       });
     } catch (e) {}
@@ -988,12 +991,14 @@ class ThreadCubFloatingButton {
   }
 
   async handleStartFreshClick() {
+    const freshBtn = this.button?.querySelector('.threadcub-fresh-btn');
+    if (!freshBtn?.classList.contains('chain-active')) return;
     try {
       await chrome.runtime.sendMessage({ action: 'clearPendingParent' });
     } catch (e) {}
-    // Hide immediately — don't wait for the storage change listener
-    const freshBtn = this.button?.querySelector('.threadcub-fresh-btn');
-    if (freshBtn) freshBtn.classList.remove('chain-active');
+    // Update immediately — don't wait for the storage change listener
+    freshBtn.classList.remove('chain-active');
+    freshBtn.title = 'No active chain';
     this.updateChainLabel(null);
     window.open('https://claude.ai/new', '_blank');
   }

@@ -289,12 +289,14 @@
   opacity: 1;
 }
 
-/* Start Fresh button — hidden until a continuation chain is active */
+/* Start Fresh button — always visible; inactive when no chain */
 .threadcub-fresh-btn {
-  display: none !important;
+  opacity: 0.35;
+  cursor: not-allowed !important;
 }
 .threadcub-fresh-btn.chain-active {
-  display: flex !important;
+  opacity: 1;
+  cursor: pointer !important;
 }
 .threadcub-fresh-btn.chain-active:hover {
   background: var(--color-accent-amber, #f59e0b) !important;

@@ -343,6 +343,48 @@ class ThreadCubFloatingButton {
       button.addEventListener('mouseenter', showTooltip);
       button.addEventListener('mouseleave', hideTooltip);
     });
+
+    // Fresh button tooltip — text is dynamic based on chain-active state
+    const freshBtnEl = this.button.querySelector('.threadcub-fresh-btn');
+    if (freshBtnEl) {
+      let freshTooltip = null;
+      let freshShowTimeout = null;
+      let freshHideTimeout = null;
+
+      freshBtnEl.addEventListener('mouseenter', () => {
+        clearTimeout(freshShowTimeout);
+        clearTimeout(freshHideTimeout);
+        freshShowTimeout = setTimeout(() => {
+          document.querySelectorAll('.threadcub-tooltip').forEach(t => t.remove());
+          const text = freshBtnEl.classList.contains('chain-active') ? 'Start fresh chain' : 'No active chain';
+          freshTooltip = document.createElement('div');
+          freshTooltip.className = 'threadcub-tooltip';
+          freshTooltip.textContent = text;
+          freshTooltip.style.position = 'fixed';
+          freshTooltip.style.opacity = '0';
+          freshTooltip.style.pointerEvents = 'none';
+          document.body.appendChild(freshTooltip);
+          const rect = freshBtnEl.getBoundingClientRect();
+          const tw = freshTooltip.offsetWidth;
+          const th = freshTooltip.offsetHeight;
+          freshTooltip.style.left = (rect.left - tw - 8) + 'px';
+          freshTooltip.style.top = (rect.top + (rect.height - th) / 2) + 'px';
+          requestAnimationFrame(() => freshTooltip.classList.add('show'));
+        }, 150);
+      });
+
+      freshBtnEl.addEventListener('mouseleave', () => {
+        clearTimeout(freshShowTimeout);
+        clearTimeout(freshHideTimeout);
+        if (freshTooltip) {
+          freshTooltip.classList.remove('show');
+          freshHideTimeout = setTimeout(() => {
+            if (freshTooltip?.parentNode) freshTooltip.parentNode.removeChild(freshTooltip);
+            freshTooltip = null;
+          }, 200);
+        }
+      });
+    }
   }
 
   setupDownloadFlyout() {
@@ -959,11 +1001,9 @@ class ThreadCubFloatingButton {
           typeof entry === 'string' ||
           (entry.conversationId && (Date.now() - entry.ts) < ONE_HOUR_MS)
         ));
+        console.log('🔍 [FB] updateStartFreshVisibility — raw tc_pending_parent:', JSON.stringify(stored.tc_pending_parent));
         const btn = this.button?.querySelector('.threadcub-fresh-btn');
-        if (btn) {
-          btn.classList.toggle('chain-active', isActive);
-          btn.title = isActive ? 'Start fresh chain' : 'No active chain';
-        }
+        if (btn) btn.classList.toggle('chain-active', isActive);
         this.updateChainLabel(isActive && typeof entry === 'object' ? entry : null);
       });
     } catch (e) {}
@@ -998,7 +1038,6 @@ class ThreadCubFloatingButton {
     } catch (e) {}
     // Update immediately — don't wait for the storage change listener
     freshBtn.classList.remove('chain-active');
-    freshBtn.title = 'No active chain';
     this.updateChainLabel(null);
     window.open('https://claude.ai/new', '_blank');
   }

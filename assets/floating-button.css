@@ -289,14 +289,19 @@
   opacity: 1;
 }
 
-/* Start Fresh button — always visible; inactive when no chain */
+/* Unlink button — always visible; only the icon dims when no chain active */
 .threadcub-fresh-btn {
-  opacity: 0.35;
   cursor: not-allowed !important;
 }
+.threadcub-fresh-btn svg {
+  opacity: 0.3;
+}
 .threadcub-fresh-btn.chain-active {
-  opacity: 1;
   cursor: pointer !important;
+  color: var(--color-accent-amber, #f59e0b) !important;
+}
+.threadcub-fresh-btn.chain-active svg {
+  opacity: 1;
 }
 .threadcub-fresh-btn.chain-active:hover {
   background: var(--color-accent-amber, #f59e0b) !important;

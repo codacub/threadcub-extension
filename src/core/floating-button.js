@@ -694,7 +694,7 @@ class ThreadCubFloatingButton {
 
    if (newBtn) {
       if (!newBtn.classList.contains('signed-in')) {
-        chrome.tabs.create({ url: chrome.runtime.getURL('popup.html') });
+        chrome.runtime.sendMessage({ action: 'openSignIn' });
         return;
       }
       // 📊 GA: continue button clicked — opens conversation in new AI tab

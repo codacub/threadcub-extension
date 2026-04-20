@@ -41,16 +41,38 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         .catch(error => sendResponse({ success: false, error: error.message }));
       return true;
 
-        case 'setPendingParent':
-      chrome.storage.local.set({ tc_pending_parent: request.conversationId })
+    case 'clearPendingParent':
+      chrome.storage.local.remove('tc_pending_parent')
         .then(() => sendResponse({ success: true }));
       return true;
-    case 'getPendingParent':
+        case 'setPendingParent':
+      chrome.storage.local.set({ tc_pending_parent: {
+        conversationId: request.conversationId,
+        ts: Date.now(),
+        continuationNumber: request.continuationNumber ?? null,
+        rootTitle: request.rootTitle ?? null
+      } }).then(() => sendResponse({ success: true }));
+      return true;
+    case 'getPendingParent': {
+      const ONE_HOUR_MS = 60 * 60 * 1000;
       chrome.storage.local.get(['tc_pending_parent']).then(stored => {
-        chrome.storage.local.remove('tc_pending_parent');
-        sendResponse({ success: true, conversationId: stored.tc_pending_parent || null });
+        const entry = stored.tc_pending_parent;
+        let conversationId = null;
+        if (entry) {
+          if (typeof entry === 'string') {
+            // Legacy bare-string format — no expiry check
+            conversationId = entry;
+          } else if (entry.conversationId && (Date.now() - entry.ts) < ONE_HOUR_MS) {
+            conversationId = entry.conversationId;
+          } else if (typeof entry === 'object') {
+            // Expired — clear the stale entry so it stops being returned
+            chrome.storage.local.remove('tc_pending_parent');
+          }
+        }
+        sendResponse({ success: true, conversationId });
       });
       return true;
+    }
     case 'getPendingCount':
       chrome.storage.local.get(TC_PENDING_KEY).then(stored => {
         const queue = stored[TC_PENDING_KEY] || [];
@@ -88,6 +110,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     case 'getStoredAuthToken':
       handleGetStoredAuthToken(sendResponse);
+      return true;
+
+    case 'openSignIn':
+      chrome.tabs.create({ url: chrome.runtime.getURL('signin.html') });
+      sendResponse({ success: true });
       return true;
 
     case 'validateAuthToken':

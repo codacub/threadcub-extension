@@ -79,6 +79,8 @@ class ThreadCubFloatingButton {
     this.listenForPendingUpdates();
     this.applyHiddenState();
     this.listenForVisibilityChanges();
+    this.updateStartFreshVisibility();
+    this.updateContinueBtnAuthState();
 
     console.log('🐻 ThreadCub: Floating button ready!');
   }
@@ -99,9 +101,18 @@ class ThreadCubFloatingButton {
       <div class="threadcub-action-buttons">
         <div class="threadcub-new-btn" data-action="new">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/>
-            <path d="m21 3-9 9"/>
-            <path d="M15 3h6v6"/>
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+          </svg>
+        </div>
+        <div class="threadcub-fresh-btn" data-action="fresh">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m18.84 12.25 1.72-1.71h-.02a5.004 5.004 0 0 0-.12-7.07 5.006 5.006 0 0 0-6.95 0l-1.72 1.71"/>
+            <path d="m5.17 11.75-1.71 1.71a5.004 5.004 0 0 0 .12 7.07 5.006 5.006 0 0 0 6.95 0l1.71-1.71"/>
+            <line x1="8" x2="8" y1="2" y2="5"/>
+            <line x1="2" x2="5" y1="8" y2="8"/>
+            <line x1="16" x2="16" y1="19" y2="22"/>
+            <line x1="19" x2="22" y1="16" y2="16"/>
           </svg>
         </div>
         <div class="threadcub-save-btn" data-action="save">
@@ -120,9 +131,10 @@ class ThreadCubFloatingButton {
         </div>
         <div class="threadcub-tag-btn" data-action="tag">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="m15 5 6.3 6.3a2.4 2.4 0 0 1 0 3.4L17 19"/>
-            <path d="M9.586 5.586A2 2 0 0 0 8.172 5H3a1 1 0 0 0-1 1v5.172a2 2 0 0 0 .586 1.414L8.29 18.29a2.426 2.426 0 0 0 3.42 0l3.58-3.58a2.426 2.426 0 0 0 0-3.42z"/>
-            <circle cx="6.5" cy="9.5" r=".5" fill="currentColor"/>
+            <circle cx="11" cy="4" r="2"/>
+            <circle cx="18" cy="8" r="2"/>
+            <circle cx="20" cy="16" r="2"/>
+            <path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z"/>
           </svg>
         </div>
         <div class="threadcub-close-btn" data-action="close">
@@ -251,11 +263,10 @@ class ThreadCubFloatingButton {
 
   setupTooltips() {
     const tooltipData = {
-      'threadcub-new-btn': 'Continue Your Chat',
       'threadcub-save-btn': 'Send to ThreadCub',
       'threadcub-download-btn': 'Download',
       'threadcub-tag-btn': 'Pawmarks',
-      'threadcub-close-btn': 'Bye For Now'
+      'threadcub-close-btn': 'Close'
     };
 
     Object.entries(tooltipData).forEach(([className, text]) => {
@@ -333,6 +344,90 @@ class ThreadCubFloatingButton {
       button.addEventListener('mouseenter', showTooltip);
       button.addEventListener('mouseleave', hideTooltip);
     });
+
+    // Continue button tooltip — text is dynamic based on signed-in state
+    const newBtnEl = this.button.querySelector('.threadcub-new-btn');
+    if (newBtnEl) {
+      let newTooltip = null;
+      let newShowTimeout = null;
+      let newHideTimeout = null;
+
+      newBtnEl.addEventListener('mouseenter', () => {
+        clearTimeout(newShowTimeout);
+        clearTimeout(newHideTimeout);
+        newShowTimeout = setTimeout(() => {
+          document.querySelectorAll('.threadcub-tooltip').forEach(t => t.remove());
+          const text = newBtnEl.classList.contains('signed-in') ? 'Continue Your Chat' : 'Sign in to continue a chat';
+          newTooltip = document.createElement('div');
+          newTooltip.className = 'threadcub-tooltip';
+          newTooltip.textContent = text;
+          newTooltip.style.position = 'fixed';
+          newTooltip.style.opacity = '0';
+          newTooltip.style.pointerEvents = 'none';
+          document.body.appendChild(newTooltip);
+          const rect = newBtnEl.getBoundingClientRect();
+          const tw = newTooltip.offsetWidth;
+          const th = newTooltip.offsetHeight;
+          newTooltip.style.left = (rect.left - tw - 8) + 'px';
+          newTooltip.style.top = (rect.top + (rect.height - th) / 2) + 'px';
+          requestAnimationFrame(() => newTooltip.classList.add('show'));
+        }, 150);
+      });
+
+      newBtnEl.addEventListener('mouseleave', () => {
+        clearTimeout(newShowTimeout);
+        clearTimeout(newHideTimeout);
+        if (newTooltip) {
+          newTooltip.classList.remove('show');
+          newHideTimeout = setTimeout(() => {
+            if (newTooltip?.parentNode) newTooltip.parentNode.removeChild(newTooltip);
+            newTooltip = null;
+          }, 200);
+        }
+      });
+    }
+
+    // Fresh button tooltip — text is dynamic based on chain-active state
+    const freshBtnEl = this.button.querySelector('.threadcub-fresh-btn');
+    if (freshBtnEl) {
+      let freshTooltip = null;
+      let freshShowTimeout = null;
+      let freshHideTimeout = null;
+
+      freshBtnEl.addEventListener('mouseenter', () => {
+        clearTimeout(freshShowTimeout);
+        clearTimeout(freshHideTimeout);
+        freshShowTimeout = setTimeout(() => {
+          document.querySelectorAll('.threadcub-tooltip').forEach(t => t.remove());
+          const text = freshBtnEl.classList.contains('chain-active') ? 'Start fresh chain' : 'No active chain';
+          freshTooltip = document.createElement('div');
+          freshTooltip.className = 'threadcub-tooltip';
+          freshTooltip.textContent = text;
+          freshTooltip.style.position = 'fixed';
+          freshTooltip.style.opacity = '0';
+          freshTooltip.style.pointerEvents = 'none';
+          document.body.appendChild(freshTooltip);
+          const rect = freshBtnEl.getBoundingClientRect();
+          const tw = freshTooltip.offsetWidth;
+          const th = freshTooltip.offsetHeight;
+          freshTooltip.style.left = (rect.left - tw - 8) + 'px';
+          freshTooltip.style.top = (rect.top + (rect.height - th) / 2) + 'px';
+          requestAnimationFrame(() => freshTooltip.classList.add('show'));
+        }, 150);
+      });
+
+      freshBtnEl.addEventListener('mouseleave', () => {
+        clearTimeout(freshShowTimeout);
+        clearTimeout(freshHideTimeout);
+        if (freshTooltip) {
+          freshTooltip.classList.remove('show');
+          freshHideTimeout = setTimeout(() => {
+            if (freshTooltip?.parentNode) freshTooltip.parentNode.removeChild(freshTooltip);
+            freshTooltip = null;
+          }, 200);
+        }
+      });
+    }
   }
 
   setupDownloadFlyout() {
@@ -591,12 +686,17 @@ class ThreadCubFloatingButton {
 
     // Check for action button clicks
     const newBtn = e.target.closest('.threadcub-new-btn');
+    const freshBtn = e.target.closest('.threadcub-fresh-btn');
     const saveBtn = e.target.closest('.threadcub-save-btn');
     const downloadBtn = e.target.closest('.threadcub-download-btn');
     const tagBtn = e.target.closest('.threadcub-tag-btn');
     const closeBtn = e.target.closest('.threadcub-close-btn');
 
    if (newBtn) {
+      if (!newBtn.classList.contains('signed-in')) {
+        chrome.runtime.sendMessage({ action: 'openSignIn' });
+        return;
+      }
       // 📊 GA: continue button clicked — opens conversation in new AI tab
       sendMessageWithRetry({
         action: 'trackEvent',
@@ -608,6 +708,11 @@ class ThreadCubFloatingButton {
       });
       
       this.saveAndOpenConversation('floating');
+      return;
+    }
+
+    if (freshBtn) {
+      this.handleStartFreshClick();
       return;
     }
 
@@ -928,7 +1033,73 @@ class ThreadCubFloatingButton {
           console.log('🐻 ThreadCub: Floating button visibility:', isHidden ? 'hidden' : 'visible');
         }
       }
+      if (area === 'local' && 'tc_pending_parent' in changes) {
+        this.updateStartFreshVisibility();
+      }
+      if (area === 'local' && 'threadcub_auth_token' in changes) {
+        this.updateContinueBtnAuthState();
+      }
     });
+  }
+
+  updateContinueBtnAuthState() {
+    try {
+      chrome.storage.local.get(['threadcub_auth_token'], (stored) => {
+        const isSignedIn = !!stored.threadcub_auth_token;
+        const btn = this.button?.querySelector('.threadcub-new-btn');
+        if (btn) btn.classList.toggle('signed-in', isSignedIn);
+      });
+    } catch (e) {}
+  }
+
+  updateStartFreshVisibility() {
+    const ONE_HOUR_MS = 60 * 60 * 1000;
+    try {
+      chrome.storage.local.get(['tc_pending_parent'], (stored) => {
+        const entry = stored.tc_pending_parent;
+        const isActive = !!(entry && (
+          typeof entry === 'string' ||
+          (entry.conversationId && (Date.now() - entry.ts) < ONE_HOUR_MS)
+        ));
+        console.log('🔍 [FB] updateStartFreshVisibility — raw tc_pending_parent:', JSON.stringify(stored.tc_pending_parent));
+        const btn = this.button?.querySelector('.threadcub-fresh-btn');
+        if (btn) btn.classList.toggle('chain-active', isActive);
+        this.updateChainLabel(isActive && typeof entry === 'object' ? entry : null);
+      });
+    } catch (e) {}
+  }
+
+  updateChainLabel(entry) {
+    const existing = this.button?.querySelector('.threadcub-chain-label');
+    if (existing) existing.remove();
+    if (!entry || !this.button) return;
+
+    const { continuationNumber, rootTitle } = entry;
+    let text;
+    if (continuationNumber != null && rootTitle) {
+      text = `Part ${continuationNumber} of ${rootTitle}`;
+    } else if (rootTitle) {
+      text = rootTitle;
+    } else {
+      return;
+    }
+
+    const label = document.createElement('div');
+    label.className = 'threadcub-chain-label';
+    label.textContent = text;
+    this.button.appendChild(label);
+  }
+
+  async handleStartFreshClick() {
+    const freshBtn = this.button?.querySelector('.threadcub-fresh-btn');
+    if (!freshBtn?.classList.contains('chain-active')) return;
+    try {
+      await chrome.runtime.sendMessage({ action: 'clearPendingParent' });
+    } catch (e) {}
+    // Update immediately — don't wait for the storage change listener
+    freshBtn.classList.remove('chain-active');
+    this.updateChainLabel(null);
+    window.open('https://claude.ai/new', '_blank');
   }
 
   /**
@@ -1118,7 +1289,7 @@ class ThreadCubFloatingButton {
     console.log('🔍 Resolved parentConversationId:', parentConversationId);
     // Write parent ID to storage BEFORE opening new tab — avoids race condition
     if (parentConversationId) {
-      await chrome.storage.local.set({ 'tc_pending_parent': parentConversationId });
+      await chrome.storage.local.set({ 'tc_pending_parent': { conversationId: parentConversationId, ts: Date.now() } });
       console.log('🔍 DEBUG: Pre-wrote tc_pending_parent before API call:', parentConversationId);
     }
 
@@ -1138,7 +1309,7 @@ class ThreadCubFloatingButton {
 
     // API call via ApiService — reuse cached save if Save was clicked recently (within 30s)
     try {
-      let shareUrl, summary;
+      let shareUrl, summary, data;
 
       const recentSave = apiData.capture_method !== 'continue' && this.lastSavedAt && (Date.now() - this.lastSavedAt) < 30000 && this.lastSavedShareUrl;
 
@@ -1153,7 +1324,7 @@ class ThreadCubFloatingButton {
         this.lastSavedAt = null;
       } else {
         console.log('🐻 PRE-API CALL:', apiData?.capture_method, apiData?.source_chat_url);
-        const data = await window.ApiService.saveConversation(apiData);
+        data = await window.ApiService.saveConversation(apiData);
 
         // Store session_id returned from server (ensures anonymous saves are claimable)
         if (data.session_id) {
@@ -1172,6 +1343,20 @@ class ThreadCubFloatingButton {
         // Log the full API response so we can see exactly what keys are returned
         console.log('🔍 DEBUG: Full save API response:', JSON.stringify(data));
 
+        // DEBUG OVERLAY — remove once continuation_number/root_title confirmed working
+        (function() {
+          const el = document.createElement('div');
+          el.id = 'tc-debug-overlay';
+          el.style.cssText = 'position:fixed;top:12px;right:12px;z-index:2147483647;background:#1a1a2e;color:#fff;font:13px/1.5 monospace;padding:12px 16px;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.5);max-width:360px;word-break:break-all;';
+          el.innerHTML = '<strong style="color:#f9c74f">ThreadCub API debug</strong><br>'
+            + '<span style="color:#90be6d">continuation_number:</span> ' + JSON.stringify(data.continuation_number) + '<br>'
+            + '<span style="color:#90be6d">root_title:</span> ' + JSON.stringify(data.root_title) + '<br>'
+            + '<span style="color:#aaa;font-size:11px">click to dismiss</span>';
+          el.onclick = function() { el.remove(); };
+          document.body.appendChild(el);
+          setTimeout(function() { if (el.parentNode) el.remove(); }, 15000);
+        })();
+
         // Extract conversation ID — backend may return it under different keys
         // Use nullish coalescing to avoid picking up JS `undefined` values, which
         // would coerce to the string "undefined" inside the template literal below.
@@ -1185,7 +1370,7 @@ class ThreadCubFloatingButton {
         if (conversationId && conversationData.url) {
           chrome.storage.local.set({ [`tc_parent_${conversationData.url}`]: conversationId });
           chrome.storage.local.set({ 'tc_last_saved_id': conversationId });
-          sendMessageWithRetry({ action: 'setPendingParent', conversationId: conversationId });
+          sendMessageWithRetry({ action: 'setPendingParent', conversationId: conversationId, continuationNumber: data.continuation_number ?? null, rootTitle: data.root_title || conversationData.title || null });
           console.log('🔍 DEBUG: Persisted parent ID for URL:', conversationData.url);
           console.log('🔍 DEBUG: Set tc_pending_parent for new tab:', conversationId);
         }
@@ -1208,7 +1393,7 @@ class ThreadCubFloatingButton {
       // Generate minimal continuation prompt
       // Enrich with API message count so pagination threshold is accurate
       const enrichedConversationData = { ...conversationData, total_messages: data?.message_count || data?.total_messages || conversationData.messages?.length || 0 };
-      const minimalPrompt = window.ConversationExtractor.generateContinuationPrompt(summary, shareUrl, conversationData.platform, enrichedConversationData);
+      const minimalPrompt = window.ConversationExtractor.generateContinuationPrompt(summary, shareUrl, conversationData.platform, enrichedConversationData, data.continuation_number, data.root_title);
 
       console.log('🔍 DEBUG: About to route to platform:', targetPlatform);
 
@@ -1400,6 +1585,11 @@ class ThreadCubFloatingButton {
         this.lastSavedConversationData = conversationData;
         this.lastSavedAt = Date.now();
         console.log('🐻 ThreadCub: Cached save result — shareUrl:', this.lastSavedShareUrl);
+
+        // Plain save — clear tc_pending_parent so the next Continue on an unrelated chat
+        // doesn't inherit this conversation as its parent. getPendingParent no longer
+        // auto-deletes, so this explicit call is the sole clearing mechanism for the save path.
+        try { sendMessageWithRetry({ action: 'clearPendingParent' }); } catch(e) {}
 
         window.UIComponents.showUndoToast(
           'Saved for later. Changed your mind?',
@@ -1733,6 +1923,7 @@ Once you've reviewed it, let me know you're ready to continue from where we left
     console.log('🤖 ThreadCub: Claude continuation data with message count:', continuationData.totalMessages);
 
     const canUseChrome = window.StorageService.canUseChromStorage();
+    console.log('🔍 [handleClaudeFlow] canUseChromStorage:', canUseChrome, '| parentId:', parentId);
 
     if (canUseChrome) {
       console.log('🤖 ThreadCub: Using Chrome storage for Claude...');

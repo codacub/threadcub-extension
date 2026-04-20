@@ -228,6 +228,7 @@
 
 /* Individual Action Buttons */
 .threadcub-new-btn,
+.threadcub-fresh-btn,
 .threadcub-save-btn,
 .threadcub-download-btn,
 .threadcub-tag-btn,
@@ -249,6 +250,7 @@
 }
 
 .threadcub-new-btn svg,
+.threadcub-fresh-btn svg,
 .threadcub-save-btn svg,
 .threadcub-download-btn svg,
 .threadcub-tag-btn svg,
@@ -259,8 +261,71 @@
   fill: none !important;
 }
 
+/* Chain state label — appears to the left of the button on hover when mid-chain */
+.threadcub-chain-label {
+  position: absolute;
+  right: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(10, 10, 14, 0.88);
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.3;
+  padding: 5px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--transition-action-buttons);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+#threadcub-edge-btn:hover .threadcub-chain-label {
+  opacity: 1;
+}
+
+/* Unlink button — always visible; only the icon dims when no chain active */
+.threadcub-fresh-btn {
+  cursor: not-allowed !important;
+}
+.threadcub-fresh-btn svg {
+  opacity: 0.3;
+}
+.threadcub-fresh-btn.chain-active {
+  cursor: pointer !important;
+  color: var(--color-accent-amber, #f59e0b) !important;
+}
+.threadcub-fresh-btn.chain-active svg {
+  opacity: 1;
+}
+.threadcub-fresh-btn.chain-active:hover {
+  background: var(--color-accent-amber, #f59e0b) !important;
+  color: white !important;
+  transform: scale(1.1) !important;
+  box-shadow: var(--shadow-action-btn-new-hover) !important;
+}
+
+/* Continue button — dims icon when not signed in */
+.threadcub-new-btn {
+  cursor: not-allowed !important;
+}
+.threadcub-new-btn svg {
+  opacity: 0.3;
+}
+.threadcub-new-btn.signed-in {
+  cursor: pointer !important;
+}
+.threadcub-new-btn.signed-in svg {
+  opacity: 1;
+}
+
 /* Action Button Hover States */
-.threadcub-new-btn:hover {
+.threadcub-new-btn.signed-in:hover {
   background: var(--color-action-btn-new-bg-hover) !important;
   color: var(--color-action-btn-new-text-hover) !important;
   transform: scale(1.1) !important;
@@ -310,7 +375,7 @@
 }
 
 /* Ensure white icons on hover for new-btn, save-btn, and close-btn (Grok fix) */
-.threadcub-new-btn:hover svg,
+.threadcub-new-btn.signed-in:hover svg,
 .threadcub-save-btn:hover svg,
 .threadcub-close-btn:hover svg {
   stroke: white !important;
@@ -401,6 +466,7 @@
 
 /* Scale effect for action buttons on hover of main button */
 #threadcub-edge-btn:hover .threadcub-new-btn,
+#threadcub-edge-btn:hover .threadcub-fresh-btn,
 #threadcub-edge-btn:hover .threadcub-save-btn,
 #threadcub-edge-btn:hover .threadcub-download-btn,
 #threadcub-edge-btn:hover .threadcub-tag-btn,
@@ -410,6 +476,7 @@
 
 /* Keep action buttons at full scale when flyout is active */
 #threadcub-edge-btn.flyout-active .threadcub-new-btn,
+#threadcub-edge-btn.flyout-active .threadcub-fresh-btn,
 #threadcub-edge-btn.flyout-active .threadcub-save-btn,
 #threadcub-edge-btn.flyout-active .threadcub-tag-btn,
 #threadcub-edge-btn.flyout-active .threadcub-close-btn {
@@ -469,7 +536,7 @@
   font-family: var(--font-family-primary) !important;
   font-size: var(--font-size-tooltip) !important;
   font-weight: var(--font-weight-tooltip) !important;
-  text-transform: uppercase !important;
+  /*text-transform: uppercase !important;*/
   letter-spacing: var(--font-spacing-tooltip) !important;
   white-space: nowrap !important;
   z-index: 10000001 !important;

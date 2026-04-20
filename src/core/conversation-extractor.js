@@ -1258,7 +1258,7 @@ const title = (rawTitle
     return 'unknown';
   },
 
-  generateContinuationPrompt(summary, shareUrl, platform, conversationData) {
+  generateContinuationPrompt(summary, shareUrl, platform, conversationData, continuationNumber, rootTitle) {
     console.log('🐻 ThreadCub: Generating continuation prompt for platform:', platform);
 
     // URL-based prompt for platforms with web_fetch capability (Claude, Grok)
@@ -1268,9 +1268,12 @@ const title = (rawTitle
     const pageUrls = needsPagination
       ? Array.from({ length: pageCount }, (_, i) => `Page ${i + 1}: ${shareUrl}?page=${i + 1}&limit=30`).join('\n')
       : '';
+    const opener = (continuationNumber != null)
+      ? `'Part ${continuationNumber} of ${rootTitle || conversationData?.title || 'our previous conversation'}'`
+      : `Continuing from '${conversationData?.title || 'our previous conversation'}'`;
     const urlBasedPrompt = needsPagination
-      ? `Continuing from '${conversationData?.title || 'our previous conversation'}' — I'd like to pick up where we left off. The complete context is available at: ${shareUrl}\n\nThis conversation has ${totalMessages} messages which is too large to fetch in one go. Please fetch each page sequentially using your web_fetch tool:\n${pageUrls}\n\nOnce you have all pages, confirm you have the full context and are ready to continue from where we left off.`
-      : `Continuing from '${conversationData?.title || 'our previous conversation'}' — I'd like to pick up where we left off. The complete context is available at: ${shareUrl}\n\nPlease attempt to fetch this URL using your web_fetch tool to access the conversation history. The URL returns a JSON response with the full conversation.\n\nIf you're able to retrieve it, let me know you're ready to continue from where we left off. If you cannot access it for any reason, please let me know and I'll share the conversation content directly.`;
+      ? `${opener} — I'd like to pick up where we left off. The complete context is available at: ${shareUrl}\n\nThis conversation has ${totalMessages} messages which is too large to fetch in one go. Please fetch each page sequentially using your web_fetch tool:\n${pageUrls}\n\nOnce you have all pages, confirm you have the full context and are ready to continue from where we left off.`
+      : `${opener} — I'd like to pick up where we left off. The complete context is available at: ${shareUrl}\n\nPlease attempt to fetch this URL using your web_fetch tool to access the conversation history. The URL returns a JSON response with the full conversation.\n\nIf you're able to retrieve it, let me know you're ready to continue from where we left off. If you cannot access it for any reason, please let me know and I'll share the conversation content directly.`;
 
     // GROK - URL-based (confirmed working with web_fetch)
     if (platform && platform.toLowerCase().includes('grok')) {

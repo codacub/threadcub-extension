@@ -3,7 +3,6 @@
 // ===== STREAMLINED: Check for continuation data and auto-execute =====
 function checkForContinuationData() {
   console.log('🐻 ThreadCub: Checking for continuation data using Chrome storage');
-  
   let retryCount = 0;
   const maxRetries = 15; // Try up to 15 times
   const retryDelay = 300; // Every 300ms

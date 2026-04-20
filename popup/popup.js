@@ -42,7 +42,7 @@ async function initializeLogo() {
     if (!logo) return;
 
     if (typeof chrome !== 'undefined' && chrome.runtime?.getURL) {
-        const fullPath = chrome.runtime.getURL('assets/images/logo.svg');
+        const fullPath = chrome.runtime.getURL('assets/images/coda/coda_happy.svg');
         const img = new Image();
         img.onload = () => {
             const imgEl = document.createElement('img');

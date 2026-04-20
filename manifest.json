@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ThreadCub",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "description": "Save, tag, and resume your AI chats across platforms. ThreadCub makes long conversations organised, searchable, and stress-free.",
 
   "icons": {
@@ -26,7 +26,9 @@
         "assets/images/floating-button.gif",
         "assets/images/install.gif",
         "assets/images/highlight.gif",
-        "assets/images/welcome-coda.png"
+        "assets/images/coda/coda_happy.svg",
+        "assets/images/coda/coda_cheeky.svg",
+        "assets/images/coda/coda_smile.svg"
       ],
       "matches": ["<all_urls>"]
     }

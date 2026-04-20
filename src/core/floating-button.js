@@ -80,6 +80,7 @@ class ThreadCubFloatingButton {
     this.applyHiddenState();
     this.listenForVisibilityChanges();
     this.updateStartFreshVisibility();
+    this.updateContinueBtnAuthState();
 
     console.log('🐻 ThreadCub: Floating button ready!');
   }
@@ -262,7 +263,6 @@ class ThreadCubFloatingButton {
 
   setupTooltips() {
     const tooltipData = {
-      'threadcub-new-btn': 'Continue Your Chat',
       'threadcub-save-btn': 'Send to ThreadCub',
       'threadcub-download-btn': 'Download',
       'threadcub-tag-btn': 'Pawmarks',
@@ -344,6 +344,48 @@ class ThreadCubFloatingButton {
       button.addEventListener('mouseenter', showTooltip);
       button.addEventListener('mouseleave', hideTooltip);
     });
+
+    // Continue button tooltip — text is dynamic based on signed-in state
+    const newBtnEl = this.button.querySelector('.threadcub-new-btn');
+    if (newBtnEl) {
+      let newTooltip = null;
+      let newShowTimeout = null;
+      let newHideTimeout = null;
+
+      newBtnEl.addEventListener('mouseenter', () => {
+        clearTimeout(newShowTimeout);
+        clearTimeout(newHideTimeout);
+        newShowTimeout = setTimeout(() => {
+          document.querySelectorAll('.threadcub-tooltip').forEach(t => t.remove());
+          const text = newBtnEl.classList.contains('signed-in') ? 'Continue Your Chat' : 'Sign in to continue a chat';
+          newTooltip = document.createElement('div');
+          newTooltip.className = 'threadcub-tooltip';
+          newTooltip.textContent = text;
+          newTooltip.style.position = 'fixed';
+          newTooltip.style.opacity = '0';
+          newTooltip.style.pointerEvents = 'none';
+          document.body.appendChild(newTooltip);
+          const rect = newBtnEl.getBoundingClientRect();
+          const tw = newTooltip.offsetWidth;
+          const th = newTooltip.offsetHeight;
+          newTooltip.style.left = (rect.left - tw - 8) + 'px';
+          newTooltip.style.top = (rect.top + (rect.height - th) / 2) + 'px';
+          requestAnimationFrame(() => newTooltip.classList.add('show'));
+        }, 150);
+      });
+
+      newBtnEl.addEventListener('mouseleave', () => {
+        clearTimeout(newShowTimeout);
+        clearTimeout(newHideTimeout);
+        if (newTooltip) {
+          newTooltip.classList.remove('show');
+          newHideTimeout = setTimeout(() => {
+            if (newTooltip?.parentNode) newTooltip.parentNode.removeChild(newTooltip);
+            newTooltip = null;
+          }, 200);
+        }
+      });
+    }
 
     // Fresh button tooltip — text is dynamic based on chain-active state
     const freshBtnEl = this.button.querySelector('.threadcub-fresh-btn');
@@ -651,6 +693,7 @@ class ThreadCubFloatingButton {
     const closeBtn = e.target.closest('.threadcub-close-btn');
 
    if (newBtn) {
+      if (!newBtn.classList.contains('signed-in')) return;
       // 📊 GA: continue button clicked — opens conversation in new AI tab
       sendMessageWithRetry({
         action: 'trackEvent',
@@ -990,7 +1033,20 @@ class ThreadCubFloatingButton {
       if (area === 'local' && 'tc_pending_parent' in changes) {
         this.updateStartFreshVisibility();
       }
+      if (area === 'local' && 'threadcub_auth_token' in changes) {
+        this.updateContinueBtnAuthState();
+      }
     });
+  }
+
+  updateContinueBtnAuthState() {
+    try {
+      chrome.storage.local.get(['threadcub_auth_token'], (stored) => {
+        const isSignedIn = !!stored.threadcub_auth_token;
+        const btn = this.button?.querySelector('.threadcub-new-btn');
+        if (btn) btn.classList.toggle('signed-in', isSignedIn);
+      });
+    } catch (e) {}
   }
 
   updateStartFreshVisibility() {

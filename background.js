@@ -113,7 +113,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       return true;
 
     case 'openSignIn':
-      chrome.tabs.create({ url: chrome.runtime.getURL('popup/popup.html') });
+      chrome.tabs.create({ url: chrome.runtime.getURL('signin.html') });
       sendResponse({ success: true });
       return true;
 

@@ -522,7 +522,7 @@
   font-family: var(--font-family-primary) !important;
   font-size: var(--font-size-tooltip) !important;
   font-weight: var(--font-weight-tooltip) !important;
-  text-transform: uppercase !important;
+  /*text-transform: uppercase !important;*/
   letter-spacing: var(--font-spacing-tooltip) !important;
   white-space: nowrap !important;
   z-index: 10000001 !important;

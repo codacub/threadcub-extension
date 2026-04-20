@@ -33,27 +33,30 @@
   // Update values here when your design system changes
   // ---------------------------------------------------------------------------
   const TOKENS = {
-    colorSurface:        '#6C74FB',
-    colorTextPrimary:    '#FFFFFF',
-    colorTextSecondary:  'rgba(255,255,255,0.90)',
-    colorTextCounter:    'rgba(255,255,255,0.65)',
-    colorBtnPrimaryBg:   '#FFFFFF',
-    colorBtnPrimaryText: '#6C74FB',
-    colorBtnPrimaryHover:'rgba(255,255,255,0.92)',
-    colorBtnGhostText:   'rgba(255,255,255,0.80)',
-    fontFamily:      `'Karla', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`,
-    fontSizeCounter: '14px',
-    fontSizeBody:    '18px',
-    fontSizeBtn:     '16px',
-    radiusModal:  '16px',
-    radiusBtn:    '8px',
-    radiusImage:  '8px',
-    modalPad:     '24px',
-    peakSize:        '16px',
-    peakOffset:      '-10px',
-    peakTopRightPos: '80px',
-    bodyLineHeight:  '1.4',
-    bodyLineGap:     '4px',
+    // Colours
+    colorBrand:         '#925FE2',
+    colorBrandHover:    '#7a4ec8',
+    colorSurface:       '#1e1e2e',
+    colorTextPrimary:   '#ffffff',
+    colorTextSecondary: 'rgba(255,255,255,0.72)',
+    colorTextMuted:     'rgba(255,255,255,0.35)',
+    colorBorder:        'rgba(255,255,255,0.18)',
+    // Typography
+    fontFamily:         `-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`,
+    fontSizeLabel:      '11px',
+    fontSizeTitle:      '20px',
+    fontSizeBody:       '14px',
+    fontSizeBtn:        '13px',
+    // Radii
+    radiusModal:        '16px',
+    radiusBtn:          '20px',
+    radiusImage:        '10px',
+    // Spacing
+    spacingModalPad:    '24px',
+    // Peak (tooltip arrow) — change peakSize to resize, peakTopRightPos to realign step 2
+    peakSize:           '16px',
+    peakOffset:         '-10px',
+    peakTopRightPos:    '80px',
   };
 
   // ---------------------------------------------------------------------------
@@ -69,24 +72,16 @@
     return '';
   }
 
-  const AVATARS = {
-    step0: () => getGifUrl('coda/coda_happy.svg'),
-    step1: () => getGifUrl('coda/coda_cheeky.svg'),
-    step2: () => getGifUrl('coda/coda_smile.svg'),
-    step3: () => getGifUrl('coda/coda_happy.svg'),
-  };
-
   const GIFS = {
-    step0: () => null,
-    step1: () => getGifUrl('floating-button.gif'),
-    step2: () => getGifUrl('install.gif'),
-    step3: () => getGifUrl('highlight.gif'),
+    step0: () => getGifUrl('welcome-coda.png'),    // Coda intro
+    step1: () => getGifUrl('floating-button.gif'), // Bear menu
+    step2: () => getGifUrl('install.gif'),         // Pin toolbar
+    step3: () => getGifUrl('highlight.gif'),       // Pawmarks / side panel
   };
 
   function gifBlock(gifUrl) {
-    if (!gifUrl) return '';
-    const img = `<img src="${gifUrl}" style="width:100%;height:100%;object-fit:cover;display:block;" alt="" />`;
-    return `<div style="background:#FFFFFF;border-radius:8px;width:100%;height:212px;overflow:hidden;margin-bottom:16px;flex-shrink:0;">${img}</div>`;
+    if (!gifUrl) return `<div style="background:rgba(255,255,255,0.05);border-radius:10px;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;border:1px dashed rgba(255,255,255,0.15);margin-bottom:14px;"><span style="color:rgba(255,255,255,0.3);font-size:12px;">Loading...</span></div>`;
+    return `<div style="border-radius:10px;overflow:hidden;margin-bottom:14px;"><img src="${gifUrl}" style="width:100%;display:block;border-radius:10px;" alt="" /></div>`;
   }
 
   // ---------------------------------------------------------------------------
@@ -163,12 +158,12 @@
 
   function renderStep0() {
     popoverEl = buildPopover({
-      step:     '1 of 4',
-      body: `<span style="display:block;margin-bottom:16px;">Hey! I'm Coda.</span><span style="display:block;margin-bottom:16px;">I might be small, but I'm pretty good at keeping things organised.</span><span style="display:block;">Want a quick tour?</span>`,
-      primary:  { label: 'Yeah, show me', action: () => goToStep(1) },
-      dismiss:  { label: 'No thanks', action: () => endTour(true) },
-      wide:     true,
-      avatarUrl: AVATARS.step0(),
+      step:    '1 of 4',
+      title:   "Hey! I'm Coda",
+      body:    gifBlock(GIFS.step0()) + "Hey! I'm Coda. I live on the edge of your screen and make sure your best AI conversations never get lost.",
+      primary: { label: 'Show me around', action: () => goToStep(1) },
+      dismiss: { label: 'Dismiss', action: endTour },
+      wide: true
     });
 
     positionCentred(popoverEl);
@@ -184,10 +179,11 @@
     if (!bear) { endTour(); return; }
 
     popoverEl = buildPopover({
-      step:     '2 of 4',
-      body: gifBlock(GIFS.step1()) + `<span style="display:block;margin-bottom:16px;">I live on the edge of your screen.</span><span style="display:block;">Hover over me to reveal a menu of options.</span>`,      primary:  { label: 'Next', action: () => goToStep(2) },
-      dismiss:  { label: 'Back', action: () => goToStep(0) },
-      avatarUrl: AVATARS.step1(),
+      step:    '2 of 4',
+      title:   'Your floating menu',
+      body:    gifBlock(GIFS.step1()),
+      primary: { label: 'Next', action: () => goToStep(2) },
+      dismiss: { label: 'Back', action: () => goToStep(0) }
     });
 
     positionNextToElement(popoverEl, bear.getBoundingClientRect());
@@ -200,12 +196,12 @@
 
   function renderStep2() {
     popoverEl = buildPopover({
-      step:     '3 of 4',
-      body: gifBlock(GIFS.step2()) + `<span style="display:block;margin-bottom:16px;">Pin me to your toolbar.</span><span style="display:block;">From there you can sign in to sync with the ThreadCub Platform.</span>`,
-      primary:  { label: 'Next', action: () => goToStep(3) },
-      dismiss:  { label: 'Back', action: () => goToStep(1) },
-      wide:     true,
-      avatarUrl: AVATARS.step2(),
+      step:    '3 of 4',
+      title:   'Pin me to your toolbar',
+      body:    gifBlock(GIFS.step2()),
+      primary: { label: 'Next', action: () => goToStep(3) },
+      dismiss: { label: 'Back', action: () => goToStep(1) },
+      wide: true
     });
 
     positionTopRight(popoverEl);
@@ -233,14 +229,14 @@
       const panel = findPanel();
 
       popoverEl = buildPopover({
-        step:     '4 of 4',
-       body: gifBlock(GIFS.step3()) + `<span style="display:block;margin-bottom:16px;">Highlight anything in a chat and drop a Pawmark to save what matters.</span><span style="display:block;">Tag it, add notes, and find it again instantly from your side panel.</span>`,
-        primary:  { label: 'Got it!', action: endTour },
-        dismiss:  { label: 'Back', action: () => {
+        step:    '4 of 4',
+        title:   'Pawmarks panel',
+        body:    gifBlock(GIFS.step3()),
+        primary: { label: 'Got it!', action: endTour },
+        dismiss: { label: 'Back', action: () => {
           try { window.threadcubTagging?.toggleSidePanel(); } catch {}
           goToStep(2);
-        }},
-        avatarUrl: AVATARS.step3(),
+        }}
       });
 
       if (panel) {
@@ -349,7 +345,7 @@
   // Popover builder
   // ---------------------------------------------------------------------------
 
-  function buildPopover({ step, body, primary, dismiss, wide = false, avatarUrl = '' }) {
+  function buildPopover({ step, title, body, primary, dismiss, wide = false }) {
     const el = document.createElement('div');
     el.id = 'threadcub-onboarding-popover';
     el.style.cssText = `
@@ -358,46 +354,36 @@
       background: ${TOKENS.colorSurface};
       color: ${TOKENS.colorTextPrimary};
       border-radius: ${TOKENS.radiusModal};
-      padding: ${TOKENS.modalPad};
-      width: ${wide ? '400px' : '400px'};
-      box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(108,116,251,0.25);
+      padding: ${TOKENS.spacingModalPad};
+      width: ${wide ? '440px' : '400px'};
+      box-shadow: 0 12px 40px rgba(0,0,0,0.4);
       font-family: ${TOKENS.fontFamily};
       font-size: ${TOKENS.fontSizeBody};
-      line-height: ${TOKENS.bodyLineHeight};
+      line-height: 1.55;
       pointer-events: auto;
       opacity: 0;
       transform: translateY(6px);
       transition: opacity 0.22s ease, transform 0.22s ease;
-      box-sizing: border-box;
     `;
 
-    const avatarHtml = avatarUrl
-      ? `<img src="${avatarUrl}" alt="Coda" style="width:56px;height:56px;border-radius:50%;object-fit:cover;flex-shrink:0;" />`
-      : `<div style="width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,0.2);flex-shrink:0;"></div>`;
-
     el.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
-        ${avatarHtml}
-        <span style="font-size:${TOKENS.fontSizeCounter};color:${TOKENS.colorTextCounter};font-weight:600;letter-spacing:0.04em;margin-top:4px;">${step}</span>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <span style="font-size:${TOKENS.fontSizeLabel};color:${TOKENS.colorBrand};font-weight:600;letter-spacing:0.04em;text-transform:uppercase;">${step}</span>
+        <button id="tc-ob-x" style="background:none;border:none;cursor:pointer;color:${TOKENS.colorTextMuted};font-size:20px;line-height:1;padding:0;">×</button>
       </div>
-      <div style="color:${TOKENS.colorTextSecondary};margin-bottom:20px;font-style:italic;font-weight:700;line-height:${TOKENS.bodyLineHeight};">${body}</div>
-      <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;">
-        ${dismiss
-          ? `<button id="tc-ob-dismiss" style="background:none;border:none;color:${TOKENS.colorBtnGhostText};border-radius:${TOKENS.radiusBtn};height:40px;padding:0 16px;font-size:${TOKENS.fontSizeBtn};font-family:${TOKENS.fontFamily};font-weight:500;cursor:pointer;line-height:1;">${dismiss.label}</button>`
-          : ''
-        }
-        <button id="tc-ob-primary" style="background:${TOKENS.colorBtnPrimaryBg};border:none;color:${TOKENS.colorBtnPrimaryText};border-radius:${TOKENS.radiusBtn};height:40px;padding:0 16px;font-size:${TOKENS.fontSizeBtn};font-family:${TOKENS.fontFamily};font-weight:600;cursor:pointer;line-height:1;transition:background 0.2s ease;">${primary.label}</button>
+      <strong style="font-size:${TOKENS.fontSizeTitle};color:${TOKENS.colorTextPrimary};display:block;margin-bottom:10px;line-height:1.3;">${title}</strong>
+      <div style="color:${TOKENS.colorTextSecondary};margin-bottom:20px;">${body}</div>
+      <div style="display:flex;justify-content:flex-end;gap:10px;">
+        ${dismiss ? `<button id="tc-ob-dismiss" style="background:none;border:1px solid ${TOKENS.colorBorder};color:${TOKENS.colorTextSecondary};border-radius:${TOKENS.radiusBtn};padding:10px 20px;font-size:${TOKENS.fontSizeBtn};cursor:pointer;font-family:${TOKENS.fontFamily};">${dismiss.label}</button>` : ''}
+        <button id="tc-ob-primary" style="background:${TOKENS.colorBrand};border:none;color:${TOKENS.colorTextPrimary};border-radius:${TOKENS.radiusBtn};padding:10px 24px;font-size:${TOKENS.fontSizeBtn};cursor:pointer;font-weight:600;font-family:${TOKENS.fontFamily};">${primary.label}</button>
       </div>
       <div id="tc-ob-peak" style="position:absolute;width:${TOKENS.peakSize};height:${TOKENS.peakSize};background:${TOKENS.colorSurface};transform:rotate(45deg);display:none;border-radius:3px;"></div>
     `;
 
-    const primaryBtn = el.querySelector('#tc-ob-primary');
-    primaryBtn.addEventListener('mouseenter', () => { primaryBtn.style.background = TOKENS.colorBtnPrimaryHover; });
-    primaryBtn.addEventListener('mouseleave', () => { primaryBtn.style.background = TOKENS.colorBtnPrimaryBg; });
-
     document.body.appendChild(el);
 
-    primaryBtn.addEventListener('mousedown', (e) => { e.stopPropagation(); primary.action(); });
+    el.querySelector('#tc-ob-primary').addEventListener('mousedown', (e) => { e.stopPropagation(); primary.action(); });
+    el.querySelector('#tc-ob-x').addEventListener('mousedown', (e) => { e.stopPropagation(); endTour(true); });
     if (dismiss) {
       el.querySelector('#tc-ob-dismiss').addEventListener('mousedown', (e) => { e.stopPropagation(); dismiss.action(); });
     }
@@ -422,11 +408,11 @@
 
     el.style.right = '16px';
     el.style.left  = 'auto';
-    el.style.top = '16px';
+    el.style.top   = `calc(28px - ${TOKENS.peakOffset})`;
     el._isTopRight = true;
 
     if (peak) {
-      peak.style.display   = 'none';
+      peak.style.display   = 'block';
       peak.style.top       = TOKENS.peakOffset;
       peak.style.bottom    = 'auto';
       peak.style.right     = TOKENS.peakTopRightPos;
@@ -436,7 +422,7 @@
   }
 
   function positionNextToElement(el, anchorRect) {
-    const popW   = parseInt(el.style.width) || 400;
+    const popW   = parseInt(el.style.width) || 300;
     const margin = 14;
     const peak   = el.querySelector('#tc-ob-peak');
     const peakSizePx = parseInt(TOKENS.peakSize) || 20;
@@ -452,7 +438,7 @@
     el.style.top  = `${top}px`;
 
     if (peak) {
-      peak.style.display = 'none';
+      peak.style.display = 'block';
       const halfPeak = peakSizePx / 2;
       if (flipRight) {
         peak.style.left      = `${-halfPeak}px`;
@@ -469,7 +455,7 @@
   }
 
   function positionLeftOfPanel(el, panelRect) {
-    const popW      = parseInt(el.style.width) || 400;
+    const popW      = parseInt(el.style.width) || 300;
     const peak      = el.querySelector('#tc-ob-peak');
     const peakSizePx = parseInt(TOKENS.peakSize) || 20;
 
@@ -480,10 +466,10 @@
     el.style.top  = `${top}px`;
 
     if (peak) {
-      peak.style.display   = 'none';
+      peak.style.display   = 'block';
       peak.style.right     = `${-(peakSizePx / 2)}px`;
       peak.style.left      = 'auto';
-      peak.style.top       = '80px';
+      peak.style.top       = '28px';
       peak.style.boxShadow = '2px -2px 6px rgba(0,0,0,0.15)';
     }
   }
@@ -513,18 +499,17 @@
     overlayEl = document.createElement('div');
     overlayEl.style.cssText = `
       position:fixed;inset:0;z-index:2147483640;
-      background:rgba(0,0,0,0.3);pointer-events:auto;
+      background:rgba(0,0,0,0.3);pointer-events:none;
       opacity:0;transition:opacity 0.3s ease;
     `;
     document.body.appendChild(overlayEl);
     requestAnimationFrame(() => { overlayEl.style.opacity = '1'; });
-    overlayEl.addEventListener('click', () => endTour(true));
   }
 
   function removeOverlay() {
     if (overlayEl) {
       overlayEl.style.opacity = '0';
-      setTimeout(() => { overlayEl?.remove(); overlayEl = null; }, 400);
+      setTimeout(() => { overlayEl?.remove(); overlayEl = null; }, 300);
     }
   }
 

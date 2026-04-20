@@ -693,7 +693,10 @@ class ThreadCubFloatingButton {
     const closeBtn = e.target.closest('.threadcub-close-btn');
 
    if (newBtn) {
-      if (!newBtn.classList.contains('signed-in')) return;
+      if (!newBtn.classList.contains('signed-in')) {
+        chrome.tabs.create({ url: chrome.runtime.getURL('popup.html') });
+        return;
+      }
       // 📊 GA: continue button clicked — opens conversation in new AI tab
       sendMessageWithRetry({
         action: 'trackEvent',

@@ -263,7 +263,6 @@ const AuthService = {
         console.log('🔐 AuthService: Refreshed successfully, retrying validation...');
         return await this.validateToken(newToken);
       }
-      await this.clearToken();
       return null;
     } else {
         console.error('🔐 AuthService: Validation request failed:', response.status);
@@ -309,8 +308,7 @@ const AuthService = {
               console.log('🔐 AuthService: Token refreshed successfully');
               resolve(data.access_token);
             } else {
-              console.log('🔐 AuthService: Refresh failed, clearing auth');
-              await this.clearToken();
+              console.log('🔐 AuthService: Refresh failed');
               resolve(null);
             }
           } catch (e) {
@@ -336,7 +334,8 @@ const AuthService = {
 
   /**
    * Get token and validate it, returning user data if valid
-   * Clears token if expired/invalid
+   * Clears token if expired/invalid — this is the single authoritative
+   * place where a failed validation results in auth being cleared.
    */
   async getValidatedAuth() {
     const token = await this.getToken();
@@ -351,6 +350,7 @@ const AuthService = {
       return { authenticated: true, token, user: userData };
     }
 
+    await this.clearToken();
     return { authenticated: false, token: null, user: null };
   },
 

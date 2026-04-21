@@ -127,78 +127,75 @@
 
         </div>
 
-       <!-- FEEDBACK VIEW -->
-<div id="feedbackView" class="view" style="display: none;">
+        <!-- FEEDBACK VIEW -->
+        <div id="feedbackView" class="view" style="display: none;">
 
-    <div class="form-view-header">
-        <h2 class="form-title">Give some feedback</h2>
-        <p class="form-subtitle">Thanks so much for stopping by. How are you finding ThreadCub? All ideas, thoughts, suggestion most welcome.</p>
-    </div>
-
-    <div class="form-card">
-        <div class="form-card-body">
-            <p class="form-label">How you finding it</p>
-            <div class="rating-row">
-                <button class="rating-btn" data-value="1" title="Awful">
-                    <img class="rating-img" src="../assets/images/bear-awful.svg" data-default="../assets/images/bear-awful.svg" data-active="../assets/images/bear-awful-active.svg" alt="Awful">
-                    <span>Awful</span>
-                </button>
-                <button class="rating-btn" data-value="2" title="Poor">
-                    <img class="rating-img" src="../assets/images/bear-poor.svg" data-default="../assets/images/bear-poor.svg" data-active="../assets/images/bear-poor-active.svg" alt="Poor">
-                    <span>Poor</span>
-                </button>
-                <button class="rating-btn" data-value="3" title="Neutral">
-                    <img class="rating-img" src="../assets/images/bear-neutral.svg" data-default="../assets/images/bear-neutral.svg" data-active="../assets/images/bear-neutral-active.svg" alt="Neutral">
-                    <span>Neutral</span>
-                </button>
-                <button class="rating-btn" data-value="4" title="Good">
-                    <img class="rating-img" src="../assets/images/bear-good.svg" data-default="../assets/images/bear-good.svg" data-active="../assets/images/bear-good-active.svg" alt="Good">
-                    <span>Good</span>
-                </button>
-                <button class="rating-btn" data-value="5" title="Awesome">
-                    <img class="rating-img" src="../assets/images/bear-excellent.svg" data-default="../assets/images/bear-excellent.svg" data-active="../assets/images/bear-excellent-active.svg" alt="Awesome">
-                    <span>Awesome</span>
-                </button>
+            <div class="form-view-header">
+                <h2 class="form-title">Give some feedback</h2>
+                <p class="form-subtitle">Thanks for helping us improve!</p>
             </div>
-            <textarea id="feedbackComment" class="form-textarea" placeholder="Add a comment" rows="3"></textarea>
+
+            <div class="form-card">
+                <div class="form-card-body">
+                    <div class="rating-row">
+                        <button class="rating-btn" data-value="1" title="Awful">
+                            <img class="rating-img" src="../assets/images/bear-awful.svg" data-default="../assets/images/bear-awful.svg" data-active="../assets/images/bear-awful-active.svg" alt="Awful">
+                        </button>
+                        <!--<button class="rating-btn" data-value="2" title="Poor">
+                            <img class="rating-img" src="../assets/images/bear-poor.svg" data-default="../assets/images/bear-poor.svg" data-active="../assets/images/bear-poor-active.svg" alt="Poor">
+                            <span>Poor</span>
+                        </button>-->
+                        <button class="rating-btn" data-value="3" title="Neutral">
+                            <img class="rating-img" src="../assets/images/bear-neutral.svg" data-default="../assets/images/bear-neutral.svg" data-active="../assets/images/bear-neutral-active.svg" alt="Neutral">
+                        </button>
+                        <button class="rating-btn" data-value="4" title="Good">
+                            <img class="rating-img" src="../assets/images/bear-good.svg" data-default="../assets/images/bear-good.svg" data-active="../assets/images/bear-good-active.svg" alt="Good">
+                        </button>
+                        <button class="rating-btn" data-value="5" title="Awesome">
+                            <img class="rating-img" src="../assets/images/bear-excellent.svg" data-default="../assets/images/bear-excellent.svg" data-active="../assets/images/bear-excellent-active.svg" alt="Awesome">
+                        </button>
+                    </div>
+                    <textarea id="feedbackComment" class="form-textarea" placeholder="Add a comment" rows="3"></textarea>
+                    <label class="form-checkbox">
+                        <input type="checkbox" id="feedbackContactConsent">
+                        <span>You can contact me about this feedback</span>
+                    </label>
+                </div>
+            </div>
             <div class="form-actions">
                 <button id="feedbackBackBtn" class="btn-secondary">Back</button>
                 <button id="feedbackSendBtn" class="btn-primary-sm">Send</button>
             </div>
-            <label class="form-checkbox">
-                <input type="checkbox" id="feedbackContactConsent">
-                <span>You can contact me about this feedback</span>
-            </label>
+
         </div>
-    </div>
-</div>
 
         <!-- BUG REPORT VIEW -->
-<div id="bugView" class="view" style="display: none;">
+        <div id="bugView" class="view" style="display: none;">
 
-    <div class="form-view-header">
-        <h2 class="form-title">Found a bug?</h2>
-        <p class="form-subtitle">Oh dear, sorry to hear that. Give us some details and we'll look into it.</p>
-    </div>
+            <div class="form-view-header">
+                <h2 class="form-title">Found a bug?</h2>
+                <p class="form-subtitle">Oh dear, sorry to hear that. Give us some details and we'll look into it.</p>
+            </div>
 
-    <div class="form-card">
-        <div class="form-card-body">
-            <textarea id="bugComment" class="form-textarea" placeholder="Add a comment…" rows="2"></textarea>
+            <div class="form-card">
+                <div class="form-card-body">
+                    <textarea id="bugComment" class="form-textarea" placeholder="Add a comment…" rows="2"></textarea>
+                    <label class="form-checkbox">
+                        <input type="checkbox" id="bugContactConsent">
+                        <span>You can contact me about this feedback</span>
+                    </label>
+                </div>
+            </div>
             <div class="form-actions">
                 <button id="bugBackBtn" class="btn-secondary">Back</button>
                 <button id="bugSendBtn" class="btn-primary-sm">Send</button>
             </div>
-            <label class="form-checkbox">
-                <input type="checkbox" id="bugContactConsent">
-                <span>You can contact me about this feedback</span>
-            </label>
+
         </div>
-    </div>
-</div>
 
         <!-- BOTTOM BAR -->
         <div class="bottom-bar">
-        <!--<a href="https://github.com/codacub/threadcub-extension" target="_blank" class="bar-link">GitHub</a>
+            <!--<a href="https://github.com/codacub/threadcub-extension" target="_blank" class="bar-link">GitHub</a>
             <span class="bar-dot"></span>
             <a href="https://www.threadcub.com/roadmap" target="_blank" class="bar-link">Our Roadmap</a>
             <span class="bar-dot"></span>-->

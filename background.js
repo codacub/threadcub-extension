@@ -125,6 +125,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       handleAuthLogout(sendResponse);
       return true;
 
+    case 'clearLocalConversations':
+      handleClearLocalConversations(sendResponse);
+      return true;
+
     case 'getConversationCount':
       handleGetConversationCount(sendResponse);
       return true;
@@ -1198,6 +1202,23 @@ async function handleAuthLogout(sendResponse) {
     console.error('🔐 Background: Error during logout:', error);
     sendResponse({ success: false, error: error.message });
   }
+}
+
+async function handleClearLocalConversations(sendResponse) {
+  console.log('🐻 Background: Clearing local conversation data...');
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.remove([TC_PENDING_KEY, 'tc_pending_parent', 'threadcubContinuationData'], () => {
+      if (chrome.runtime.lastError) {
+        console.error('🐻 Background: Error clearing local conversations:', chrome.runtime.lastError);
+        sendResponse({ success: false, error: chrome.runtime.lastError.message });
+        reject(chrome.runtime.lastError);
+      } else {
+        console.log('🐻 Background: Local conversation data cleared successfully');
+        sendResponse({ success: true });
+        resolve();
+      }
+    });
+  });
 }
 
 async function handleGetConversationCount(sendResponse) {

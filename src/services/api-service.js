@@ -85,7 +85,7 @@ const ApiService = {
   // =============================================================================
 
   async _handleUnauthorized() {
-    console.log('🔐 ApiService: Received 401, attempting token refresh before clearing...');
+    console.log('🔐 ApiService: Received 401, attempting token refresh...');
     try {
       const AuthSvc = _getAuthService();
       if (AuthSvc) {
@@ -94,8 +94,7 @@ const ApiService = {
           console.log('🔐 ApiService: Token refreshed successfully after 401');
           return newToken;
         }
-        console.log('🔐 ApiService: Refresh failed — clearing auth');
-        await AuthSvc.clearToken();
+        console.log('🔐 ApiService: Refresh failed — save aborted, auth state preserved');
       }
     } catch (error) {
       console.log('🔐 ApiService: Error handling 401:', error.message);

@@ -520,28 +520,30 @@ html, body {
 
 .rating-row {
     display: flex;
-    justify-content: space-between;
-    gap: var(--spacing-1);
+    justify-content: center;
+    gap: var(--spacing-4);
 }
 
 .rating-btn {
-    height: 56px;
+    height: auto;
+    min-height: 32px;
+    width: 32px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 3px;
+    gap: 2px;
     background: transparent;
     border: 2px solid transparent;
     border-radius: var(--border-radius-lg);
     padding: var(--spacing-1);
     cursor: pointer;
-    flex: 1;
+    flex: none;
     transition: border-color var(--transition-base), background var(--transition-base);
 }
 
 .rating-btn.selected {
-    border-color: var(--color-primary);
+    background: var(--color-warm-white);
     background: transparent;
 }
 
@@ -553,8 +555,8 @@ html, body {
 }
 
 .rating-img {
-    width: 32px;
-    height: 32px;
+    width: 20px;
+    height: 20px;
 }
 
 .form-textarea {
@@ -663,11 +665,17 @@ html, body {
     transform: rotate(45deg);
 }
 
-#feedbackView,
+#feedbackView,#feedbackView,
 #bugView {
     gap: var(--spacing-4);
     overflow-y: auto;
-    padding-top: var(--spacing-8);
+    padding-top: 0;
+    justify-content: space-between;
+}
+
+#feedbackView .form-actions,
+#bugView .form-actions {
+    margin-top: auto;
 }
 
 .form-card {

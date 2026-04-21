@@ -343,6 +343,17 @@ window.addEventListener('message', (event) => {
       console.log('🔐 Auth token stored via background:', response);
     });
   }
+
+  // Handle request from web app to clear locally stored conversations
+  if (event.data.type === 'THREADCUB_CLEAR_CONVERSATIONS') {
+    console.log('🐻 Content script received clear conversations request');
+
+    chrome.runtime.sendMessage({
+      action: 'clearLocalConversations'
+    }, (response) => {
+      console.log('🐻 Local conversations cleared via background:', response);
+    });
+  }
 })
 
 // === END SECTION 4A-4E ===

@@ -421,7 +421,7 @@ function setupFeedbackListeners() {
             if (el) el.style.display = id === viewId ? 'flex' : 'none';
         });
         if (header) {
-            header.classList.toggle('hidden', formViews.includes(viewId));
+            header.classList.remove('hidden', 'scrolled');
         }
     }
 

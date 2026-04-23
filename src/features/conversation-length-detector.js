@@ -260,9 +260,7 @@ class ConversationLengthDetector {
           This conversation is getting long. You may be approaching message limits.
         </p>
         <div class="threadcub-length-prompt-actions">
-          <button class="threadcub-length-prompt-action threadcub-length-prompt-action-primary">
-            Continue Chat
-          </button>
+          <!-- DISABLED: Continue Chat button — temporarily removed for reliability -->
           <button class="threadcub-length-prompt-action threadcub-length-prompt-action-secondary">
             Download
           </button>
@@ -281,9 +279,9 @@ class ConversationLengthDetector {
     const closeBtn = prompt.querySelector('.threadcub-length-prompt-close');
     closeBtn.addEventListener('click', () => this._handleClose());
 
-    // Continue Chat button
-    const continueBtn = prompt.querySelector('.threadcub-length-prompt-action-primary');
-    continueBtn.addEventListener('click', () => this._handleContinueClick());
+    // DISABLED: Continue Chat button listener — button removed from template
+    // const continueBtn = prompt.querySelector('.threadcub-length-prompt-action-primary');
+    // continueBtn.addEventListener('click', () => this._handleContinueClick());
 
     // Download button
     const downloadBtn = prompt.querySelector('.threadcub-length-prompt-action-secondary');

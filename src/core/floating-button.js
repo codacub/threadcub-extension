@@ -99,12 +99,15 @@ class ThreadCubFloatingButton {
         </div>
       </div>
       <div class="threadcub-action-buttons">
+        <!-- DISABLED: Continue Your Chat button — temporarily removed for reliability
         <div class="threadcub-new-btn" data-action="new">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
             <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
           </svg>
         </div>
+        -->
+        <!-- DISABLED: Start Fresh Chain button — temporarily removed for reliability
         <div class="threadcub-fresh-btn" data-action="fresh">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="m18.84 12.25 1.72-1.71h-.02a5.004 5.004 0 0 0-.12-7.07 5.006 5.006 0 0 0-6.95 0l-1.72 1.71"/>
@@ -115,6 +118,7 @@ class ThreadCubFloatingButton {
             <line x1="19" x2="22" y1="16" y2="16"/>
           </svg>
         </div>
+        -->
         <div class="threadcub-save-btn" data-action="save">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -1064,7 +1068,8 @@ class ThreadCubFloatingButton {
         console.log('🔍 [FB] updateStartFreshVisibility — raw tc_pending_parent:', JSON.stringify(stored.tc_pending_parent));
         const btn = this.button?.querySelector('.threadcub-fresh-btn');
         if (btn) btn.classList.toggle('chain-active', isActive);
-        this.updateChainLabel(isActive && typeof entry === 'object' ? entry : null);
+        // DISABLED: chain label hidden while Start Fresh Chain button is removed
+        // this.updateChainLabel(isActive && typeof entry === 'object' ? entry : null);
       });
     } catch (e) {}
   }

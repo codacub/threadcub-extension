@@ -3661,12 +3661,11 @@ showSidePanel(openToTab = null) {
       this.sidePanel.style.right = '0px';
       this.isPanelOpen = true;
 
-      // Switch to specific tab if requested
       if (openToTab && this.sidePanelUI) {
         this.sidePanelUI.switchTab(openToTab);
+      } else {
+        this.updateTagsList();
       }
-
-      this.updateTagsList();
     }, 50);
 
     console.log('🏷️ ThreadCub: Side panel opened' + (openToTab ? ` to ${openToTab} tab` : ''));

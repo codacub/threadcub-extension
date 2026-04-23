@@ -55,8 +55,6 @@ class ThreadCubSidePanel {
       </div>
     `;
 
-    this.setupPriorityFilterListener();
-    this.setupNewCardListeners();
   }
 
   // Render Anchors view (simple list with delete and jump-to)
@@ -75,7 +73,6 @@ class ThreadCubSidePanel {
       </div>
     `;
 
-    this.setupAnchorListListeners();
   }
 
   // Filter tags by priority
@@ -134,35 +131,6 @@ class ThreadCubSidePanel {
     `;
   }
 
-  // Setup anchor list listeners
-  setupAnchorListListeners() {
-    // Jump to buttons
-    const jumpBtns = this.sidePanel.querySelectorAll('.jump-to-btn');
-    jumpBtns.forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const anchorId = parseInt(btn.getAttribute('data-anchor-id'));
-        // 📊 GA: anchor jump-to clicked from side panel
-        this._trackEvent('side_panel_anchor_jumped', { anchor_id: anchorId });
-        if (this.taggingSystem.jumpToAnchor) {
-          this.taggingSystem.jumpToAnchor(anchorId);
-        }
-      });
-    });
-
-    // Delete buttons
-    const deleteBtns = this.sidePanel.querySelectorAll('.anchor-item-actions .delete-btn');
-    deleteBtns.forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const anchorId = parseInt(btn.getAttribute('data-anchor-id'));
-        // 📊 GA: anchor deleted from side panel
-        this._trackEvent('side_panel_anchor_deleted', { anchor_id: anchorId });
-        this.taggingSystem.deleteTagWithUndo(anchorId);
-      });
-    });
-  }
-
   // Switch tab
   switchTab(tab) {
     this.currentTab = tab;
@@ -217,6 +185,137 @@ class ThreadCubSidePanel {
     if (anchorsTab) {
       anchorsTab.addEventListener('click', () => this.switchTab('anchors'));
     }
+    this.setupDelegatedListeners();
+  }
+
+  setupDelegatedListeners() {
+    const container = this.sidePanel.querySelector('#threadcub-tags-container');
+    if (!container) return;
+
+    container.addEventListener('click', (e) => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      e.stopPropagation();
+
+      const tagCard = btn.closest('.threadcub-tag-card');
+      const anchorItem = btn.closest('.threadcub-anchor-item');
+      const tagId = tagCard ? parseInt(tagCard.getAttribute('data-tag-id')) : null;
+
+      if (btn.classList.contains('tc-chevron-btn') && tagCard) {
+        const actionsRow = tagCard.querySelector('.tc-actions-row');
+        const chevronSvg = btn.querySelector('svg');
+        const isOpen = actionsRow.style.display === 'flex';
+        actionsRow.style.display = isOpen ? 'none' : 'flex';
+        chevronSvg.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+        return;
+      }
+
+      if (btn.classList.contains('save-note-btn') && tagCard) {
+        if (btn.classList.contains('active')) {
+          const textarea = tagCard.querySelector('.note-textarea');
+          this.taggingSystem.saveNoteForCard(tagId, textarea.value.trim());
+          this.exitEditingState(tagCard);
+        }
+        return;
+      }
+      if (btn.classList.contains('cancel-note-btn') && tagCard) {
+        this.exitEditingState(tagCard);
+        return;
+      }
+      if (btn.classList.contains('remove-note-btn') && tagCard) {
+        this.taggingSystem.saveNoteForCard(tagId, '');
+        this.exitEditingState(tagCard);
+        return;
+      }
+
+      if (btn.classList.contains('tag-colour-btn') && tagCard) {
+        tagCard.querySelectorAll('.tag-colour-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        return;
+      }
+      if (btn.classList.contains('save-tag-btn') && tagCard) {
+        const tagInput = tagCard.querySelector('.tag-name-input');
+        const label = tagInput?.value.trim();
+        if (!label) return;
+        const selectedColour = tagCard.querySelector('.tag-colour-btn.selected');
+        const colour = selectedColour ? selectedColour.getAttribute('data-colour') : 'amber';
+        this.taggingSystem.addCustomTag(tagId, label, colour);
+        this.exitEditingState(tagCard);
+        this.updateTagsList();
+        return;
+      }
+      if (btn.classList.contains('cancel-tag-btn') && tagCard) {
+        this.exitEditingState(tagCard);
+        return;
+      }
+
+      const action = btn.getAttribute('data-action');
+      if (action && tagCard) {
+        switch (action) {
+          case 'jump-to-tag':
+            this.jumpToTag(tagId);
+            break;
+          case 'jump-to':
+            if (this.taggingSystem.jumpToAnchor) this.taggingSystem.jumpToAnchor(tagId);
+            break;
+          case 'copy':
+            this.copyTagText(tagCard, tagId);
+            break;
+          case 'edit-note':
+            this.enterNoteEditingState(tagCard, tagId);
+            break;
+          case 'add-tag':
+            this.enterTagEditingState(tagCard, tagId);
+            break;
+          case 'delete':
+            this.taggingSystem.deleteTagWithUndo(tagId);
+            break;
+        }
+        return;
+      }
+
+      if (btn.classList.contains('jump-to-btn') && anchorItem) {
+        const anchorId = parseInt(btn.getAttribute('data-anchor-id'));
+        this._trackEvent('side_panel_anchor_jumped', { anchor_id: anchorId });
+        if (this.taggingSystem.jumpToAnchor) this.taggingSystem.jumpToAnchor(anchorId);
+        return;
+      }
+      if (btn.classList.contains('delete-btn') && anchorItem) {
+        const anchorId = parseInt(btn.getAttribute('data-anchor-id'));
+        this._trackEvent('side_panel_anchor_deleted', { anchor_id: anchorId });
+        this.taggingSystem.deleteTagWithUndo(anchorId);
+        return;
+      }
+    });
+
+    container.addEventListener('input', (e) => {
+      const tagCard = e.target.closest('.threadcub-tag-card');
+      if (!tagCard) return;
+
+      if (e.target.classList.contains('note-textarea')) {
+        const saveBtn = tagCard.querySelector('.save-note-btn');
+        if (!saveBtn) return;
+        const hasText = e.target.value.trim().length > 0;
+        if (hasText) {
+          saveBtn.classList.add('active');
+          saveBtn.style.setProperty('color', 'white', 'important');
+        } else {
+          saveBtn.classList.remove('active');
+          saveBtn.style.removeProperty('color');
+        }
+        return;
+      }
+
+      if (e.target.classList.contains('tag-name-input')) {
+        const saveTagBtn = tagCard.querySelector('.save-tag-btn');
+        if (!saveTagBtn) return;
+        if (e.target.value.trim().length > 0) {
+          saveTagBtn.classList.add('active');
+        } else {
+          saveTagBtn.classList.remove('active');
+        }
+      }
+    });
   }
 
   // Jump to a tag location in the conversation
@@ -768,275 +867,6 @@ class ThreadCubSidePanel {
     `;
   }
 
-  // ===== EVENT LISTENERS (Updated to use CSS variables and classes) =====
-  setupNewCardListeners() {
-    // Setup section tag card listeners (tags inside sections)
-    const sectionTagCards = this.sidePanel.querySelectorAll('.threadcub-section-tag');
-    sectionTagCards.forEach(card => {
-      const tagId = parseInt(card.getAttribute('data-tag-id'));
-      this.setupSectionTagCardListeners(card, tagId);
-    });
-
-    // Setup standalone tag card listeners (legacy, outside sections)
-    const tagCards = this.sidePanel.querySelectorAll('.threadcub-tag-card:not(.threadcub-section-tag):not(.threadcub-anchor-card)');
-    tagCards.forEach(card => {
-      const tagId = parseInt(card.getAttribute('data-tag-id'));
-      this.setupTagCardListeners(card, tagId);
-    });
-
-    // Setup anchor card listeners (legacy standalone anchors)
-    const anchorCards = this.sidePanel.querySelectorAll('.threadcub-anchor-card');
-    anchorCards.forEach(card => {
-      const anchorId = parseInt(card.getAttribute('data-anchor-id'));
-      this.setupAnchorCardListeners(card, anchorId);
-    });
-  }
-
-  // Setup listeners for section tag cards (with jump-to functionality)
-  setupSectionTagCardListeners(card, tagId) {
-    // Card hover effects
-    card.addEventListener('mouseenter', () => {
-      card.style.boxShadow = 'var(--shadow-card-hover)';
-    });
-
-    card.addEventListener('mouseleave', () => {
-      const currentState = card.getAttribute('data-state');
-      if (currentState === 'default') {
-        card.style.boxShadow = 'var(--shadow-card)';
-      }
-    });
-
-    // Jump to tag (anchor icon)
-    const jumpBtn = card.querySelector('[data-action="jump-to-tag"]');
-    if (jumpBtn) {
-      jumpBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.jumpToTag(tagId);
-      });
-    }
-
-    // Edit note
-    const editBtn = card.querySelector('[data-action="edit-note"]');
-    if (editBtn) {
-      editBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        console.log("EDIT NOTE CLICKED", card, tagId);
-        this.enterNoteEditingState(card, tagId);
-      });
-    }
-
-    // Add tag/priority
-    const tagBtn = card.querySelector('[data-action="add-tag"]');
-    if (tagBtn) {
-      tagBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.enterTagEditingState(card, tagId);
-      });
-    }
-
-    // Delete
-    const deleteBtn = card.querySelector('[data-action="delete"]');
-    if (deleteBtn) {
-      deleteBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.taggingSystem.deleteTagWithUndo(tagId);
-      });
-    }
-
-    // Note editing listeners
-    this.setupNoteEditingListeners(card, tagId);
-
-    // Tag editing listeners
-    this.setupTagEditingListeners(card, tagId);
-  }
-
-  // Setup listeners for anchor cards (now uses same pattern as tag cards)
-  setupAnchorCardListeners(card, anchorId) {
-    // Card hover effects - same as tags
-    card.addEventListener('mouseenter', () => {
-      card.style.boxShadow = 'var(--shadow-card-hover)';
-    });
-
-    card.addEventListener('mouseleave', () => {
-      const currentState = card.getAttribute('data-state');
-      if (currentState === 'default') {
-        card.style.boxShadow = 'var(--shadow-card)';
-      }
-    });
-
-    // Jump-to action icon
-    const jumpBtn = card.querySelector('[data-action="jump-to"]');
-    if (jumpBtn) {
-      jumpBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        console.log('Anchor: Jump to clicked for anchor', anchorId);
-        if (this.taggingSystem.jumpToAnchor) {
-          this.taggingSystem.jumpToAnchor(anchorId);
-        }
-      });
-    }
-
-    // Edit note button
-    const editBtn = card.querySelector('[data-action="edit-note"]');
-    if (editBtn) {
-      editBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.enterNoteEditingState(card, anchorId);
-      });
-    }
-
-    // Add tag/priority button
-    const tagBtn = card.querySelector('[data-action="add-tag"]');
-    if (tagBtn) {
-      tagBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.enterTagEditingState(card, anchorId);
-      });
-    }
-
-    // Delete button
-    const deleteBtn = card.querySelector('[data-action="delete"]');
-    if (deleteBtn) {
-      deleteBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.taggingSystem.deleteTagWithUndo(anchorId);
-      });
-    }
-
-    // Note editing listeners - use same as tags
-    this.setupNoteEditingListeners(card, anchorId);
-
-    // Tag editing listeners - use same as tags
-    this.setupTagEditingListeners(card, anchorId);
-  }
-
-  // Setup listeners for tag cards (existing functionality)
-  setupTagCardListeners(card, tagId) {
-    const WARM = '#F7F3EE';
-
-    // Chevron toggle + hover
-    const chevronBtn = card.querySelector('.tc-chevron-btn');
-    if (chevronBtn) {
-      chevronBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const actionsRow = card.querySelector('.tc-actions-row');
-        const chevronSvg = chevronBtn.querySelector('svg');
-        const isOpen = actionsRow.style.display === 'flex';
-        actionsRow.style.display = isOpen ? 'none' : 'flex';
-        chevronSvg.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
-      });
-      chevronBtn.addEventListener('mouseenter', () => {
-        chevronBtn.style.background = WARM;
-        chevronBtn.style.color = '#374151';
-      });
-      chevronBtn.addEventListener('mouseleave', () => {
-        chevronBtn.style.background = 'transparent';
-        chevronBtn.style.color = '#9CA3AF';
-      });
-    }
-
-    // Jump button hover
-    const jumpBtn = card.querySelector('[data-action="jump-to-tag"]');
-    if (jumpBtn) {
-      jumpBtn.addEventListener('mouseenter', () => {
-        jumpBtn.style.background = WARM;
-        jumpBtn.style.color = '#6C74FB';
-      });
-      jumpBtn.addEventListener('mouseleave', () => {
-        jumpBtn.style.background = 'transparent';
-        jumpBtn.style.color = '#9CA3AF';
-      });
-    }
-
-    // Action buttons hover
-    card.querySelectorAll('.tc-actions-row .action-button').forEach(btn => {
-      const isDelete = btn.getAttribute('data-action') === 'delete';
-      btn.addEventListener('mouseenter', () => {
-        btn.style.background = isDelete ? '#FEF2F2' : WARM;
-        btn.style.color = isDelete ? '#EF4444' : '#374151';
-      });
-      btn.addEventListener('mouseleave', () => {
-        btn.style.background = 'transparent';
-        btn.style.color = '#9CA3AF';
-      });
-    });
-
-    // Action button listeners
-    this.setupCardActionListeners(card, tagId);
-  }
-
-
-  setupCardActionListeners(card, tagId) {
-    // Copy to clipboard
-    const copyBtn = card.querySelector('[data-action="copy"]');
-    if (copyBtn) {
-      copyBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.copyTagText(card, tagId);
-      });
-    }
-
-    // Jump to tag
-    const jumpBtn = card.querySelector('[data-action="jump-to-tag"]');
-    if (jumpBtn) {
-      jumpBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.jumpToTag(tagId);
-      });
-    }
-
-    // Edit note
-    const editBtn = card.querySelector('[data-action="edit-note"]');
-    if (editBtn) {
-      editBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.enterNoteEditingState(card, tagId);
-      });
-
-      /*this.addButtonHoverEffects(editBtn, 'var(--color-gray-100)', 'var(--color-primary)'); */ // Use CSS variables
-    }
-
-    // Add tag
-    const tagBtn = card.querySelector('[data-action="add-tag"]');
-    if (tagBtn) {
-      tagBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.enterTagEditingState(card, tagId);
-      });
-
-      /*this.addButtonHoverEffects(tagBtn, 'var(--color-gray-100)', 'var(--color-primary)');*/ // Use CSS variables
-    }
-
-    // Delete
-    const deleteBtn = card.querySelector('[data-action="delete"]');
-    if (deleteBtn) {
-      deleteBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.taggingSystem.deleteTagWithUndo(tagId);
-      });
-
-     /* this.addButtonHoverEffects(deleteBtn, 'var(--color-error-light)', 'var(--color-error)');*/ // Use CSS variables
-    }
-
-    // Note editing listeners
-    this.setupNoteEditingListeners(card, tagId);
-
-    // Tag editing listeners
-    this.setupTagEditingListeners(card, tagId);
-  }
-
-  addButtonHoverEffects(button, hoverBg, hoverColor) {
-    button.addEventListener('mouseenter', () => {
-      button.style.background = hoverBg;
-      button.style.color = hoverColor;
-    });
-
-    button.addEventListener('mouseleave', () => {
-      button.style.background = 'transparent';
-      button.style.color = 'var(--color-gray-500)'; // Use CSS variable
-    });
-  }
-
   // ===== STATE MANAGEMENT =====
   enterNoteEditingState(card, tagId) {
     card.setAttribute('data-state', 'note-editing');
@@ -1077,103 +907,6 @@ class ThreadCubSidePanel {
 
     const defaultState = card.querySelector('.default-state');
     if (defaultState) defaultState.style.display = 'flex';
-  }
-
-  // ===== NOTE EDITING =====
-  setupNoteEditingListeners(card, tagId) {
-    const textarea = card.querySelector('.note-textarea');
-    const saveBtn = card.querySelector('.save-note-btn');
-    const cancelBtn = card.querySelector('.cancel-note-btn');
-
-    if (textarea && saveBtn) {
-      textarea.addEventListener('input', () => {
-        const hasText = textarea.value.trim().length > 0;
-
-        if (hasText) {
-          saveBtn.classList.add('active'); // Use class for active state
-          // Use setProperty with 'important' to override Grok's !important CSS
-          saveBtn.style.setProperty('color', 'white', 'important');
-        } else {
-          saveBtn.classList.remove('active'); // Remove class for inactive state
-          saveBtn.style.removeProperty('color'); // Reset to CSS default
-        }
-      });
-
-      saveBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        // Only save if active (i.e., has text)
-        if (saveBtn.classList.contains('active')) {
-          this.taggingSystem.saveNoteForCard(tagId, textarea.value.trim());
-          this.exitEditingState(card);
-        }
-      });
-    }
-
-    if (cancelBtn) {
-      cancelBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.exitEditingState(card);
-      });
-    }
-    const removeBtn = card.querySelector('.remove-note-btn');
-    if (removeBtn) {
-      removeBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.taggingSystem.saveNoteForCard(tagId, '');
-        this.exitEditingState(card);
-      });
-    }
-  }
-
-  // ===== TAG EDITING =====
-  setupTagEditingListeners(card, tagId) {
-    const cancelBtn = card.querySelector('.cancel-tag-btn');
-    const saveTagBtn = card.querySelector('.save-tag-btn');
-    const tagInput = card.querySelector('.tag-name-input');
-    const colourBtns = card.querySelectorAll('.tag-colour-btn');
-
-    colourBtns.forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        colourBtns.forEach(b => b.classList.remove('selected'));
-        btn.classList.add('selected');
-      });
-    });
-
-    if (saveTagBtn && tagInput) {
-      tagInput.addEventListener('input', () => {
-        if (tagInput.value.trim().length > 0) {
-          saveTagBtn.classList.add('active');
-        } else {
-          saveTagBtn.classList.remove('active');
-        }
-      });
-      saveTagBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const label = tagInput.value.trim();
-        if (!label) return;
-        const selectedColour = card.querySelector('.tag-colour-btn.selected');
-        const colour = selectedColour ? selectedColour.getAttribute('data-colour') : 'amber';
-        this.taggingSystem.addCustomTag(tagId, label, colour);
-        this.exitEditingState(card);
-        this.updateTagsList();
-      });
-    }
-
-    if (cancelBtn) {
-      cancelBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.exitEditingState(card);
-      });
-    }
-    const removeBtn = card.querySelector('.remove-note-btn');
-    if (removeBtn) {
-      removeBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.taggingSystem.saveNoteForCard(tagId, '');
-        this.exitEditingState(card);
-      });
-    }
   }
 
   // ===== PUBLIC METHODS =====

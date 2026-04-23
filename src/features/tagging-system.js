@@ -2424,7 +2424,6 @@ createSidePanel() {
     right: 0;
     bottom: 0;
     background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(4px);
     z-index: 9999998;
     opacity: 0;
     visibility: hidden;
@@ -2441,8 +2440,7 @@ createSidePanel() {
     right: -400px;
     width: 400px;
     height: 100vh;
-    background: rgba(255, 255, 255, 0.98);
-    backdrop-filter: blur(20px);
+    background: #FFFFFF;
     border-left: 1px solid rgba(226, 232, 240, 0.8);
     box-shadow: -8px 0 32px rgba(0, 0, 0, 0.12);
     z-index: 9999999;

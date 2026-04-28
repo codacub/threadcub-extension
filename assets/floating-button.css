@@ -310,28 +310,7 @@
   box-shadow: var(--shadow-action-btn-new-hover) !important;
 }
 
-/* Continue button — dims icon when not signed in */
-.threadcub-new-btn {
-  cursor: not-allowed !important;
-}
-.threadcub-new-btn svg {
-  opacity: 0.3;
-}
-.threadcub-new-btn.signed-in {
-  cursor: pointer !important;
-}
-.threadcub-new-btn.signed-in svg {
-  opacity: 1;
-}
-
 /* Action Button Hover States */
-.threadcub-new-btn.signed-in:hover {
-  background: var(--color-action-btn-new-bg-hover) !important;
-  color: var(--color-action-btn-new-text-hover) !important;
-  transform: scale(1.1) !important;
-  box-shadow: var(--shadow-action-btn-new-hover) !important;
-}
-
 .threadcub-save-btn:hover {
   background: var(--color-action-btn-save-bg-hover) !important;
   color: var(--color-action-btn-save-text-hover) !important;
@@ -374,8 +353,7 @@
   box-shadow: var(--shadow-action-btn-close-hover) !important;
 }
 
-/* Ensure white icons on hover for new-btn, save-btn, and close-btn (Grok fix) */
-.threadcub-new-btn.signed-in:hover svg,
+/* Ensure white icons on hover for save-btn and close-btn (Grok fix) */
 .threadcub-save-btn:hover svg,
 .threadcub-close-btn:hover svg {
   stroke: white !important;

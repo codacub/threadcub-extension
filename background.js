@@ -112,11 +112,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       handleGetStoredAuthToken(sendResponse);
       return true;
 
-    case 'openSignIn':
-      chrome.tabs.create({ url: chrome.runtime.getURL('signin.html') });
-      sendResponse({ success: true });
-      return true;
-
     case 'validateAuthToken':
       handleValidateAuthToken(sendResponse);
       return true;
